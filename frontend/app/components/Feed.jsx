@@ -4,11 +4,15 @@ import { useState } from 'react';
 import { Bookmark, Settings, Bell, FlaskConical, Sparkles, Box, Play, ArrowUpRight } from 'lucide-react';
 import { MOCK_PAPERS } from '../data';
 import FakeFigure from './FakeFigure';
+import { useLanguage } from '../context/LanguageContext';
 
 // =============================================================================
 // Paper card
 // =============================================================================
 function PaperCard({ paper, onTap, onSave, isSaved }) {
+  const { t } = useLanguage();
+  const tf = t.feed;
+
   return (
     <div
       onClick={onTap}
@@ -49,7 +53,7 @@ function PaperCard({ paper, onTap, onSave, isSaved }) {
           </span>
           <span>▲ {paper.upvotes}</span>
           <span>·</span>
-          <span>{paper.daysAgo}d ago</span>
+          <span>{tf.daysAgo(paper.daysAgo)}</span>
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); onSave(); }}
@@ -121,7 +125,7 @@ function PaperCard({ paper, onTap, onSave, isSaved }) {
               color: '#1A1611',
               fontWeight: 500,
             }}>
-              <Box size={12} /> {paper.models} model{paper.models > 1 ? 's' : ''}
+              <Box size={12} /> {tf.models(paper.models)}
             </span>
           )}
           {paper.demos > 0 && (
@@ -134,7 +138,7 @@ function PaperCard({ paper, onTap, onSave, isSaved }) {
               color: '#C84B31',
               fontWeight: 600,
             }}>
-              <Play size={12} fill="#C84B31" /> Live demo
+              <Play size={12} fill="#C84B31" /> {tf.liveDemo}
             </span>
           )}
           <span style={{
@@ -146,7 +150,7 @@ function PaperCard({ paper, onTap, onSave, isSaved }) {
             alignItems: 'center',
             gap: 3,
           }}>
-            Read more <ArrowUpRight size={11} />
+            {tf.readMore} <ArrowUpRight size={11} />
           </span>
         </div>
       )}
@@ -158,11 +162,13 @@ function PaperCard({ paper, onTap, onSave, isSaved }) {
 // Feed main
 // =============================================================================
 export default function Feed({ onSettings, onPaperTap, saved, onToggleSave }) {
+  const { t, lang } = useLanguage();
+  const tf = t.feed;
   const [skippedIds] = useState([]);
   const papers = MOCK_PAPERS.filter(p => !skippedIds.includes(p.id));
 
   const today = new Date();
-  const dateLabel = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const dateLabel = today.toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' });
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#FAF7F2' }}>
@@ -182,7 +188,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave }) {
             letterSpacing: '0.15em',
             marginBottom: 2,
           }}>
-            TODAY'S FEED · {dateLabel}
+            {tf.todayLabel} · {dateLabel}
           </div>
           <div style={{
             fontFamily: "'Fraunces', serif",
@@ -207,7 +213,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave }) {
       <div style={{ padding: '14px 24px', background: '#FAF7F2', display: 'flex', alignItems: 'center', gap: 8 }}>
         <FlaskConical size={14} style={{ color: '#C84B31' }} />
         <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#3A342B' }}>
-          <strong style={{ color: '#1A1611' }}>{papers.length} papers</strong> in your areas today
+          <strong style={{ color: '#1A1611' }}>{tf.papersToday(papers.length)}</strong>
         </span>
       </div>
 
@@ -224,10 +230,10 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave }) {
         {papers.length === 0 && (
           <div style={{ padding: '60px 24px', textAlign: 'center' }}>
             <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: '#1A1611', fontStyle: 'italic' }}>
-              All caught up!
+              {tf.allCaughtUp}
             </div>
             <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', marginTop: 8 }}>
-              Check back tomorrow for fresh papers ✦
+              {tf.checkBack}
             </div>
           </div>
         )}

@@ -4,19 +4,23 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight, X, Heart } from 'lucide-react';
 import { CATEGORIES, SUGGESTED_KEYWORDS, MOCK_PAPERS } from '../data';
 import FakeFigure from './FakeFigure';
+import { useLanguage } from '../context/LanguageContext';
 
 // =============================================================================
 // Step 1: Category selection
 // =============================================================================
 export function OnboardingCategories({ selected, onToggle, onNext, onBack }) {
+  const { t } = useLanguage();
+  const tc = t.onboarding.categories;
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '56px 28px 28px' }}>
       <ProgressHeader step={1} onBack={onBack} />
 
       <h2 style={titleStyle}>
-        Which fields are you <span style={{ fontStyle: 'italic' }}>interested</span> in?
+        {tc.titlePre} <span style={{ fontStyle: 'italic' }}>{tc.titleItalic}</span> {tc.titlePost}
       </h2>
-      <p style={subtitleStyle}>Pick as many as you like — you can change these any time.</p>
+      <p style={subtitleStyle}>{tc.subtitle}</p>
 
       <div style={{
         flex: 1,
@@ -53,7 +57,7 @@ export function OnboardingCategories({ selected, onToggle, onNext, onBack }) {
         })}
       </div>
 
-      <NextButton onClick={onNext} disabled={selected.length === 0} />
+      <NextButton label={tc.next} onClick={onNext} disabled={selected.length === 0} />
     </div>
   );
 }
@@ -62,13 +66,13 @@ export function OnboardingCategories({ selected, onToggle, onNext, onBack }) {
 // Step 2: Keyword input
 // =============================================================================
 export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }) {
+  const { t } = useLanguage();
+  const tk = t.onboarding.keywords;
   const [input, setInput] = useState('');
 
   const handleAdd = (kw) => {
     const trimmed = kw.trim();
-    if (trimmed && !keywords.includes(trimmed)) {
-      onAdd(trimmed);
-    }
+    if (trimmed && !keywords.includes(trimmed)) onAdd(trimmed);
     setInput('');
   };
 
@@ -77,16 +81,16 @@ export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }
       <ProgressHeader step={2} onBack={onBack} />
 
       <h2 style={titleStyle}>
-        Any <span style={{ fontStyle: 'italic' }}>specific</span> keywords?
+        {tk.titlePre} <span style={{ fontStyle: 'italic' }}>{tk.titleItalic}</span> {tk.titlePost}
       </h2>
-      <p style={subtitleStyle}>e.g. "RAG", "MoE", "diffusion" — helps us tune results further.</p>
+      <p style={subtitleStyle}>{tk.subtitle}</p>
 
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleAdd(input); }}
-          placeholder="Type a keyword and press Enter"
+          placeholder={tk.placeholder}
           style={{
             flex: 1,
             padding: '12px 14px',
@@ -111,7 +115,7 @@ export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }
             fontWeight: 500,
           }}
         >
-          Add
+          {tk.add}
         </button>
       </div>
 
@@ -149,7 +153,7 @@ export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }
         letterSpacing: '0.1em',
         marginBottom: 10,
       }}>
-        SUGGESTED
+        {tk.suggested}
       </div>
       <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 6, alignContent: 'start' }}>
         {SUGGESTED_KEYWORDS.filter(k => !keywords.includes(k)).map(kw => (
@@ -171,7 +175,7 @@ export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }
         ))}
       </div>
 
-      <NextButton onClick={onNext} disabled={keywords.length === 0} />
+      <NextButton label={tk.next} onClick={onNext} disabled={keywords.length === 0} />
     </div>
   );
 }
@@ -180,6 +184,8 @@ export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }
 // Step 3: Calibration
 // =============================================================================
 export function OnboardingCalibration({ onDecision, onDone, onBack }) {
+  const { t } = useLanguage();
+  const tca = t.onboarding.calibration;
   const [idx, setIdx] = useState(0);
   const calibPapers = MOCK_PAPERS.slice(0, 4);
   const current = calibPapers[idx];
@@ -198,11 +204,11 @@ export function OnboardingCalibration({ onDecision, onDone, onBack }) {
       <ProgressHeader step={3} onBack={onBack} />
 
       <h2 style={{ ...titleStyle, fontSize: 26 }}>
-        One last thing —<br />
-        <span style={{ fontStyle: 'italic' }}>do you like this?</span>
+        {tca.titleLine1}<br />
+        <span style={{ fontStyle: 'italic' }}>{tca.titleLine2}</span>
       </h2>
       <p style={subtitleStyle}>
-        {idx + 1} / {calibPapers.length} · Helps us calibrate your feed
+        {idx + 1} / {calibPapers.length} · {tca.subtitle}
       </p>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -285,7 +291,7 @@ export function OnboardingCalibration({ onDecision, onDone, onBack }) {
             gap: 8,
           }}
         >
-          <X size={16} /> Not my thing
+          <X size={16} /> {tca.notMyThing}
         </button>
         <button
           onClick={() => handleDecision(true)}
@@ -305,7 +311,7 @@ export function OnboardingCalibration({ onDecision, onDone, onBack }) {
             gap: 8,
           }}
         >
-          <Heart size={16} /> Love it
+          <Heart size={16} /> {tca.loveIt}
         </button>
       </div>
     </div>
@@ -332,7 +338,7 @@ function ProgressHeader({ step, onBack }) {
   );
 }
 
-function NextButton({ onClick, disabled }) {
+function NextButton({ label, onClick, disabled }) {
   return (
     <button
       onClick={onClick}
@@ -354,7 +360,7 @@ function NextButton({ onClick, disabled }) {
         gap: 8,
       }}
     >
-      Next <ChevronRight size={18} />
+      {label} <ChevronRight size={18} />
     </button>
   );
 }

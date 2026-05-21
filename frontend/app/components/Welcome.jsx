@@ -1,6 +1,11 @@
+'use client';
+
 import { ChevronRight } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Welcome({ onStart }) {
+  const { t, lang, setLang } = useLanguage();
+
   return (
     <div style={{
       height: '100%',
@@ -8,7 +13,51 @@ export default function Welcome({ onStart }) {
       flexDirection: 'column',
       padding: '60px 28px 32px',
       justifyContent: 'space-between',
+      position: 'relative',
     }}>
+      {/* Language toggle */}
+      <div style={{
+        position: 'absolute',
+        top: 20,
+        right: 24,
+        display: 'flex',
+        gap: 4,
+        fontFamily: "'Geist', sans-serif",
+        fontSize: 11,
+        letterSpacing: '0.08em',
+      }}>
+        <button
+          onClick={() => setLang('en')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '4px 8px',
+            color: lang === 'en' ? '#1A1611' : '#6B6358',
+            fontWeight: lang === 'en' ? 700 : 400,
+            fontFamily: 'inherit',
+            fontSize: 'inherit',
+            letterSpacing: 'inherit',
+          }}
+        >
+          EN
+        </button>
+        <span style={{ color: '#D8D0BE', lineHeight: '24px' }}>|</span>
+        <button
+          onClick={() => setLang('ko')}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '4px 8px',
+            color: lang === 'ko' ? '#1A1611' : '#6B6358',
+            fontWeight: lang === 'ko' ? 700 : 400,
+            fontFamily: 'inherit',
+            fontSize: 'inherit',
+          }}
+        >
+          한국어
+        </button>
+      </div>
+
       <div style={{
         flex: 1,
         display: 'flex',
@@ -25,9 +74,9 @@ export default function Welcome({ onStart }) {
           margin: 0,
           letterSpacing: '-0.02em',
         }}>
-          Every day,<br />
-          <span style={{ fontStyle: 'italic', fontWeight: 300 }}>the papers</span><br />
-          worth reading.
+          {t.welcome.line1}<br />
+          <span style={{ fontStyle: 'italic', fontWeight: 300 }}>{t.welcome.line2}</span><br />
+          {t.welcome.line3}
         </h1>
         <div style={{
           marginTop: 32,
@@ -37,7 +86,7 @@ export default function Welcome({ onStart }) {
           color: '#6B6358',
           maxWidth: 280,
         }}>
-          Papers, models, and repos from arXiv, Hugging Face, and GitHub — curated to your interests, delivered daily.
+          {t.welcome.subtitle}
         </div>
         <div style={{
           marginTop: 24,
@@ -50,7 +99,7 @@ export default function Welcome({ onStart }) {
         }}>
           <div style={{ width: 28, height: 1, background: '#1A1611' }} />
           <span style={{ fontStyle: 'italic', fontFamily: "'Fraunces', serif", fontSize: 14 }}>
-            Beyond the Pond, Into the Open
+            {t.welcome.tagline}
           </span>
         </div>
       </div>
@@ -73,7 +122,7 @@ export default function Welcome({ onStart }) {
           letterSpacing: '0.02em',
         }}
       >
-        Get Started <ChevronRight size={18} />
+        {t.welcome.cta} <ChevronRight size={18} />
       </button>
     </div>
   );

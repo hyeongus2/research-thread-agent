@@ -22,9 +22,9 @@ build/
 # ChromaDB local storage
 chroma_db/
 
-# Next.js
-frontend/.next/
-frontend/node_modules/
+# Next.js / Node
+.next/
+node_modules/
 
 # Streamlit
 .streamlit/secrets.toml

@@ -152,7 +152,11 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.2.0 (current)
+### v0.2.1 (current)
+- [x] English / Korean language toggle (Welcome screen + Settings)
+- [x] Language preference persisted across sessions
+
+### v0.2.0
 - [x] FastAPI backend scaffold with full route structure
 - [x] Next.js 15 frontend — onboarding flow (categories → keywords → calibration → feed)
 - [x] SQLite schema + SQLAlchemy ORM

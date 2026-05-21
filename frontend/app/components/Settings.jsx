@@ -2,13 +2,16 @@
 
 import { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const API = 'http://localhost:8000/api';
 
 export default function Settings({ onClose, userId }) {
+  const { t, lang, setLang } = useLanguage();
+  const ts = t.settings;
+
   const [digestOn, setDigestOn] = useState(true);
   const [breakthroughOn, setBreakthroughOn] = useState(false);
-
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetDone, setResetDone] = useState(false);
 
@@ -53,27 +56,61 @@ export default function Settings({ onClose, userId }) {
             fontSize: 13,
           }}
         >
-          <ChevronLeft size={18} /> Close
+          <ChevronLeft size={18} /> {ts.close}
         </button>
         <span style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#1A1611', fontStyle: 'italic' }}>
-          Settings
+          {ts.title}
         </span>
         <div style={{ width: 60 }} />
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+
+        {/* Language */}
+        <div style={sectionLabel}>{ts.language}</div>
+        <div style={{
+          background: '#FFFFFF',
+          border: '1px solid #E8E2D5',
+          borderRadius: 4,
+          marginBottom: 28,
+          padding: '4px',
+          display: 'flex',
+          gap: 4,
+        }}>
+          {[{ code: 'en', label: 'English' }, { code: 'ko', label: '한국어' }].map(({ code, label }) => (
+            <button
+              key={code}
+              onClick={() => setLang(code)}
+              style={{
+                flex: 1,
+                padding: '10px',
+                background: lang === code ? '#1A1611' : 'transparent',
+                color: lang === code ? '#FAF7F2' : '#6B6358',
+                border: 'none',
+                borderRadius: 2,
+                fontFamily: "'Geist', sans-serif",
+                fontSize: 13,
+                fontWeight: lang === code ? 600 : 400,
+                transition: 'all 0.15s',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* Notifications */}
-        <div style={sectionLabel}>NOTIFICATIONS</div>
+        <div style={sectionLabel}>{ts.notifications}</div>
         <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, marginBottom: 28 }}>
           <SettingRow
-            title="Daily Digest"
-            description="Delivered at 8:00 AM every morning"
+            title={ts.dailyDigest}
+            description={ts.dailyDigestDesc}
             on={digestOn}
             onToggle={() => setDigestOn(v => !v)}
           />
           <SettingRow
-            title="Breakthrough Alerts"
-            description="Only when upvotes spike rapidly"
+            title={ts.breakthroughAlerts}
+            description={ts.breakthroughDesc}
             on={breakthroughOn}
             onToggle={() => setBreakthroughOn(v => !v)}
             noBorder
@@ -81,7 +118,7 @@ export default function Settings({ onClose, userId }) {
         </div>
 
         {/* MCP */}
-        <div style={sectionLabel}>FOR DEVELOPERS</div>
+        <div style={sectionLabel}>{ts.forDev}</div>
         <div style={{
           background: '#1A1611',
           borderRadius: 4,
@@ -90,13 +127,13 @@ export default function Settings({ onClose, userId }) {
           marginBottom: 28,
         }}>
           <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#C84B31', letterSpacing: '0.1em', marginBottom: 8 }}>
-            MCP SERVER · BETA
+            {ts.mcpBeta}
           </div>
           <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontStyle: 'italic', marginBottom: 8 }}>
-            Use it in Claude Code too
+            {ts.mcpTitle}
           </div>
           <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#D8D0BE', lineHeight: 1.5, marginBottom: 14 }}>
-            The same backend is exposed as an MCP server. Ask Claude "what papers are trending today?" directly from chat.
+            {ts.mcpDesc}
           </div>
           <div style={{
             background: '#0F0D09',
@@ -113,18 +150,18 @@ export default function Settings({ onClose, userId }) {
         </div>
 
         {/* Data management */}
-        <div style={sectionLabel}>DATA</div>
+        <div style={sectionLabel}>{ts.data}</div>
         <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: '16px' }}>
           <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', fontWeight: 500, marginBottom: 4 }}>
-            Reset local database
+            {ts.resetTitle}
           </div>
           <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.5, marginBottom: 14 }}>
-            Deletes all search history, subscriptions, and cached learning paths. The app will restart the onboarding flow.
+            {ts.resetDesc}
           </div>
 
           {resetDone ? (
             <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#C84B31' }}>
-              Database reset — reloading…
+              {ts.resetting}
             </div>
           ) : !confirmReset ? (
             <button
@@ -139,12 +176,12 @@ export default function Settings({ onClose, userId }) {
                 color: '#1A1611',
               }}
             >
-              Reset Database
+              {ts.resetBtn}
             </button>
           ) : (
             <div>
               <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#C84B31', marginBottom: 12 }}>
-                This will permanently delete all local data. Are you sure?
+                {ts.confirmMsg}
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button
@@ -160,7 +197,7 @@ export default function Settings({ onClose, userId }) {
                     fontWeight: 500,
                   }}
                 >
-                  Yes, reset
+                  {ts.yesReset}
                 </button>
                 <button
                   onClick={() => setConfirmReset(false)}
@@ -174,7 +211,7 @@ export default function Settings({ onClose, userId }) {
                     color: '#1A1611',
                   }}
                 >
-                  Cancel
+                  {ts.cancel}
                 </button>
               </div>
             </div>

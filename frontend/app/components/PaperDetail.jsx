@@ -1,7 +1,13 @@
+'use client';
+
 import { ChevronLeft, Box, Play, ArrowUpRight } from 'lucide-react';
 import FakeFigure from './FakeFigure';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function PaperDetail({ paper, onClose }) {
+  const { t } = useLanguage();
+  const td = t.detail;
+
   return (
     <div style={{
       position: 'fixed',
@@ -32,7 +38,7 @@ export default function PaperDetail({ paper, onClose }) {
             fontSize: 13,
           }}
         >
-          <ChevronLeft size={18} /> Back to Feed
+          <ChevronLeft size={18} /> {td.backToFeed}
         </button>
         <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#6B6358' }}>
           arXiv:{paper.arxivId}
@@ -59,7 +65,7 @@ export default function PaperDetail({ paper, onClose }) {
           }}>
             {paper.category}
           </span>
-          <span>▲ {paper.upvotes} upvotes</span>
+          <span>▲ {paper.upvotes} {td.upvotes}</span>
           <span>·</span>
           <span>{paper.authors}</span>
         </div>
@@ -81,7 +87,7 @@ export default function PaperDetail({ paper, onClose }) {
           <FakeFigure type={paper.figure} />
         </div>
 
-        <div style={sectionLabel}>TL;DR</div>
+        <div style={sectionLabel}>{td.tldr}</div>
         <p style={{
           fontFamily: "'Fraunces', serif",
           fontSize: 17,
@@ -96,7 +102,7 @@ export default function PaperDetail({ paper, onClose }) {
 
         {(paper.models > 0 || paper.demos > 0) && (
           <>
-            <div style={sectionLabel}>ON HUGGING FACE</div>
+            <div style={sectionLabel}>{td.onHuggingFace}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
               {paper.models > 0 && (
                 <a
@@ -118,7 +124,7 @@ export default function PaperDetail({ paper, onClose }) {
                   }}
                 >
                   <Box size={16} />
-                  <span style={{ flex: 1 }}>{paper.models} model{paper.models > 1 ? 's' : ''} available</span>
+                  <span style={{ flex: 1 }}>{td.modelsAvailable(paper.models)}</span>
                   <ArrowUpRight size={14} style={{ color: '#6B6358' }} />
                 </a>
               )}
@@ -143,7 +149,7 @@ export default function PaperDetail({ paper, onClose }) {
                   }}
                 >
                   <Play size={16} fill="#FAF7F2" />
-                  <span style={{ flex: 1 }}>Run live demo</span>
+                  <span style={{ flex: 1 }}>{td.runLiveDemo}</span>
                   <ArrowUpRight size={14} />
                 </a>
               )}
@@ -151,7 +157,7 @@ export default function PaperDetail({ paper, onClose }) {
           </>
         )}
 
-        <div style={sectionLabel}>WHY THIS WAS RECOMMENDED</div>
+        <div style={sectionLabel}>{td.whyRecommended}</div>
         <div style={{
           padding: '14px 16px',
           background: '#FFFFFF',
