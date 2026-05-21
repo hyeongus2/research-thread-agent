@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, X, Heart } from 'lucide-react';
-import { CATEGORIES, SUGGESTED_KEYWORDS, MOCK_PAPERS } from '../data';
-import FakeFigure from './FakeFigure';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { CATEGORIES, SUGGESTED_KEYWORDS } from '../data';
 import { useLanguage } from '../context/LanguageContext';
 
 // =============================================================================
@@ -48,6 +47,7 @@ export function OnboardingCategories({ selected, onToggle, onNext, onBack }) {
                 flexDirection: 'column',
                 alignItems: 'flex-start',
                 gap: 6,
+                cursor: 'pointer',
               }}
             >
               <span style={{ fontSize: 18 }}>{cat.emoji}</span>
@@ -63,7 +63,7 @@ export function OnboardingCategories({ selected, onToggle, onNext, onBack }) {
 }
 
 // =============================================================================
-// Step 2: Keyword input
+// Step 2: Keyword input (optional)
 // =============================================================================
 export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }) {
   const { t } = useLanguage();
@@ -100,6 +100,7 @@ export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }
             fontFamily: "'Geist', sans-serif",
             fontSize: 14,
             color: '#1A1611',
+            outline: 'none',
           }}
         />
         <button
@@ -113,6 +114,7 @@ export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }
             fontFamily: "'Geist', sans-serif",
             fontSize: 13,
             fontWeight: 500,
+            cursor: 'pointer',
           }}
         >
           {tk.add}
@@ -137,7 +139,7 @@ export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }
               {kw}
               <button
                 onClick={() => onRemove(kw)}
-                style={{ background: 'none', border: 'none', color: '#FAF7F2', padding: 0, display: 'flex' }}
+                style={{ background: 'none', border: 'none', color: '#FAF7F2', padding: 0, display: 'flex', cursor: 'pointer' }}
               >
                 <X size={12} />
               </button>
@@ -168,6 +170,7 @@ export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }
               fontFamily: "'Geist', sans-serif",
               fontSize: 12,
               color: '#1A1611',
+              cursor: 'pointer',
             }}
           >
             + {kw}
@@ -175,145 +178,7 @@ export function OnboardingKeywords({ keywords, onAdd, onRemove, onNext, onBack }
         ))}
       </div>
 
-      <NextButton label={tk.next} onClick={onNext} disabled={keywords.length === 0} />
-    </div>
-  );
-}
-
-// =============================================================================
-// Step 3: Calibration
-// =============================================================================
-export function OnboardingCalibration({ onDecision, onDone, onBack }) {
-  const { t } = useLanguage();
-  const tca = t.onboarding.calibration;
-  const [idx, setIdx] = useState(0);
-  const calibPapers = MOCK_PAPERS.slice(0, 4);
-  const current = calibPapers[idx];
-
-  const handleDecision = (liked) => {
-    onDecision(current.id, liked);
-    if (idx + 1 >= calibPapers.length) {
-      setTimeout(onDone, 200);
-    } else {
-      setIdx(idx + 1);
-    }
-  };
-
-  return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '56px 28px 28px' }}>
-      <ProgressHeader step={3} onBack={onBack} />
-
-      <h2 style={{ ...titleStyle, fontSize: 26 }}>
-        {tca.titleLine1}<br />
-        <span style={{ fontStyle: 'italic' }}>{tca.titleLine2}</span>
-      </h2>
-      <p style={subtitleStyle}>
-        {idx + 1} / {calibPapers.length} · {tca.subtitle}
-      </p>
-
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {current && (
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E8E2D5',
-            padding: '22px 20px',
-            borderRadius: 4,
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginBottom: 16,
-              fontSize: 11,
-              fontFamily: "'Geist', sans-serif",
-              color: '#6B6358',
-              letterSpacing: '0.05em',
-            }}>
-              <span style={{
-                background: '#FFE8E0',
-                color: '#8B2E1B',
-                padding: '3px 8px',
-                borderRadius: 2,
-                fontSize: 10,
-                fontWeight: 600,
-              }}>
-                {current.category}
-              </span>
-              <span>▲ {current.upvotes}</span>
-            </div>
-            <h3 style={{
-              fontFamily: "'Fraunces', serif",
-              fontSize: 22,
-              lineHeight: 1.2,
-              fontWeight: 500,
-              color: '#1A1611',
-              margin: 0,
-              marginBottom: 14,
-              letterSpacing: '-0.01em',
-            }}>
-              {current.headline}
-            </h3>
-            <div style={{ height: 80, marginBottom: 14 }}>
-              <FakeFigure type={current.figure} />
-            </div>
-            <p style={{
-              fontFamily: "'Geist', sans-serif",
-              fontSize: 13,
-              lineHeight: 1.55,
-              color: '#3A342B',
-              margin: 0,
-            }}>
-              {current.tldr}
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-        <button
-          onClick={() => handleDecision(false)}
-          style={{
-            flex: 1,
-            padding: '16px',
-            background: 'transparent',
-            border: '1px solid #D8D0BE',
-            color: '#1A1611',
-            borderRadius: 4,
-            fontFamily: "'Geist', sans-serif",
-            fontSize: 14,
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-          }}
-        >
-          <X size={16} /> {tca.notMyThing}
-        </button>
-        <button
-          onClick={() => handleDecision(true)}
-          style={{
-            flex: 1,
-            padding: '16px',
-            background: '#1A1611',
-            color: '#FAF7F2',
-            border: 'none',
-            borderRadius: 4,
-            fontFamily: "'Geist', sans-serif",
-            fontSize: 14,
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-          }}
-        >
-          <Heart size={16} /> {tca.loveIt}
-        </button>
-      </div>
+      <NextButton label={tk.start} onClick={onNext} disabled={false} />
     </div>
   );
 }
@@ -322,17 +187,18 @@ export function OnboardingCalibration({ onDecision, onDone, onBack }) {
 // Shared helpers
 // =============================================================================
 function ProgressHeader({ step, onBack }) {
-  const progress = (step / 3) * 100;
+  const total = 2;
+  const progress = (step / total) * 100;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-      <button onClick={onBack} style={{ background: 'none', border: 'none', padding: 0, color: '#1A1611' }}>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', padding: 0, color: '#1A1611', cursor: 'pointer' }}>
         <ChevronLeft size={20} />
       </button>
       <div style={{ flex: 1, height: 2, background: '#E8E2D5', borderRadius: 1, overflow: 'hidden' }}>
         <div style={{ width: `${progress}%`, height: '100%', background: '#1A1611', transition: 'width 0.3s ease' }} />
       </div>
       <span style={{ fontSize: 11, fontFamily: "'Geist', sans-serif", color: '#6B6358', letterSpacing: '0.1em' }}>
-        {step}/3
+        {step}/{total}
       </span>
     </div>
   );
@@ -358,6 +224,7 @@ function NextButton({ label, onClick, disabled }) {
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
+        cursor: disabled ? 'default' : 'pointer',
       }}
     >
       {label} <ChevronRight size={18} />

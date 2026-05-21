@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Welcome from './components/Welcome';
-import { OnboardingCategories, OnboardingKeywords, OnboardingCalibration } from './components/Onboarding';
+import { OnboardingCategories, OnboardingKeywords } from './components/Onboarding';
 import Feed from './components/Feed';
 import PaperDetail from './components/PaperDetail';
 import Settings from './components/Settings';
@@ -15,7 +15,6 @@ export default function Page() {
   // Onboarding state
   const [categories, setCategories] = useState([]);
   const [keywords, setKeywords] = useState([]);
-  const [calibResults, setCalibResults] = useState([]);
 
   // Feed state
   const [userId, setUserId] = useState(null);
@@ -40,16 +39,12 @@ export default function Page() {
   const toggleSave = (id) =>
     setSaved(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
-  const handleCalibDecision = (paperId, liked) => {
-    setCalibResults(prev => [...prev, { paper_id: paperId, liked }]);
-  };
-
   const handleOnboardingDone = async () => {
     try {
       const res = await fetch(`${API}/onboarding`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categories, keywords, calibration: calibResults }),
+        body: JSON.stringify({ categories, keywords }),
       });
       const data = await res.json();
       localStorage.setItem('user_id', String(data.user_id));
@@ -99,18 +94,8 @@ export default function Page() {
             keywords={keywords}
             onAdd={(k) => setKeywords(prev => [...prev, k])}
             onRemove={(k) => setKeywords(prev => prev.filter(x => x !== k))}
-            onNext={() => setScreen('calib')}
+            onNext={handleOnboardingDone}
             onBack={() => setScreen('cat')}
-          />
-        </div>
-      )}
-
-      {screen === 'calib' && (
-        <div style={{ height: '100dvh' }}>
-          <OnboardingCalibration
-            onDecision={handleCalibDecision}
-            onDone={handleOnboardingDone}
-            onBack={() => setScreen('kw')}
           />
         </div>
       )}

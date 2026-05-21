@@ -14,13 +14,29 @@ const TYPE_COLORS = {
   repo:  { bg: '#E0F5E0', fg: '#1B7A2E' },
 };
 
-function getPeriodDates(period) {
+function toYearMonth(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function lastDayOfMonth(yearMonth) {
+  const [y, m] = yearMonth.split('-').map(Number);
+  return new Date(y, m, 0).toISOString().split('T')[0];
+}
+
+function getPeriodDates(period, nMonths, customFrom, customTo) {
   if (period === 'all') return { start: null, end: null };
+  if (period === 'custom') {
+    return {
+      start: customFrom ? `${customFrom}-01` : null,
+      end: customTo ? lastDayOfMonth(customTo) : null,
+    };
+  }
   const end = new Date();
   const start = new Date();
-  if (period === 'week')       start.setDate(start.getDate() - 7);
-  else if (period === 'month') start.setDate(start.getDate() - 30);
-  else                         start.setDate(start.getDate() - 90); // threeMonths
+  if (period === 'week')            start.setDate(start.getDate() - 7);
+  else if (period === 'month')      start.setDate(start.getDate() - 30);
+  else if (period === 'threeMonths') start.setDate(start.getDate() - 90);
+  else if (period === 'lastNMonths') start.setMonth(start.getMonth() - nMonths);
   return {
     start: start.toISOString().split('T')[0],
     end: end.toISOString().split('T')[0],
@@ -306,6 +322,9 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
   // Search state
   const [query, setQuery] = useState('');
   const [period, setPeriod] = useState('month');
+  const [nMonths, setNMonths] = useState(6);
+  const [customFrom, setCustomFrom] = useState(() => toYearMonth(new Date(new Date().setMonth(new Date().getMonth() - 6))));
+  const [customTo, setCustomTo] = useState(() => toYearMonth(new Date()));
   const [typeFilters, setTypeFilters] = useState(['paper', 'model', 'repo']);
   const [searchState, setSearchState] = useState('idle'); // 'idle' | 'loading' | 'done' | 'error'
   const [searchResults, setSearchResults] = useState(null);
@@ -318,7 +337,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
   const handleSearch = async () => {
     if (!query.trim()) return;
     setSearchState('loading');
-    const { start, end } = getPeriodDates(period);
+    const { start, end } = getPeriodDates(period, nMonths, customFrom, customTo);
     try {
       const res = await fetch(`${API}/search`, {
         method: 'POST',
@@ -457,7 +476,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
 
         {/* Period pills */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2 }}>
-          {['week', 'month', 'threeMonths', 'all'].map(p => (
+          {['week', 'month', 'threeMonths', 'lastNMonths', 'custom', 'all'].map(p => (
             <button
               key={p}
               onClick={() => setPeriod(p)}
@@ -479,6 +498,60 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
             </button>
           ))}
         </div>
+
+        {/* Last N months sub-panel */}
+        {period === 'lastNMonths' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>
+              {ts.fromLabel.toLowerCase()}
+            </span>
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={nMonths}
+              onChange={e => setNMonths(Math.max(1, Math.min(60, Number(e.target.value))))}
+              style={{
+                width: 56,
+                padding: '5px 8px',
+                border: '1px solid #D8D0BE',
+                borderRadius: 4,
+                fontFamily: "'Geist', sans-serif",
+                fontSize: 13,
+                color: '#1A1611',
+                background: '#FFFFFF',
+                outline: 'none',
+                textAlign: 'center',
+              }}
+            />
+            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>
+              {ts.nMonthsLabel}
+            </span>
+          </div>
+        )}
+
+        {/* Custom range sub-panel */}
+        {period === 'custom' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.fromLabel}</span>
+            <input
+              type="month"
+              value={customFrom}
+              max={customTo}
+              onChange={e => setCustomFrom(e.target.value)}
+              style={monthInputStyle}
+            />
+            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>–</span>
+            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.toLabel}</span>
+            <input
+              type="month"
+              value={customTo}
+              min={customFrom}
+              onChange={e => setCustomTo(e.target.value)}
+              style={monthInputStyle}
+            />
+          </div>
+        )}
 
         {/* Type toggles */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
@@ -610,3 +683,14 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
     </div>
   );
 }
+
+const monthInputStyle = {
+  padding: '5px 8px',
+  border: '1px solid #D8D0BE',
+  borderRadius: 4,
+  fontFamily: "'Geist', sans-serif",
+  fontSize: 12,
+  color: '#1A1611',
+  background: '#FFFFFF',
+  outline: 'none',
+};
