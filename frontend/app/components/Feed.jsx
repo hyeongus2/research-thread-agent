@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Bookmark, Settings, Bell, FlaskConical, Sparkles, Box, Play, ArrowUpRight, Search, X } from 'lucide-react';
-import { MOCK_PAPERS } from '../data';
-import FakeFigure from './FakeFigure';
+import { Settings, Bell, ArrowUpRight, Search, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const API = 'http://localhost:8000/api';
@@ -155,153 +153,58 @@ function ResultCard({ item, type }) {
 }
 
 // =============================================================================
-// Paper card (mock data — default feed)
+// Empty state — shown before any search
 // =============================================================================
-function PaperCard({ paper, onTap, onSave, isSaved }) {
+function EmptyFeed({ onSuggestionClick }) {
   const { t } = useLanguage();
   const tf = t.feed;
+  const suggestions = ['RAG', 'diffusion', 'LoRA', 'reasoning', 'VLM'];
 
   return (
-    <div
-      onClick={onTap}
-      style={{
-        background: '#FFFFFF',
-        border: '1px solid #E8E2D5',
-        marginBottom: 14,
-        padding: '22px 20px',
-        cursor: 'pointer',
-        borderRadius: 4,
-      }}
-    >
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 14,
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: 11,
-          fontFamily: "'Geist', sans-serif",
-          color: '#6B6358',
-          letterSpacing: '0.02em',
-        }}>
-          <span style={{
-            background: '#FFE8E0',
-            color: '#8B2E1B',
-            padding: '3px 8px',
-            borderRadius: 2,
-            fontSize: 10,
-            fontWeight: 600,
-            letterSpacing: '0.05em',
-          }}>
-            {paper.category}
-          </span>
-          <span>▲ {paper.upvotes}</span>
-          <span>·</span>
-          <span>{tf.daysAgo(paper.daysAgo)}</span>
-        </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); onSave(); }}
-          style={{ background: 'none', border: 'none', padding: 4, color: isSaved ? '#C84B31' : '#6B6358' }}
-        >
-          <Bookmark size={16} fill={isSaved ? '#C84B31' : 'none'} />
-        </button>
-      </div>
-
+    <div style={{ padding: '48px 8px 0', textAlign: 'center' }}>
+      <div style={{ fontSize: 36, marginBottom: 20 }}>🔍</div>
       <h3 style={{
         fontFamily: "'Fraunces', serif",
         fontSize: 22,
-        lineHeight: 1.18,
         fontWeight: 500,
+        fontStyle: 'italic',
         color: '#1A1611',
-        margin: 0,
-        marginBottom: 14,
-        letterSpacing: '-0.01em',
+        margin: '0 0 12px',
       }}>
-        {paper.headline}
+        {tf.emptyTitle}
       </h3>
-
-      <div style={{ height: 90, marginBottom: 14 }}>
-        <FakeFigure type={paper.figure} />
-      </div>
-
       <p style={{
         fontFamily: "'Geist', sans-serif",
         fontSize: 13,
-        lineHeight: 1.55,
-        color: '#3A342B',
-        margin: 0,
-        marginBottom: 14,
+        lineHeight: 1.6,
+        color: '#6B6358',
+        margin: '0 0 28px',
+        maxWidth: 280,
+        marginLeft: 'auto',
+        marginRight: 'auto',
       }}>
-        {paper.tldr}
+        {tf.emptyDesc}
       </p>
-
-      <div style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 6,
-        padding: '10px 12px',
-        background: '#FAF7F2',
-        borderLeft: '2px solid #C84B31',
-        marginBottom: paper.models > 0 || paper.demos > 0 ? 14 : 0,
-      }}>
-        <Sparkles size={12} style={{ color: '#C84B31', marginTop: 2, flexShrink: 0 }} />
-        <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#3A342B', lineHeight: 1.4 }}>
-          {paper.reason}
-        </span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+        {suggestions.map(kw => (
+          <button
+            key={kw}
+            onClick={() => onSuggestionClick(kw)}
+            style={{
+              padding: '7px 14px',
+              background: '#FFFFFF',
+              border: '1px solid #D8D0BE',
+              borderRadius: 20,
+              fontFamily: "'Geist', sans-serif",
+              fontSize: 12,
+              color: '#3A342B',
+              cursor: 'pointer',
+            }}
+          >
+            {kw}
+          </button>
+        ))}
       </div>
-
-      {(paper.models > 0 || paper.demos > 0) && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          paddingTop: 12,
-          borderTop: '1px solid #F0EAD9',
-        }}>
-          <span style={{ fontSize: 14 }}>🤗</span>
-          {paper.models > 0 && (
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              fontFamily: "'Geist', sans-serif",
-              fontSize: 12,
-              color: '#1A1611',
-              fontWeight: 500,
-            }}>
-              <Box size={12} /> {tf.models(paper.models)}
-            </span>
-          )}
-          {paper.demos > 0 && (
-            <span style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              fontFamily: "'Geist', sans-serif",
-              fontSize: 12,
-              color: '#C84B31',
-              fontWeight: 600,
-            }}>
-              <Play size={12} fill="#C84B31" /> {tf.liveDemo}
-            </span>
-          )}
-          <span style={{
-            marginLeft: 'auto',
-            fontFamily: "'Geist', sans-serif",
-            fontSize: 11,
-            color: '#6B6358',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 3,
-          }}>
-            {tf.readMore} <ArrowUpRight size={11} />
-          </span>
-        </div>
-      )}
     </div>
   );
 }
@@ -314,8 +217,6 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
   const tf = t.feed;
   const ts = t.search;
 
-  // Default feed
-  const papers = MOCK_PAPERS;
   const today = new Date();
   const dateLabel = today.toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' });
 
@@ -334,8 +235,10 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
       prev.includes(type) ? (prev.length > 1 ? prev.filter(t => t !== type) : prev) : [...prev, type]
     );
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
+  const handleSearch = async (overrideQuery) => {
+    const kw = (overrideQuery || query).trim();
+    if (!kw) return;
+    if (overrideQuery) setQuery(overrideQuery);
     setSearchState('loading');
     const { start, end } = getPeriodDates(period, nMonths, customFrom, customTo);
     try {
@@ -343,7 +246,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          keyword: query.trim(),
+          keyword: kw,
           start_date: start,
           end_date: end,
           info_types: typeFilters,
@@ -581,25 +484,9 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
       {/* Content area */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 80px', background: '#FAF7F2' }}>
 
-        {/* ── Default feed ── */}
+        {/* ── Empty state (no search yet) ── */}
         {!inSearchMode && (
-          <>
-            <div style={{ padding: '4px 8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FlaskConical size={14} style={{ color: '#C84B31' }} />
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#3A342B' }}>
-                <strong style={{ color: '#1A1611' }}>{tf.papersToday(papers.length)}</strong>
-              </span>
-            </div>
-            {papers.map(p => (
-              <PaperCard
-                key={p.id}
-                paper={p}
-                onTap={() => onPaperTap(p)}
-                onSave={() => onToggleSave(p.id)}
-                isSaved={saved.includes(p.id)}
-              />
-            ))}
-          </>
+          <EmptyFeed onSuggestionClick={(kw) => handleSearch(kw)} />
         )}
 
         {/* ── Loading ── */}

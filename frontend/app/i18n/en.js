@@ -36,6 +36,9 @@ const en = {
     readMore: 'Read more',
     allCaughtUp: 'All caught up!',
     checkBack: 'Check back tomorrow for fresh papers ✦',
+    emptyTitle: 'Search to explore research',
+    emptyDesc: 'Type a keyword above — papers, models, and repos from arXiv, Hugging Face, and GitHub will appear here.',
+    emptyHint: 'Try: RAG, diffusion, LoRA, reasoning...',
   },
   detail: {
     backToFeed: 'Back to Feed',

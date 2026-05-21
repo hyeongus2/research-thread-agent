@@ -6,8 +6,53 @@ import { OnboardingCategories, OnboardingKeywords } from './components/Onboardin
 import Feed from './components/Feed';
 import PaperDetail from './components/PaperDetail';
 import Settings from './components/Settings';
+import { useLanguage } from './context/LanguageContext';
 
 const API = 'http://localhost:8000/api';
+
+function LangToggle() {
+  const { lang, setLang } = useLanguage();
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 16,
+      right: 16,
+      zIndex: 1000,
+      display: 'flex',
+      gap: 2,
+      fontFamily: "'Geist', sans-serif",
+      fontSize: 11,
+      letterSpacing: '0.08em',
+      background: 'rgba(250,247,242,0.88)',
+      backdropFilter: 'blur(4px)',
+      borderRadius: 20,
+      padding: '2px 4px',
+      border: '1px solid #E8E2D5',
+    }}>
+      <button
+        onClick={() => setLang('en')}
+        style={{
+          background: 'none', border: 'none', padding: '3px 8px',
+          color: lang === 'en' ? '#1A1611' : '#6B6358',
+          fontWeight: lang === 'en' ? 700 : 400,
+          fontFamily: 'inherit', fontSize: 'inherit', letterSpacing: 'inherit',
+          cursor: 'pointer',
+        }}
+      >EN</button>
+      <span style={{ color: '#D8D0BE', lineHeight: '22px' }}>|</span>
+      <button
+        onClick={() => setLang('ko')}
+        style={{
+          background: 'none', border: 'none', padding: '3px 8px',
+          color: lang === 'ko' ? '#1A1611' : '#6B6358',
+          fontWeight: lang === 'ko' ? 700 : 400,
+          fontFamily: 'inherit', fontSize: 'inherit',
+          cursor: 'pointer',
+        }}
+      >한국어</button>
+    </div>
+  );
+}
 
 export default function Page() {
   const [screen, setScreen] = useState(null); // null = loading
@@ -71,6 +116,7 @@ export default function Page() {
         margin: '0 auto',
       }}
     >
+      <LangToggle />
       {screen === 'welcome' && (
         <div style={{ height: '100dvh' }}>
           <Welcome onStart={() => setScreen('cat')} />

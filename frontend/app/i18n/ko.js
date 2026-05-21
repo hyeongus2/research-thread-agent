@@ -36,6 +36,9 @@ const ko = {
     readMore: '자세히 보기',
     allCaughtUp: '모두 읽으셨네요!',
     checkBack: '내일 새 논문으로 다시 돌아올게요 ✦',
+    emptyTitle: '키워드로 검색해보세요',
+    emptyDesc: '위 검색창에 키워드를 입력하면 arXiv, Hugging Face, GitHub의 논문·모델·저장소가 여기에 표시됩니다.',
+    emptyHint: '예시: RAG, diffusion, LoRA, reasoning...',
   },
   detail: {
     backToFeed: '피드로 돌아가기',

@@ -4,7 +4,7 @@ import { ChevronRight } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function Welcome({ onStart }) {
-  const { t, lang, setLang } = useLanguage();
+  const { t } = useLanguage();
 
   return (
     <div style={{
@@ -15,48 +15,6 @@ export default function Welcome({ onStart }) {
       justifyContent: 'space-between',
       position: 'relative',
     }}>
-      {/* Language toggle */}
-      <div style={{
-        position: 'absolute',
-        top: 20,
-        right: 24,
-        display: 'flex',
-        gap: 4,
-        fontFamily: "'Geist', sans-serif",
-        fontSize: 11,
-        letterSpacing: '0.08em',
-      }}>
-        <button
-          onClick={() => setLang('en')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '4px 8px',
-            color: lang === 'en' ? '#1A1611' : '#6B6358',
-            fontWeight: lang === 'en' ? 700 : 400,
-            fontFamily: 'inherit',
-            fontSize: 'inherit',
-            letterSpacing: 'inherit',
-          }}
-        >
-          EN
-        </button>
-        <span style={{ color: '#D8D0BE', lineHeight: '24px' }}>|</span>
-        <button
-          onClick={() => setLang('ko')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '4px 8px',
-            color: lang === 'ko' ? '#1A1611' : '#6B6358',
-            fontWeight: lang === 'ko' ? 700 : 400,
-            fontFamily: 'inherit',
-            fontSize: 'inherit',
-          }}
-        >
-          한국어
-        </button>
-      </div>
 
       <div style={{
         flex: 1,
