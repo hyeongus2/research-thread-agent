@@ -1,0 +1,140 @@
+"""Orchestrates the Quick Search flow: fetch → score → summarize."""
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import date, datetime
+from typing import Optional
+
+from sqlalchemy.orm import Session
+
+from services import arxiv_service, claude_service, github_service, hf_service
+from services.database_service import save_search_history
+from utils.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+def _to_str(v):
+    """Convert date/datetime to ISO string; leave everything else unchanged."""
+    if hasattr(v, "isoformat"):
+        return v.isoformat()
+    return v
+
+
+def _serialize(items: list[dict]) -> list[dict]:
+    """Make all date/datetime values in each item JSON-serializable."""
+    return [
+        {
+            k: ([_to_str(x) for x in v] if isinstance(v, list) else _to_str(v))
+            for k, v in item.items()
+        }
+        for item in items
+    ]
+
+
+def create_research_thread(
+    keyword: str,
+    start_date: Optional[date],
+    end_date: Optional[date],
+    info_types: list[str],
+    user_id: int,
+    db: Session,
+) -> dict:
+    """Fetch, rank, and summarize research content for a keyword.
+
+    Calls arXiv / HF / GitHub concurrently, scores relevance with Claude,
+    generates a topic overview, saves to search history, and returns a Thread dict.
+
+    Args:
+        keyword: User search query.
+        start_date: Inclusive lower bound for content date (None = no filter).
+        end_date: Inclusive upper bound (None = no filter).
+        info_types: Subset of ["paper", "model", "repo"] to include.
+        user_id: ID of the requesting user (for search history).
+        db: SQLAlchemy session.
+
+    Returns:
+        Thread dict with keys: keyword, overview, papers, models, repos, generated_at.
+    """
+    papers: list[dict] = []
+    models: list[dict] = []
+    repos: list[dict] = []
+
+    # Concurrent fetch from all enabled sources
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures: dict = {}
+        if "paper" in info_types:
+            futures[executor.submit(
+                arxiv_service.search_papers, keyword, start_date, end_date, 15
+            )] = "papers"
+        if "model" in info_types:
+            futures[executor.submit(
+                hf_service.search_models, keyword, start_date, 8
+            )] = "models"
+        if "repo" in info_types:
+            futures[executor.submit(
+                github_service.search_repositories, keyword, start_date, end_date, 8
+            )] = "repos"
+
+        for future in as_completed(futures):
+            key = futures[future]
+            try:
+                result = future.result()
+                if key == "papers":
+                    papers = result
+                elif key == "models":
+                    models = result
+                elif key == "repos":
+                    repos = result
+            except Exception as exc:
+                logger.warning("Fetch failed for %s: %s", key, exc)
+
+    # Score relevance with Claude and keep top results
+    if papers:
+        papers = claude_service.score_relevance(keyword, papers)
+        papers.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
+        papers = papers[:10]
+
+    if models:
+        for m in models:
+            m["title"] = m["name"]
+            m["abstract"] = (
+                f"HuggingFace model. Pipeline: {m.get('pipeline_tag') or 'general'}. "
+                f"Downloads: {m.get('downloads', 0):,}."
+            )
+        models = claude_service.score_relevance(keyword, models)
+        models.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
+        models = models[:5]
+
+    if repos:
+        for r in repos:
+            r["title"] = r["name"]
+            r["abstract"] = r.get("description") or f"GitHub repository: {r['name']}."
+        repos = claude_service.score_relevance(keyword, repos)
+        repos.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
+        repos = repos[:5]
+
+    overview = claude_service.generate_overview(keyword, papers)
+
+    thread = {
+        "keyword": keyword,
+        "overview": overview,
+        "papers": _serialize(papers),
+        "models": _serialize(models),
+        "repos": _serialize(repos),
+        "generated_at": datetime.utcnow().isoformat(),
+    }
+
+    try:
+        save_search_history(
+            db,
+            user_id=user_id,
+            keyword=keyword,
+            thread_results=thread,
+            date_range_start=start_date.isoformat() if start_date else None,
+            date_range_end=end_date.isoformat() if end_date else None,
+            info_types=info_types,
+        )
+    except Exception as exc:
+        logger.warning("Failed to save search history: %s", exc)
+
+    return thread

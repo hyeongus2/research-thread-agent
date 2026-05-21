@@ -52,6 +52,28 @@ const en = {
     whyRecommended: 'WHY THIS WAS RECOMMENDED',
     upvotes: 'upvotes',
   },
+  search: {
+    placeholder: 'Search papers, models, repos...',
+    searchBtn: 'Search',
+    clearBtn: 'Clear',
+    periods: {
+      week: 'Past week',
+      month: 'Past month',
+      threeMonths: 'Past 3 months',
+      all: 'All time',
+    },
+    types: {
+      paper: 'Papers',
+      model: 'Models',
+      repo: 'Repos',
+    },
+    loading: 'Searching...',
+    resultsFor: (n, kw) => `${n} result${n !== 1 ? 's' : ''} for "${kw}"`,
+    noResults: (kw) => `No results found for "${kw}"`,
+    overview: 'OVERVIEW',
+    relevance: 'relevance',
+    viewSource: 'View source',
+  },
   settings: {
     close: 'Close',
     title: 'Settings',

@@ -122,6 +122,7 @@ export default function Page() {
             onPaperTap={setOpenPaper}
             saved={saved}
             onToggleSave={toggleSave}
+            userId={userId}
           />
         </div>
       )}

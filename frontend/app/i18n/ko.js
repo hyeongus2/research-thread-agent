@@ -52,6 +52,28 @@ const ko = {
     whyRecommended: '추천 이유',
     upvotes: '추천',
   },
+  search: {
+    placeholder: '논문, 모델, 저장소 검색...',
+    searchBtn: '검색',
+    clearBtn: '지우기',
+    periods: {
+      week: '지난 1주',
+      month: '지난 1달',
+      threeMonths: '지난 3달',
+      all: '전체 기간',
+    },
+    types: {
+      paper: '논문',
+      model: '모델',
+      repo: '저장소',
+    },
+    loading: '검색 중...',
+    resultsFor: (n, kw) => `"${kw}" 검색 결과 ${n}개`,
+    noResults: (kw) => `"${kw}"에 대한 결과가 없어요`,
+    overview: '개요',
+    relevance: '관련도',
+    viewSource: '원문 보기',
+  },
   settings: {
     close: '닫기',
     title: '설정',
