@@ -149,10 +149,11 @@ research-thread-agent/
 
 ---
 
-## Roadmap (v0.1.1)
+## Roadmap (v0.1.2)
 
 - [x] Foundation: DB schema, data collection services, app scaffold
 - [x] One-command setup script, DB reset utility
+- [x] Cross-platform setup (Windows .bat, Mac/Linux .sh with venv fixes)
 - [ ] Quick Search: Research Thread generation with Claude + RAG
 - [ ] Learning Path: Era-based historical topic exploration
 - [ ] Notifications: Subscriptions, in-app alerts, email digest
