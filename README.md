@@ -167,7 +167,16 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.3.1 (current)
+### v0.3.2 (current)
+- [x] Language toggle now pinned to top-right on all screens (was Welcome-only)
+- [x] Default feed: replaced mock papers with a search empty state + suggested keyword chips
+- [x] Quick Search: multi-keyword support — add keywords as chips using comma or Enter; searched as OR query
+- [x] Quick Search: 60 s timeout with AbortController; search error shows "Back to feed" button
+- [x] Quick Search: step-by-step loading progress indicator with elapsed timer
+- [x] Quick Search: when ANTHROPIC_API_KEY is missing, show registration prompts in overview and card summary slots
+- [x] Fix HuggingFace `direction` parameter removed in newer huggingface_hub versions
+
+### v0.3.1
 - [x] Onboarding trimmed to 2 steps (categories → keywords); calibration step removed — it was showing fake papers with no actual effect
 - [x] Keywords step is now optional — users can skip directly to the feed
 - [x] Quick Search: custom date filters added — "Last N months" and "YYYY-MM to YYYY-MM" range picker

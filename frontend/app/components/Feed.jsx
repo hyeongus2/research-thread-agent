@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Settings, Bell, ArrowUpRight, Search, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -175,6 +175,95 @@ function ResultCard({ item, type, hasAi }) {
         </span>
       )}
     </a>
+  );
+}
+
+// =============================================================================
+// Loading progress indicator
+// =============================================================================
+function SearchProgress({ lang }) {
+  const STEPS = lang === 'ko'
+    ? [
+        { at: 0,  done: false, text: 'arXiv · Hugging Face · GitHub 동시 검색 중…' },
+        { at: 10, done: false, text: '결과 취합 중…' },
+        { at: 20, done: false, text: 'AI 관련도 분석 및 요약 생성 중…  (가장 오래 걸려요)' },
+        { at: 45, done: false, text: '거의 다 됐어요…' },
+      ]
+    : [
+        { at: 0,  done: false, text: 'Searching arXiv · Hugging Face · GitHub simultaneously…' },
+        { at: 10, done: false, text: 'Aggregating results from all sources…' },
+        { at: 20, done: false, text: 'Running AI relevance scoring & overview…  (this takes the longest)' },
+        { at: 45, done: false, text: 'Almost done…' },
+      ];
+
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(Date.now());
+
+  useEffect(() => {
+    startRef.current = Date.now();
+    setElapsed(0);
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Determine which steps are "done" (elapsed past their threshold) and which is current
+  const activeIdx = STEPS.reduce((last, step, i) => elapsed >= step.at ? i : last, 0);
+
+  return (
+    <div style={{ padding: '40px 8px 0' }}>
+      <div style={{
+        fontFamily: "'Fraunces', serif",
+        fontSize: 20,
+        color: '#1A1611',
+        fontStyle: 'italic',
+        textAlign: 'center',
+        marginBottom: 28,
+      }}>
+        {lang === 'ko' ? '검색 중…' : 'Searching…'}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 340, margin: '0 auto' }}>
+        {STEPS.map((step, i) => {
+          const isDone = i < activeIdx;
+          const isCurrent = i === activeIdx;
+          return (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 12, opacity: i > activeIdx ? 0.3 : 1,
+              transition: 'opacity 0.4s',
+            }}>
+              <div style={{
+                width: 20, height: 20, borderRadius: '50%', flexShrink: 0, marginTop: 1,
+                background: isDone ? '#1B7A2E' : isCurrent ? '#1A1611' : '#D8D0BE',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, color: '#FAF7F2', fontWeight: 700,
+                transition: 'background 0.4s',
+              }}>
+                {isDone ? '✓' : i + 1}
+              </div>
+              <span style={{
+                fontFamily: "'Geist', sans-serif",
+                fontSize: 13,
+                color: isCurrent ? '#1A1611' : isDone ? '#3A342B' : '#6B6358',
+                lineHeight: 1.5,
+                fontWeight: isCurrent ? 500 : 400,
+              }}>
+                {step.text}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{
+        textAlign: 'center',
+        fontFamily: "'Geist Mono', monospace",
+        fontSize: 11,
+        color: '#6B6358',
+        marginTop: 24,
+      }}>
+        {elapsed}s
+      </div>
+    </div>
   );
 }
 
@@ -571,16 +660,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
         )}
 
         {/* ── Loading ── */}
-        {searchState === 'loading' && (
-          <div style={{ padding: '60px 24px', textAlign: 'center' }}>
-            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: '#1A1611', fontStyle: 'italic', marginBottom: 12 }}>
-              {ts.loading}
-            </div>
-            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>
-              {ts.loadingHint}
-            </div>
-          </div>
-        )}
+        {searchState === 'loading' && <SearchProgress lang={lang} />}
 
         {/* ── Search results ── */}
         {searchState === 'done' && (
