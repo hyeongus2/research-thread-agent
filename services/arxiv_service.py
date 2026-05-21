@@ -37,7 +37,8 @@ def search_papers(
         end_str = end_date.strftime("%Y%m%d")
         query = f"{keyword} AND submittedDate:[{start_str}0000 TO {end_str}2359]"
 
-    client = arxiv.Client(num_retries=1, delay_seconds=3.0)
+    time.sleep(2)  # brief pause before each search to avoid consecutive-request 429s
+    client = arxiv.Client(num_retries=2, delay_seconds=5.0)
     search = arxiv.Search(
         query=query,
         max_results=max_results,

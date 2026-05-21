@@ -90,10 +90,13 @@ def generate_overview(keyword: str, papers: list[dict]) -> str:
     """
     if not settings.ANTHROPIC_API_KEY:
         return None  # None signals "no API key" to the frontend
-    if not papers:
-        return f'Showing recent research on "{keyword}".'
 
-    titles = "\n".join(f"- {p.get('title', '')}" for p in papers[:8])
+    if papers:
+        titles_block = "Base it on these recent papers:\n" + "\n".join(
+            f"- {p.get('title', '')}" for p in papers[:8]
+        )
+    else:
+        titles_block = "No specific papers available — give a general landscape overview."
 
     try:
         response = _client().messages.create(
@@ -104,8 +107,7 @@ def generate_overview(keyword: str, papers: list[dict]) -> str:
                     "role": "user",
                     "content": (
                         f'Write 2 sentences summarizing the current research landscape on "{keyword}" '
-                        "for an AI/ML researcher. Base it on these recent papers:\n"
-                        f"{titles}\n\nBe specific and informative. No preamble."
+                        f"for an AI/ML researcher. {titles_block}\n\nBe specific and informative. No preamble."
                     ),
                 }
             ],
