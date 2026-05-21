@@ -1,17 +1,10 @@
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import auth, learning, notifications, search, subscriptions
-from utils.database import init_db
-
-_DB_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "data",
-    "research_thread.db",
-)
+from utils.database import Base, engine, init_db
 
 
 @asynccontextmanager
@@ -38,7 +31,8 @@ app.include_router(notifications.router, prefix="/api")
 
 @app.post("/api/admin/reset-db")
 async def reset_db():
-    if os.path.exists(_DB_PATH):
-        os.remove(_DB_PATH)
-    init_db()
+    # Import all models so Base.metadata knows every table before drop_all
+    from models import user, subscription, notification, thread, settings  # noqa: F401
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
     return {"message": "Database reset successfully"}
