@@ -85,20 +85,20 @@ def create_research_thread(
         futures: dict = {}
         if "paper" in info_types:
             futures[executor.submit(
-                arxiv_service.search_papers, keyword, start_date, end_date, 10
+                arxiv_service.search_papers, keyword, start_date, end_date, 20
             )] = "papers"
         if "model" in info_types:
             futures[executor.submit(
-                hf_service.search_models, keyword, start_date, 8
+                hf_service.search_models, keyword, start_date, 20
             )] = "models"
         if "repo" in info_types:
             futures[executor.submit(
-                github_service.search_repositories, keyword, start_date, end_date, 8
+                github_service.search_repositories, keyword, start_date, end_date, 20
             )] = "repos"
 
             processed: set = set()
         try:
-            for future in as_completed(futures, timeout=45):
+            for future in as_completed(futures, timeout=60):
                 processed.add(future)
                 key = futures[future]
                 try:
@@ -115,7 +115,7 @@ def create_research_thread(
                     logger.warning("Fetch failed for %s: %s", key, exc)
                     _progress("source_done", f"{key}:-1:{kind}:{retry_secs}")
         except FutureTimeoutError:
-            logger.warning("Source fetch timed out after 45 s; proceeding with partial results")
+            logger.warning("Source fetch timed out after 60 s; proceeding with partial results")
             for future, key in futures.items():
                 if future not in processed:
                     future.cancel()
@@ -129,7 +129,7 @@ def create_research_thread(
     if papers:
         papers = claude_service.score_relevance(keyword, papers)
         papers.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
-        papers = papers[:10]
+        papers = papers[:15]
 
     if models:
         for m in models:
@@ -143,7 +143,7 @@ def create_research_thread(
             )
         models = claude_service.score_relevance(keyword, models)
         models.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
-        models = models[:5]
+        models = models[:15]
 
     if repos:
         for r in repos:
@@ -151,7 +151,7 @@ def create_research_thread(
             r["abstract"] = r.get("description") or f"GitHub repository: {r['name']}."
         repos = claude_service.score_relevance(keyword, repos)
         repos.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
-        repos = repos[:5]
+        repos = repos[:15]
 
     _progress("overview", "Generating topic overview…")
 
