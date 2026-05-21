@@ -1,6 +1,6 @@
 """Orchestrates the Quick Search flow: fetch → score → summarize."""
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError, as_completed
 from datetime import date, datetime
 from typing import Callable, Optional
 
@@ -67,8 +67,9 @@ def create_research_thread(
 
     _progress("fetching_sources", "Searching arXiv · Hugging Face · GitHub simultaneously…")
 
-    # Concurrent fetch from all enabled sources
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    # Concurrent fetch from all enabled sources; cap total wait at 30 s per source
+    executor = ThreadPoolExecutor(max_workers=3)
+    try:
         futures: dict = {}
         if "paper" in info_types:
             futures[executor.submit(
@@ -83,18 +84,31 @@ def create_research_thread(
                 github_service.search_repositories, keyword, start_date, end_date, 8
             )] = "repos"
 
-        for future in as_completed(futures):
-            key = futures[future]
-            try:
-                result = future.result()
-                if key == "papers":
-                    papers = result
-                elif key == "models":
-                    models = result
-                elif key == "repos":
-                    repos = result
-            except Exception as exc:
-                logger.warning("Fetch failed for %s: %s", key, exc)
+        processed: set = set()
+        try:
+            for future in as_completed(futures, timeout=30):
+                processed.add(future)
+                key = futures[future]
+                try:
+                    result = future.result()
+                    if key == "papers":
+                        papers = result
+                    elif key == "models":
+                        models = result
+                    elif key == "repos":
+                        repos = result
+                    _progress("source_done", f"{key}:{len(result)}")
+                except Exception as exc:
+                    logger.warning("Fetch failed for %s: %s", key, exc)
+                    _progress("source_done", f"{key}:-1")
+        except FutureTimeoutError:
+            logger.warning("Source fetch timed out after 30 s; proceeding with partial results")
+            for future, key in futures.items():
+                if future not in processed:
+                    future.cancel()
+                    _progress("source_done", f"{key}:-1")
+    finally:
+        executor.shutdown(wait=False)
 
     _progress("scoring", "Running AI relevance scoring…")
 

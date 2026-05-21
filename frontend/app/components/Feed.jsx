@@ -196,10 +196,16 @@ const STAGE_MESSAGES = {
 
 const STAGE_ORDER = ['fetching_sources', 'scoring', 'overview', 'saving'];
 
+const SOURCE_META = [
+  { key: 'papers', label: 'arXiv' },
+  { key: 'models', label: 'Hugging Face' },
+  { key: 'repos',  label: 'GitHub' },
+];
+
 // =============================================================================
 // Loading progress indicator (driven by real SSE events)
 // =============================================================================
-function SearchProgress({ lang, currentStage, elapsed }) {
+function SearchProgress({ lang, currentStage, elapsed, sourceStatus }) {
   const msgs = STAGE_MESSAGES[lang] || STAGE_MESSAGES.en;
   const activeIdx = Math.max(0, STAGE_ORDER.indexOf(currentStage));
 
@@ -211,13 +217,48 @@ function SearchProgress({ lang, currentStage, elapsed }) {
         color: '#1A1611',
         fontStyle: 'italic',
         textAlign: 'center',
-        marginBottom: 28,
+        marginBottom: 24,
       }}>
         {lang === 'ko' ? '검색 중…' : 'Searching…'}
       </div>
+
+      {/* Per-source completion badges */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 28 }}>
+        {SOURCE_META.map(({ key, label }) => {
+          const raw = sourceStatus[key];           // undefined=pending, -1=failed, N=count
+          const isPending = raw === undefined;
+          const isFailed  = raw === -1;
+          const isDone    = !isPending && !isFailed;
+          return (
+            <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: '50%',
+                border: `2px solid ${isPending ? '#D8D0BE' : isFailed ? '#C84B31' : '#1B7A2E'}`,
+                background: isPending ? '#FAF7F2' : isFailed ? '#FDF0EE' : '#EEF7EE',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, transition: 'all 0.35s',
+              }}>
+                {isPending
+                  ? <span style={{ color: '#C8C0B0', fontSize: 18, lineHeight: 1 }}>·</span>
+                  : isFailed
+                  ? <span style={{ color: '#C84B31' }}>✕</span>
+                  : <span style={{ color: '#1B7A2E' }}>✓</span>}
+              </div>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358' }}>{label}</span>
+              {isDone && (
+                <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 9, color: '#9B9185' }}>
+                  {raw > 0 ? raw : '0'}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Step indicators */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 340, margin: '0 auto' }}>
         {STAGE_ORDER.map((stage, i) => {
-          const isDone = i < activeIdx;
+          const isDone    = i < activeIdx;
           const isCurrent = i === activeIdx;
           return (
             <div key={stage} style={{
@@ -247,6 +288,7 @@ function SearchProgress({ lang, currentStage, elapsed }) {
           );
         })}
       </div>
+
       <div style={{
         textAlign: 'center',
         fontFamily: "'Geist Mono', monospace",
@@ -340,6 +382,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
   const [searchResults, setSearchResults] = useState(null);
   const [currentStage, setCurrentStage] = useState('fetching_sources');
   const [elapsed, setElapsed] = useState(0);
+  const [sourceStatus, setSourceStatus] = useState({});
   const elapsedRef = useRef(null);
 
   const toggleType = (type) =>
@@ -376,6 +419,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
     setSearchState('loading');
     setCurrentStage('fetching_sources');
     setElapsed(0);
+    setSourceStatus({});
     if (elapsedRef.current) clearInterval(elapsedRef.current);
     const startedAt = Date.now();
     elapsedRef.current = setInterval(() => {
@@ -425,6 +469,11 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
             clearInterval(elapsedRef.current);
             setSearchState('error');
             return;
+          } else if (event.stage === 'source_done') {
+            // msg format: "papers:8" or "repos:-1"
+            const [src, countStr] = (event.msg || '').split(':');
+            const count = parseInt(countStr, 10);
+            setSourceStatus(prev => ({ ...prev, [src]: isNaN(count) ? -1 : count }));
           } else {
             setCurrentStage(event.stage);
           }
@@ -696,7 +745,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
 
         {/* ── Loading ── */}
         {searchState === 'loading' && (
-          <SearchProgress lang={lang} currentStage={currentStage} elapsed={elapsed} />
+          <SearchProgress lang={lang} currentStage={currentStage} elapsed={elapsed} sourceStatus={sourceStatus} />
         )}
 
         {/* ── Search results ── */}
