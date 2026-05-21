@@ -27,11 +27,12 @@ Both interfaces run on the same backend. The desktop app bundles FastAPI + Next.
 
 ## Features
 
-### Quick Search (In Development)
+### Quick Search
 Search across three sources simultaneously with a single keyword:
-- Filter by date range (preset periods or custom range)
+- Filter by date range (past week / month / 3 months / all time)
 - Filter by content type (papers / models / repos)
-- Claude-powered relevance scoring and summarization
+- Claude-powered relevance scoring and one-sentence summaries
+- Claude-generated overview of the research landscape for your query
 - Every result includes a clickable link to the original source
 
 ### Learning Path (In Development)
@@ -166,7 +167,14 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.2.1 (current)
+### v0.3.0 (current)
+- [x] Quick Search: keyword search across arXiv, Hugging Face, GitHub simultaneously
+- [x] Claude-powered relevance scoring and one-sentence summaries per result
+- [x] Claude-generated topic overview for each search
+- [x] Period filter (past week / month / 3 months / all time) and content-type filter
+- [x] Fix Settings → Reset Database (POST /api/admin/reset-db was 404)
+
+### v0.2.1
 - [x] English / Korean language toggle (Welcome screen + Settings)
 - [x] Language preference persisted across sessions
 - [x] Reorganized research categories: split RL/Agent → AI Agents + Reinforcement Learning, added Generative AI (10 categories total)
@@ -179,7 +187,6 @@ research-thread-agent/
 - [x] One-command setup and run scripts (Windows + Mac/Linux)
 
 ### Upcoming
-- [ ] Quick Search: Research Thread generation with Claude + RAG
 - [ ] Learning Path: Era-based historical topic exploration
 - [ ] Notifications: Subscriptions, in-app alerts, email digest
 - [ ] Electron desktop packaging (no terminal required)
