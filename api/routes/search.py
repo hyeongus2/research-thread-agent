@@ -1,4 +1,9 @@
+import json
+import queue
+import threading
+
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from api.schemas import SearchRequest
@@ -17,6 +22,52 @@ def search(body: SearchRequest, db: Session = Depends(get_db)):
         info_types=body.info_types,
         user_id=body.user_id,
         db=db,
+    )
+
+
+@router.post("/search/stream")
+def search_stream(body: SearchRequest, db: Session = Depends(get_db)):
+    """SSE endpoint: streams stage progress events, then the full result as a final event."""
+    progress_q: queue.Queue = queue.Queue()
+    result_holder: list = [None]
+    error_holder: list = [None]
+
+    def on_progress(stage: str, msg: str) -> None:
+        progress_q.put({"stage": stage, "msg": msg})
+
+    def run() -> None:
+        try:
+            result_holder[0] = thread_service.create_research_thread(
+                keyword=body.keyword,
+                start_date=body.start_date,
+                end_date=body.end_date,
+                info_types=body.info_types,
+                user_id=body.user_id,
+                db=db,
+                on_progress=on_progress,
+            )
+        except Exception as exc:
+            error_holder[0] = str(exc)
+        finally:
+            progress_q.put(None)  # sentinel
+
+    threading.Thread(target=run, daemon=True).start()
+
+    def generate():
+        while True:
+            item = progress_q.get()
+            if item is None:
+                break
+            yield f"data: {json.dumps(item)}\n\n"
+        if result_holder[0] is not None:
+            yield f"data: {json.dumps({'stage': 'done', 'result': result_holder[0]})}\n\n"
+        else:
+            yield f"data: {json.dumps({'stage': 'error', 'msg': error_holder[0] or 'Search failed'})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

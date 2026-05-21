@@ -178,38 +178,30 @@ function ResultCard({ item, type, hasAi }) {
   );
 }
 
+// Stage code → translated message
+const STAGE_MESSAGES = {
+  en: {
+    fetching_sources: 'Searching arXiv · Hugging Face · GitHub simultaneously…',
+    scoring:          'Running AI relevance scoring…',
+    overview:         'Generating topic overview…',
+    saving:           'Finishing up…',
+  },
+  ko: {
+    fetching_sources: 'arXiv · Hugging Face · GitHub 동시 검색 중…',
+    scoring:          'AI 관련도 분석 중…',
+    overview:         '주제 개요 생성 중…',
+    saving:           '마무리 중…',
+  },
+};
+
+const STAGE_ORDER = ['fetching_sources', 'scoring', 'overview', 'saving'];
+
 // =============================================================================
-// Loading progress indicator
+// Loading progress indicator (driven by real SSE events)
 // =============================================================================
-function SearchProgress({ lang }) {
-  const STEPS = lang === 'ko'
-    ? [
-        { at: 0,  done: false, text: 'arXiv · Hugging Face · GitHub 동시 검색 중…' },
-        { at: 10, done: false, text: '결과 취합 중…' },
-        { at: 20, done: false, text: 'AI 관련도 분석 및 요약 생성 중…  (가장 오래 걸려요)' },
-        { at: 45, done: false, text: '거의 다 됐어요…' },
-      ]
-    : [
-        { at: 0,  done: false, text: 'Searching arXiv · Hugging Face · GitHub simultaneously…' },
-        { at: 10, done: false, text: 'Aggregating results from all sources…' },
-        { at: 20, done: false, text: 'Running AI relevance scoring & overview…  (this takes the longest)' },
-        { at: 45, done: false, text: 'Almost done…' },
-      ];
-
-  const [elapsed, setElapsed] = useState(0);
-  const startRef = useRef(Date.now());
-
-  useEffect(() => {
-    startRef.current = Date.now();
-    setElapsed(0);
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Determine which steps are "done" (elapsed past their threshold) and which is current
-  const activeIdx = STEPS.reduce((last, step, i) => elapsed >= step.at ? i : last, 0);
+function SearchProgress({ lang, currentStage, elapsed }) {
+  const msgs = STAGE_MESSAGES[lang] || STAGE_MESSAGES.en;
+  const activeIdx = Math.max(0, STAGE_ORDER.indexOf(currentStage));
 
   return (
     <div style={{ padding: '40px 8px 0' }}>
@@ -224,12 +216,13 @@ function SearchProgress({ lang }) {
         {lang === 'ko' ? '검색 중…' : 'Searching…'}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 340, margin: '0 auto' }}>
-        {STEPS.map((step, i) => {
+        {STAGE_ORDER.map((stage, i) => {
           const isDone = i < activeIdx;
           const isCurrent = i === activeIdx;
           return (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'flex-start', gap: 12, opacity: i > activeIdx ? 0.3 : 1,
+            <div key={stage} style={{
+              display: 'flex', alignItems: 'flex-start', gap: 12,
+              opacity: i > activeIdx ? 0.3 : 1,
               transition: 'opacity 0.4s',
             }}>
               <div style={{
@@ -248,7 +241,7 @@ function SearchProgress({ lang }) {
                 lineHeight: 1.5,
                 fontWeight: isCurrent ? 500 : 400,
               }}>
-                {step.text}
+                {msgs[stage]}
               </span>
             </div>
           );
@@ -273,7 +266,7 @@ function SearchProgress({ lang }) {
 function EmptyFeed({ onSuggestionClick }) {
   const { t } = useLanguage();
   const tf = t.feed;
-  const suggestions = ['RAG', 'diffusion', 'LoRA', 'reasoning', 'VLM'];
+  const suggestions = ['reasoning', 'multimodal agent', 'LoRA', 'RAG', 'MoE', 'RLHF'];
 
   return (
     <div style={{ padding: '48px 8px 0', textAlign: 'center' }}>
@@ -345,6 +338,9 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
   const [typeFilters, setTypeFilters] = useState(['paper', 'model', 'repo']);
   const [searchState, setSearchState] = useState('idle'); // 'idle' | 'loading' | 'done' | 'error'
   const [searchResults, setSearchResults] = useState(null);
+  const [currentStage, setCurrentStage] = useState('fetching_sources');
+  const [elapsed, setElapsed] = useState(0);
+  const elapsedRef = useRef(null);
 
   const toggleType = (type) =>
     setTypeFilters(prev =>
@@ -376,29 +372,67 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
     const allKws = singleKw ? [singleKw] : [...kws, ...(query.trim() ? [query.trim()] : [])];
     if (allKws.length === 0) return;
     const combined = allKws.join(' OR ');
+
     setSearchState('loading');
+    setCurrentStage('fetching_sources');
+    setElapsed(0);
+    if (elapsedRef.current) clearInterval(elapsedRef.current);
+    const startedAt = Date.now();
+    elapsedRef.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+
     const { start, end } = getPeriodDates(period, nMonths, customFrom, customTo);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), 90000);
+
     try {
-      const res = await fetch(`${API}/search`, {
+      const res = await fetch(`${API}/search/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           keyword: combined,
           start_date: start,
           end_date: end,
-          info_types: typeFilters,
+          info_types: ['paper', 'model', 'repo'], // always fetch all; filter client-side
           user_id: userId || 1,
         }),
         signal: controller.signal,
       });
-      clearTimeout(timeout);
-      const data = await res.json();
-      setSearchResults(data);
-      setSearchState('done');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // keep last incomplete line
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          let event;
+          try { event = JSON.parse(line.slice(6)); } catch { continue; }
+          if (event.stage === 'done') {
+            clearTimeout(timeout);
+            clearInterval(elapsedRef.current);
+            setSearchResults(event.result);
+            setSearchState('done');
+            return;
+          } else if (event.stage === 'error') {
+            clearTimeout(timeout);
+            clearInterval(elapsedRef.current);
+            setSearchState('error');
+            return;
+          } else {
+            setCurrentStage(event.stage);
+          }
+        }
+      }
     } catch {
       clearTimeout(timeout);
+      clearInterval(elapsedRef.current);
       setSearchState('error');
     }
   };
@@ -420,14 +454,15 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
     setKeywords([]);
     setSearchState('idle');
     setSearchResults(null);
+    if (elapsedRef.current) clearInterval(elapsedRef.current);
   };
 
-  // Merge and sort all search results by relevance
+  // Merge, filter by active type toggles, and sort by relevance — recalculated on typeFilters change
   const allResults = searchState === 'done' && searchResults
     ? [
-        ...(searchResults.papers || []).map(p => ({ ...p, _type: 'paper' })),
-        ...(searchResults.models || []).map(m => ({ ...m, _type: 'model' })),
-        ...(searchResults.repos  || []).map(r => ({ ...r, _type: 'repo' })),
+        ...(typeFilters.includes('paper') ? (searchResults.papers || []).map(p => ({ ...p, _type: 'paper' })) : []),
+        ...(typeFilters.includes('model') ? (searchResults.models || []).map(m => ({ ...m, _type: 'model' })) : []),
+        ...(typeFilters.includes('repo')  ? (searchResults.repos  || []).map(r => ({ ...r, _type: 'repo'  })) : []),
       ].sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))
     : [];
 
@@ -660,7 +695,9 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
         )}
 
         {/* ── Loading ── */}
-        {searchState === 'loading' && <SearchProgress lang={lang} />}
+        {searchState === 'loading' && (
+          <SearchProgress lang={lang} currentStage={currentStage} elapsed={elapsed} />
+        )}
 
         {/* ── Search results ── */}
         {searchState === 'done' && (
@@ -727,8 +764,18 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
               letterSpacing: '0.08em',
               marginBottom: 12,
               padding: '0 4px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 4,
             }}>
-              {ts.resultsFor(allResults.length, searchResults?.keyword || query)}
+              <span>{ts.resultsFor(allResults.length, searchResults?.keyword || query)}</span>
+              {typeFilters.length < 3 && (
+                <span style={{ fontStyle: 'italic', color: '#9B9185' }}>
+                  {lang === 'ko' ? '필터 적용됨' : 'filtered'}
+                </span>
+              )}
             </div>
 
             {/* Cards */}

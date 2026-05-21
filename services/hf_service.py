@@ -13,12 +13,25 @@ def _get_api() -> HfApi:
     return HfApi(token=settings.HF_API_TOKEN or None)
 
 
+def _has_topic_signal(model_id: str, keyword: str, tags: list) -> bool:
+    """Return True if keyword appears in the model's repo name or tags (not just username)."""
+    kw = keyword.lower()
+    repo_part = model_id.split("/")[-1].lower()
+    if kw in repo_part:
+        return True
+    return any(kw in (t or "").lower() for t in (tags or []))
+
+
 def search_models(
     keyword: str,
     start_date: Optional[date] = None,
     max_results: int = 10,
 ) -> list[dict]:
     """Search Hugging Face Hub for models matching keyword, sorted by downloads.
+
+    Fetches a larger candidate set, then prioritises models where the keyword
+    appears in the repo name or tags (not only in the username), so that results
+    like 'xxragxx/unrelated-model' are deprioritised.
 
     Args:
         keyword: Search query string.
@@ -27,15 +40,16 @@ def search_models(
 
     Returns:
         List of model dicts with keys: name, downloads, likes, url,
-        pipeline_tag, last_modified.
+        pipeline_tag, tags, last_modified.
     """
     api = _get_api()
-    models = []
+    with_signal: list[dict] = []
+    without_signal: list[dict] = []
 
     for model in api.list_models(
         search=keyword,
         sort="downloads",
-        limit=max_results * 2,  # fetch extra to allow date filtering
+        limit=max_results * 5,
     ):
         last_modified = getattr(model, "lastModified", None) or getattr(
             model, "last_modified", None
@@ -45,20 +59,28 @@ def search_models(
             if model_date and model_date < start_date:
                 continue
 
-        models.append({
+        tags = list(getattr(model, "tags", None) or [])
+        entry = {
             "name": model.id,
             "downloads": getattr(model, "downloads", 0) or 0,
             "likes": getattr(model, "likes", 0) or 0,
             "url": f"https://huggingface.co/{model.id}",
             "pipeline_tag": getattr(model, "pipeline_tag", None),
+            "tags": tags[:12],
             "last_modified": last_modified,
-        })
+        }
+        if _has_topic_signal(model.id, keyword, tags):
+            with_signal.append(entry)
+        else:
+            without_signal.append(entry)
 
-        if len(models) >= max_results:
+        if len(with_signal) + len(without_signal) >= max_results * 5:
             break
 
-    logger.info("HF model search '%s' returned %d results", keyword, len(models))
-    return models
+    ordered = (with_signal + without_signal)[:max_results]
+    logger.info("HF model search '%s' returned %d results (%d with topic signal)",
+                keyword, len(ordered), len(with_signal))
+    return ordered
 
 
 def search_datasets(

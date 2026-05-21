@@ -2,7 +2,7 @@
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime
-from typing import Optional
+from typing import Callable, Optional
 
 from sqlalchemy.orm import Session
 
@@ -39,6 +39,7 @@ def create_research_thread(
     info_types: list[str],
     user_id: int,
     db: Session,
+    on_progress: Optional[Callable[[str, str], None]] = None,
 ) -> dict:
     """Fetch, rank, and summarize research content for a keyword.
 
@@ -56,9 +57,15 @@ def create_research_thread(
     Returns:
         Thread dict with keys: keyword, overview, papers, models, repos, generated_at.
     """
+    def _progress(stage: str, msg: str) -> None:
+        if on_progress:
+            on_progress(stage, msg)
+
     papers: list[dict] = []
     models: list[dict] = []
     repos: list[dict] = []
+
+    _progress("fetching_sources", "Searching arXiv · Hugging Face · GitHub simultaneously…")
 
     # Concurrent fetch from all enabled sources
     with ThreadPoolExecutor(max_workers=3) as executor:
@@ -89,6 +96,8 @@ def create_research_thread(
             except Exception as exc:
                 logger.warning("Fetch failed for %s: %s", key, exc)
 
+    _progress("scoring", "Running AI relevance scoring…")
+
     # Score relevance with Claude and keep top results
     if papers:
         papers = claude_service.score_relevance(keyword, papers)
@@ -98,8 +107,11 @@ def create_research_thread(
     if models:
         for m in models:
             m["title"] = m["name"]
+            tags_str = ", ".join(m.get("tags", [])[:6]) if m.get("tags") else "none"
             m["abstract"] = (
-                f"HuggingFace model. Pipeline: {m.get('pipeline_tag') or 'general'}. "
+                f"HuggingFace model '{m['name']}'. "
+                f"Pipeline: {m.get('pipeline_tag') or 'general'}. "
+                f"Tags: {tags_str}. "
                 f"Downloads: {m.get('downloads', 0):,}."
             )
         models = claude_service.score_relevance(keyword, models)
@@ -113,6 +125,8 @@ def create_research_thread(
         repos = claude_service.score_relevance(keyword, repos)
         repos.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
         repos = repos[:5]
+
+    _progress("overview", "Generating topic overview…")
 
     overview = claude_service.generate_overview(keyword, papers)
 

@@ -42,9 +42,9 @@ def search_repositories(
 
     query = keyword
     if start_date:
-        query += f" created:>={start_date.isoformat()}"
+        query += f" pushed:>={start_date.isoformat()}"
     if end_date:
-        query += f" created:<={end_date.isoformat()}"
+        query += f" pushed:<={end_date.isoformat()}"
 
     repos = []
     try:
