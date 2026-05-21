@@ -168,12 +168,15 @@ research-thread-agent/
 ## Roadmap
 
 ### v0.3.3 (current)
-- [x] Browser tab favicon: atom icon in brand colors (Next.js App Router `icon.svg`)
+- [x] Browser tab favicon: `frontend/app/favicon.ico`
 - [x] Quick Search: loading progress now driven by real SSE events from the backend (fetching → scoring → overview), replacing the time-estimate approximation
+- [x] Quick Search: per-source completion badges shown in real time (arXiv ✓, Hugging Face ✓, GitHub ✓) as each source finishes
+- [x] Quick Search: source error banners — shows reason (rate limit with minutes-remaining countdown, auth error, timeout) per source after search completes
 - [x] Quick Search: content-type filter buttons (Papers / Models / Repos) now filter results instantly client-side — no re-search required
 - [x] Quick Search: suggested keywords updated to 2025 AI trends — reasoning, multimodal agent, LoRA, RAG, MoE, RLHF
 - [x] Fix GitHub search returning zero results for date-filtered queries: changed `created:` qualifier to `pushed:` so repos with recent commits appear, not just newly created repos
 - [x] Fix HuggingFace returning irrelevant models: pre-filter candidates where the keyword appears only in the username (e.g. `xxragxx/unrelated`); pass model tags to Claude for better relevance scoring
+- [x] Fix AI key prompt not appearing when key exists but is invalid: prompt now triggers on missing summary, not just missing key
 
 ### v0.3.2
 - [x] Language toggle now pinned to top-right on all screens (was Welcome-only)
