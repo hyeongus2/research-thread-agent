@@ -11,6 +11,20 @@ All data is stored on your local machine (SQLite). No external server, no accoun
 
 ---
 
+## Two Ways to Use
+
+| | Desktop App | MCP Server |
+|---|---|---|
+| **Interface** | Native app — double-click to open, no terminal needed | Claude.ai chat extension |
+| **AI cost** | Your own Anthropic API credits | Covered by Claude Pro subscription |
+| **Best for** | Visual feed (Instagram-style) | Chat-style queries in Claude |
+
+Both interfaces run on the same backend. The desktop app bundles FastAPI + Next.js and launches them automatically. The MCP server exposes the same logic as tools Claude can call during chat.
+
+> **Current status**: Next.js + FastAPI interface is available now (run with `run.bat` / `run.sh`). Electron packaging and MCP server are on the roadmap.
+
+---
+
 ## Features
 
 ### Quick Search (In Development)
