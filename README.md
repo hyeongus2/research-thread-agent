@@ -155,6 +155,7 @@ research-thread-agent/
 ### v0.2.1 (current)
 - [x] English / Korean language toggle (Welcome screen + Settings)
 - [x] Language preference persisted across sessions
+- [x] Reorganized research categories: split RL/Agent → AI Agents + Reinforcement Learning, added Generative AI (10 categories total)
 
 ### v0.2.0
 - [x] FastAPI backend scaffold with full route structure
