@@ -167,7 +167,13 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.3.0 (current)
+### v0.3.1 (current)
+- [x] Onboarding trimmed to 2 steps (categories → keywords); calibration step removed — it was showing fake papers with no actual effect
+- [x] Keywords step is now optional — users can skip directly to the feed
+- [x] Quick Search: custom date filters added — "Last N months" and "YYYY-MM to YYYY-MM" range picker
+- [x] Suggested keywords updated for 2025 trends: reasoning, LoRA, VLM, fine-tuning
+
+### v0.3.0
 - [x] Quick Search: keyword search across arXiv, Hugging Face, GitHub simultaneously
 - [x] Claude-powered relevance scoring and one-sentence summaries per result
 - [x] Claude-generated topic overview for each search

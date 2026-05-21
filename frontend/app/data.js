@@ -12,8 +12,9 @@ export const CATEGORIES = [
 ];
 
 export const SUGGESTED_KEYWORDS = [
-  'RAG', 'MoE', 'diffusion', 'RLHF', 'long context',
-  'in-context learning', 'agent', 'multimodal', 'quantization', 'distillation',
+  'RAG', 'reasoning', 'diffusion', 'LoRA',
+  'MoE', 'long context', 'agent', 'multimodal',
+  'VLM', 'quantization', 'RLHF', 'fine-tuning',
 ];
 
 // Placeholder papers used for calibration during onboarding.
