@@ -6,6 +6,15 @@ import { useLanguage } from '../context/LanguageContext';
 
 const API = 'http://localhost:8000/api';
 
+const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25 };
+
+function readLimits() {
+  try {
+    const stored = localStorage.getItem('search_limits');
+    return stored ? { ...DEFAULT_LIMITS, ...JSON.parse(stored) } : DEFAULT_LIMITS;
+  } catch { return DEFAULT_LIMITS; }
+}
+
 export default function Settings({ onClose, userId }) {
   const { t, lang, setLang } = useLanguage();
   const ts = t.settings;
@@ -14,6 +23,19 @@ export default function Settings({ onClose, userId }) {
   const [breakthroughOn, setBreakthroughOn] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  const [limits, setLimits] = useState(readLimits);
+
+  const updateLimit = (key, raw) => {
+    const val = Math.max(1, Math.min(100, parseInt(raw, 10) || 1));
+    const next = { ...limits, [key]: val };
+    setLimits(next);
+    localStorage.setItem('search_limits', JSON.stringify(next));
+  };
+
+  const resetLimits = () => {
+    setLimits(DEFAULT_LIMITS);
+    localStorage.setItem('search_limits', JSON.stringify(DEFAULT_LIMITS));
+  };
 
   const handleReset = async () => {
     try {
@@ -147,6 +169,56 @@ export default function Settings({ onClose, userId }) {
           }}>
             npx @research-thread/mcp init
           </div>
+        </div>
+
+        {/* Search limits */}
+        <div style={sectionLabel}>{ts.searchLimits}</div>
+        <div style={{
+          background: '#FFFFFF', border: '1px solid #E8E2D5',
+          borderRadius: 4, padding: '16px', marginBottom: 28,
+        }}>
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.5, marginBottom: 16 }}>
+            {ts.searchLimitsDesc}
+          </div>
+          {[
+            { key: 'papers', label: ts.papersLimit },
+            { key: 'models', label: ts.modelsLimit },
+            { key: 'repos',  label: ts.reposLimit  },
+          ].map(({ key, label }) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611' }}>{label}</span>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={limits[key]}
+                onChange={e => updateLimit(key, e.target.value)}
+                style={{
+                  width: 64, padding: '5px 8px',
+                  border: '1px solid #D8D0BE', borderRadius: 4,
+                  fontFamily: "'Geist Mono', monospace", fontSize: 13,
+                  color: '#1A1611', background: '#FAF7F2',
+                  outline: 'none', textAlign: 'center',
+                }}
+              />
+            </div>
+          ))}
+          <button
+            onClick={resetLimits}
+            style={{
+              marginTop: 4,
+              padding: '8px 14px',
+              background: 'transparent',
+              border: '1px solid #D8D0BE',
+              borderRadius: 4,
+              fontFamily: "'Geist', sans-serif",
+              fontSize: 12,
+              color: '#6B6358',
+              cursor: 'pointer',
+            }}
+          >
+            {ts.resetLimits}
+          </button>
         </div>
 
         {/* Data management */}

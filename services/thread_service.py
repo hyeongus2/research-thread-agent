@@ -45,6 +45,9 @@ def create_research_thread(
     user_id: int,
     db: Session,
     on_progress: Optional[Callable[[str, str], None]] = None,
+    paper_limit: int = 50,
+    model_limit: int = 25,
+    repo_limit: int = 25,
 ) -> dict:
     """Fetch papers, models, and repos concurrently for a keyword.
 
@@ -76,11 +79,11 @@ def create_research_thread(
     try:
         futures = {
             executor.submit(
-                semantic_scholar_service.search_papers, keyword, start_date, end_date, 100
+                semantic_scholar_service.search_papers, keyword, start_date, end_date, paper_limit
             ): "papers",
-            executor.submit(hf_service.search_models, keyword, start_date, 50): "models",
+            executor.submit(hf_service.search_models, keyword, start_date, model_limit): "models",
             executor.submit(
-                github_service.search_repositories, keyword, start_date, end_date, 50
+                github_service.search_repositories, keyword, start_date, end_date, repo_limit
             ): "repos",
         }
         processed: set = set()

@@ -22,6 +22,9 @@ def search(body: SearchRequest, db: Session = Depends(get_db)):
         end_date=body.end_date,
         user_id=body.user_id,
         db=db,
+        paper_limit=body.paper_limit,
+        model_limit=body.model_limit,
+        repo_limit=body.repo_limit,
     )
 
 
@@ -44,6 +47,9 @@ def search_stream(body: SearchRequest, db: Session = Depends(get_db)):
                 user_id=body.user_id,
                 db=db,
                 on_progress=on_progress,
+                paper_limit=body.paper_limit,
+                model_limit=body.model_limit,
+                repo_limit=body.repo_limit,
             )
         except Exception as exc:
             error_holder[0] = str(exc)

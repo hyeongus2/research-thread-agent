@@ -35,6 +35,9 @@ class SearchRequest(BaseModel):
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     user_id: int
+    paper_limit: int = 50
+    model_limit: int = 25
+    repo_limit: int = 25
 
 
 class SummarizePaperRequest(BaseModel):

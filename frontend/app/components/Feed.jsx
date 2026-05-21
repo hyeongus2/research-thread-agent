@@ -7,6 +7,15 @@ import LearningPath from './LearningPath';
 
 const API = 'http://localhost:8000/api';
 
+const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25 };
+
+function getSearchLimits() {
+  try {
+    const stored = localStorage.getItem('search_limits');
+    return stored ? { ...DEFAULT_LIMITS, ...JSON.parse(stored) } : DEFAULT_LIMITS;
+  } catch { return DEFAULT_LIMITS; }
+}
+
 const TYPE_COLORS = {
   paper: { bg: '#FFE8E0', fg: '#8B2E1B' },
   model: { bg: '#E0EEFF', fg: '#1B3E8B' },
@@ -458,8 +467,9 @@ function EmptySearch({ onSuggestionClick }) {
   const { t } = useLanguage();
   const tf = t.feed;
   const suggestions = [
-    'chain-of-thought', 'vision-language model', 'LoRA',
-    'KV cache', 'speculative decoding', 'test-time compute',
+    'reasoning', 'RAG', 'diffusion model', 'fine-tuning',
+    'multimodal', 'AI agent', 'LoRA', 'transformer',
+    'RLHF', 'MoE',
   ];
   return (
     <div style={{ padding: '48px 8px 0', textAlign: 'center' }}>
@@ -503,9 +513,9 @@ function EmptySearch({ onSuggestionClick }) {
 function FeedView({ onQuickSearch, t }) {
   const tf = t.feed;
   const trendingTopics = [
-    'chain-of-thought', 'vision-language model', 'LoRA',
-    'KV cache', 'speculative decoding', 'test-time compute',
-    'MoE', 'DPO',
+    'reasoning', 'RAG', 'diffusion model', 'fine-tuning',
+    'multimodal', 'AI agent', 'LoRA', 'transformer',
+    'RLHF', 'MoE',
   ];
   return (
     <div style={{ padding: '20px 0 16px' }}>
@@ -701,6 +711,7 @@ export default function Feed({ onSettings, userId }) {
     }, 1000);
 
     const { start, end } = getPeriodDates(period, nMonths, customFrom, customTo);
+    const searchLimits = getSearchLimits();
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 90000);
 
@@ -713,6 +724,9 @@ export default function Feed({ onSettings, userId }) {
           start_date: start,
           end_date: end,
           user_id: userId || 1,
+          paper_limit: searchLimits.papers,
+          model_limit: searchLimits.models,
+          repo_limit: searchLimits.repos,
         }),
         signal: controller.signal,
       });
@@ -996,7 +1010,7 @@ export default function Feed({ onSettings, userId }) {
       <div style={{ position: 'relative', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div
           ref={scrollRef}
-          style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px', background: '#FAF7F2' }}
+          style={{ flex: 1, overflowY: 'auto', padding: '0 16px 80px', background: '#FAF7F2' }}
         >
           {/* ── Feed view ── */}
           {view === 'feed' && (
@@ -1124,15 +1138,15 @@ export default function Feed({ onSettings, userId }) {
         </div>
       </div>
 
-      {/* Scroll buttons — fixed position, outside the app frame to the right */}
+      {/* Scroll buttons — absolute inside the content wrapper */}
       <div style={{
-        position: 'fixed',
-        right: 8,
+        position: 'absolute',
         bottom: 68,
+        right: 16,
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
-        zIndex: 20,
+        zIndex: 10,
       }}>
         <button onClick={scrollToTop} title={ts.scrollTop} style={scrollBtnStyle}>
           <ChevronUp size={14} />

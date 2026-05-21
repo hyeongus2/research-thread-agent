@@ -55,15 +55,24 @@ def search_papers(
         headers["x-api-key"] = settings.SEMANTIC_SCHOLAR_API_KEY
 
     try:
-        resp = requests.get(_BASE_URL, params=params, headers=headers, timeout=30)
+        current_params = params.copy()
+        resp = requests.get(_BASE_URL, params=current_params, headers=headers, timeout=30)
+
         if resp.status_code == 429:
-            logger.warning("Semantic Scholar rate limited; retrying after 10 s")
+            logger.warning("Semantic Scholar 429; retrying after 10 s")
             time.sleep(10)
-            resp = requests.get(_BASE_URL, params=params, headers=headers, timeout=30)
-        if resp.status_code == 403 and "year" in params:
-            logger.warning("Semantic Scholar 403 with year=%s; retrying without date filter", params["year"])
-            params_no_year = {k: v for k, v in params.items() if k != "year"}
-            resp = requests.get(_BASE_URL, params=params_no_year, headers=headers, timeout=30)
+            resp = requests.get(_BASE_URL, params=current_params, headers=headers, timeout=30)
+
+        if resp.status_code == 403 and "year" in current_params:
+            logger.warning("Semantic Scholar 403 with year=%s; retrying without date filter", current_params["year"])
+            current_params = {k: v for k, v in current_params.items() if k != "year"}
+            resp = requests.get(_BASE_URL, params=current_params, headers=headers, timeout=30)
+
+        if resp.status_code == 403:
+            logger.warning("Semantic Scholar 403 (rate limit); waiting 15 s and retrying")
+            time.sleep(15)
+            resp = requests.get(_BASE_URL, params=current_params, headers=headers, timeout=30)
+
         resp.raise_for_status()
         data = resp.json()
     except requests.RequestException as exc:
