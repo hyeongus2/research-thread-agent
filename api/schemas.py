@@ -34,8 +34,16 @@ class SearchRequest(BaseModel):
     keyword: str
     start_date: Optional[date] = None
     end_date: Optional[date] = None
-    info_types: list[str] = ["paper", "model", "repo"]
     user_id: int
+
+
+class SummarizePaperRequest(BaseModel):
+    abstract: str
+
+
+class SummarizeOverviewRequest(BaseModel):
+    keyword: str
+    paper_titles: list[str] = []
 
 
 class SearchHistoryItem(BaseModel):

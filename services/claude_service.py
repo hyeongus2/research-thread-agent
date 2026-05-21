@@ -1,6 +1,6 @@
-"""Claude API integration for relevance scoring and research summaries."""
+"""Claude API integration for on-demand paper and overview summaries."""
 
-import json
+from typing import Optional
 
 import anthropic
 
@@ -14,68 +14,33 @@ def _client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
 
 
-def score_relevance(keyword: str, items: list[dict]) -> list[dict]:
-    """Score each item's relevance to keyword and add a one-sentence summary.
-
-    Adds 'relevance_score' (0.0–1.0) and 'summary' keys to each item in-place.
-    Falls back to score=0.5 / summary='' if the API is unavailable.
+def summarize_paper(abstract: str) -> Optional[str]:
+    """Generate a one-sentence summary of a paper from its abstract.
 
     Args:
-        keyword: The user's search keyword.
-        items: List of dicts; each must have 'title' and 'abstract' keys.
+        abstract: Paper abstract text.
 
     Returns:
-        Same list with 'relevance_score' and 'summary' added to each item.
+        One-sentence summary string, or None if API unavailable or abstract empty.
     """
-    if not items:
-        return []
-
-    if not settings.ANTHROPIC_API_KEY:
-        for item in items:
-            item.setdefault("relevance_score", 0.5)
-            item.setdefault("summary", None)  # None signals "no API key" to the frontend
-        return items
-
-    items_text = "\n\n".join(
-        f"[{i}] {item.get('title') or item.get('name', 'Untitled')}\n"
-        f"{(item.get('abstract') or item.get('description', ''))[:300]}"
-        for i, item in enumerate(items)
-    )
-
-    prompt = (
-        f'Evaluate relevance of research content to the keyword: "{keyword}"\n\n'
-        "For each item provide:\n"
-        f'- score: 0.0–1.0 (how relevant it is to "{keyword}")\n'
-        "- summary: one concise sentence describing what this item is about\n\n"
-        f"Items:\n{items_text}\n\n"
-        "Respond ONLY with a valid JSON array (same order as items):\n"
-        '[{"score": 0.95, "summary": "..."}, ...]'
-    )
-
+    if not settings.ANTHROPIC_API_KEY or not abstract:
+        return None
     try:
         response = _client().messages.create(
             model=settings.CLAUDE_MODEL,
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
+            max_tokens=100,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"Summarize this paper abstract in one concise sentence:\n\n"
+                    f"{abstract[:800]}\n\nNo preamble."
+                ),
+            }],
         )
-        text = response.content[0].text.strip()
-        start = text.find("[")
-        end = text.rfind("]") + 1
-        if start == -1 or end == 0:
-            raise ValueError("No JSON array found in response")
-        scores = json.loads(text[start:end])
-
-        for item, score_data in zip(items, scores):
-            item["relevance_score"] = float(score_data.get("score", 0.5))
-            item["summary"] = score_data.get("summary", "")
-
+        return response.content[0].text.strip()
     except Exception as exc:
-        logger.error("Claude relevance scoring failed: %s", exc)
-        for item in items:
-            item.setdefault("relevance_score", 0.5)
-            item.setdefault("summary", None)
-
-    return items
+        logger.error("Claude paper summary failed: %s", exc)
+        return None
 
 
 def generate_era_summary(topic: str, era_label: str, papers: list[dict]) -> str:

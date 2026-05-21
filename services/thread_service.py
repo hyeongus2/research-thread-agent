@@ -1,4 +1,4 @@
-"""Orchestrates the Quick Search flow: fetch → score → summarize."""
+"""Orchestrates the Quick Search flow: concurrent fetch → return sorted results."""
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError, as_completed
 from datetime import date, datetime
@@ -6,8 +6,7 @@ from typing import Callable, Optional
 
 from sqlalchemy.orm import Session
 
-from config.settings import settings
-from services import arxiv_service, claude_service, github_service, hf_service
+from services import github_service, hf_service, semantic_scholar_service
 from services.database_service import save_search_history
 from utils.logger import get_logger
 
@@ -18,7 +17,7 @@ def _classify_error(exc: Exception) -> tuple[str, int]:
     """Return (error_kind, retry_seconds) for a fetch exception."""
     msg = str(exc)
     if "429" in msg or "rate limit" in msg.lower() or "too many" in msg.lower():
-        return "rate_limit", 600  # arXiv typically clears within 10 minutes
+        return "rate_limit", 600
     if "401" in msg or "bad credentials" in msg.lower() or "authentication" in msg.lower():
         return "auth_error", 0
     if "timeout" in msg.lower() or "timed out" in msg.lower():
@@ -27,19 +26,14 @@ def _classify_error(exc: Exception) -> tuple[str, int]:
 
 
 def _to_str(v):
-    """Convert date/datetime to ISO string; leave everything else unchanged."""
     if hasattr(v, "isoformat"):
         return v.isoformat()
     return v
 
 
 def _serialize(items: list[dict]) -> list[dict]:
-    """Make all date/datetime values in each item JSON-serializable."""
     return [
-        {
-            k: ([_to_str(x) for x in v] if isinstance(v, list) else _to_str(v))
-            for k, v in item.items()
-        }
+        {k: ([_to_str(x) for x in v] if isinstance(v, list) else _to_str(v)) for k, v in item.items()}
         for item in items
     ]
 
@@ -48,26 +42,25 @@ def create_research_thread(
     keyword: str,
     start_date: Optional[date],
     end_date: Optional[date],
-    info_types: list[str],
     user_id: int,
     db: Session,
     on_progress: Optional[Callable[[str, str], None]] = None,
 ) -> dict:
-    """Fetch, rank, and summarize research content for a keyword.
+    """Fetch papers, models, and repos concurrently for a keyword.
 
-    Calls arXiv / HF / GitHub concurrently, scores relevance with Claude,
-    generates a topic overview, saves to search history, and returns a Thread dict.
+    Papers from Semantic Scholar (sorted by citation count), models from HF Hub
+    (sorted by downloads), repos from GitHub (sorted by stars). No LLM scoring.
 
     Args:
         keyword: User search query.
-        start_date: Inclusive lower bound for content date (None = no filter).
-        end_date: Inclusive upper bound (None = no filter).
-        info_types: Subset of ["paper", "model", "repo"] to include.
+        start_date: Inclusive lower bound for content date.
+        end_date: Inclusive upper bound.
         user_id: ID of the requesting user (for search history).
         db: SQLAlchemy session.
+        on_progress: Optional SSE callback (stage, msg).
 
     Returns:
-        Thread dict with keys: keyword, overview, papers, models, repos, generated_at.
+        Thread dict: keyword, papers, models, repos, generated_at.
     """
     def _progress(stage: str, msg: str) -> None:
         if on_progress:
@@ -77,26 +70,20 @@ def create_research_thread(
     models: list[dict] = []
     repos: list[dict] = []
 
-    _progress("fetching_sources", "Searching arXiv · Hugging Face · GitHub simultaneously…")
+    _progress("fetching_sources", "Searching Semantic Scholar · Hugging Face · GitHub simultaneously…")
 
-    # Concurrent fetch from all enabled sources; cap total wait at 30 s per source
     executor = ThreadPoolExecutor(max_workers=3)
     try:
-        futures: dict = {}
-        if "paper" in info_types:
-            futures[executor.submit(
-                arxiv_service.search_papers, keyword, start_date, end_date, 20
-            )] = "papers"
-        if "model" in info_types:
-            futures[executor.submit(
-                hf_service.search_models, keyword, start_date, 20
-            )] = "models"
-        if "repo" in info_types:
-            futures[executor.submit(
-                github_service.search_repositories, keyword, start_date, end_date, 20
-            )] = "repos"
-
-            processed: set = set()
+        futures = {
+            executor.submit(
+                semantic_scholar_service.search_papers, keyword, start_date, end_date, 100
+            ): "papers",
+            executor.submit(hf_service.search_models, keyword, start_date, 50): "models",
+            executor.submit(
+                github_service.search_repositories, keyword, start_date, end_date, 50
+            ): "repos",
+        }
+        processed: set = set()
         try:
             for future in as_completed(futures, timeout=60):
                 processed.add(future)
@@ -123,44 +110,8 @@ def create_research_thread(
     finally:
         executor.shutdown(wait=False)
 
-    _progress("scoring", "Running AI relevance scoring…")
-
-    # Score relevance with Claude and keep top results
-    if papers:
-        papers = claude_service.score_relevance(keyword, papers)
-        papers.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
-        papers = papers[:15]
-
-    if models:
-        for m in models:
-            m["title"] = m["name"]
-            tags_str = ", ".join(m.get("tags", [])[:6]) if m.get("tags") else "none"
-            m["abstract"] = (
-                f"HuggingFace model '{m['name']}'. "
-                f"Pipeline: {m.get('pipeline_tag') or 'general'}. "
-                f"Tags: {tags_str}. "
-                f"Downloads: {m.get('downloads', 0):,}."
-            )
-        models = claude_service.score_relevance(keyword, models)
-        models.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
-        models = models[:15]
-
-    if repos:
-        for r in repos:
-            r["title"] = r["name"]
-            r["abstract"] = r.get("description") or f"GitHub repository: {r['name']}."
-        repos = claude_service.score_relevance(keyword, repos)
-        repos.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
-        repos = repos[:15]
-
-    _progress("overview", "Generating topic overview…")
-
-    overview = claude_service.generate_overview(keyword, papers)
-
     thread = {
         "keyword": keyword,
-        "overview": overview,
-        "has_ai": bool(settings.ANTHROPIC_API_KEY),
         "papers": _serialize(papers),
         "models": _serialize(models),
         "repos": _serialize(repos),
@@ -175,7 +126,7 @@ def create_research_thread(
             thread_results=thread,
             date_range_start=start_date.isoformat() if start_date else None,
             date_range_end=end_date.isoformat() if end_date else None,
-            info_types=info_types,
+            info_types=["paper", "model", "repo"],
         )
     except Exception as exc:
         logger.warning("Failed to save search history: %s", exc)

@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from api.schemas import SearchRequest
-from services import thread_service
+from api.schemas import SearchRequest, SummarizeOverviewRequest, SummarizePaperRequest
+from config.settings import settings
+from services import claude_service, thread_service
 from utils.database import get_db
 
 router = APIRouter()
@@ -19,7 +20,6 @@ def search(body: SearchRequest, db: Session = Depends(get_db)):
         keyword=body.keyword,
         start_date=body.start_date,
         end_date=body.end_date,
-        info_types=body.info_types,
         user_id=body.user_id,
         db=db,
     )
@@ -27,7 +27,7 @@ def search(body: SearchRequest, db: Session = Depends(get_db)):
 
 @router.post("/search/stream")
 def search_stream(body: SearchRequest, db: Session = Depends(get_db)):
-    """SSE endpoint: streams stage progress events, then the full result as a final event."""
+    """SSE endpoint: streams source-completion events, then the full result."""
     progress_q: queue.Queue = queue.Queue()
     result_holder: list = [None]
     error_holder: list = [None]
@@ -41,7 +41,6 @@ def search_stream(body: SearchRequest, db: Session = Depends(get_db)):
                 keyword=body.keyword,
                 start_date=body.start_date,
                 end_date=body.end_date,
-                info_types=body.info_types,
                 user_id=body.user_id,
                 db=db,
                 on_progress=on_progress,
@@ -69,6 +68,25 @@ def search_stream(body: SearchRequest, db: Session = Depends(get_db)):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.post("/summarize/paper")
+def summarize_paper(body: SummarizePaperRequest):
+    """Return a one-sentence AI summary for a paper abstract."""
+    if not settings.ANTHROPIC_API_KEY:
+        return {"summary": None, "no_api_key": True}
+    summary = claude_service.summarize_paper(body.abstract)
+    return {"summary": summary, "no_api_key": False}
+
+
+@router.post("/summarize/overview")
+def summarize_overview(body: SummarizeOverviewRequest):
+    """Return a 2-sentence AI overview of the search topic."""
+    if not settings.ANTHROPIC_API_KEY:
+        return {"overview": None, "no_api_key": True}
+    papers_for_ctx = [{"title": t} for t in body.paper_titles]
+    overview = claude_service.generate_overview(body.keyword, papers_for_ctx)
+    return {"overview": overview, "no_api_key": False}
 
 
 @router.get("/search/history")

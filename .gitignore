@@ -19,9 +19,6 @@ env/
 dist/
 build/
 
-# ChromaDB local storage
-chroma_db/
-
 # Next.js / Node
 .next/
 node_modules/

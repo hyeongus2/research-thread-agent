@@ -8,6 +8,7 @@ class Settings:
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
     HF_API_TOKEN: str = os.getenv("HF_API_TOKEN", "")
+    SEMANTIC_SCHOLAR_API_KEY: str = os.getenv("SEMANTIC_SCHOLAR_API_KEY", "")
     RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
     USER_EMAIL: str = os.getenv("USER_EMAIL", "")
 

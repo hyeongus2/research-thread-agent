@@ -150,9 +150,6 @@ export default function Page() {
         <div style={{ height: '100dvh' }}>
           <Feed
             onSettings={() => setShowSettings(true)}
-            onPaperTap={setOpenPaper}
-            saved={saved}
-            onToggleSave={toggleSave}
             userId={userId}
           />
         </div>
