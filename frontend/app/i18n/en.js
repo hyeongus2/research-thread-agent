@@ -124,7 +124,7 @@ const en = {
     mcpTitle: 'Use it in Claude Code too',
     mcpDesc: 'The same backend is exposed as an MCP server. Ask Claude "what papers are trending today?" directly from chat.',
     searchLimits: 'SEARCH LIMITS',
-    searchLimitsDesc: 'Maximum results per source (1–100). Changes apply on the next search.',
+    searchLimitsDesc: 'Maximum results per source (0–100). Set to 0 to skip that source entirely.',
     papersLimit: 'Papers (Semantic Scholar)',
     modelsLimit: 'Models (Hugging Face)',
     reposLimit: 'Repos (GitHub)',

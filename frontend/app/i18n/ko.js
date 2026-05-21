@@ -124,7 +124,7 @@ const ko = {
     mcpTitle: 'Claude Code에서도 사용하기',
     mcpDesc: '동일한 백엔드가 MCP 서버로 노출되어 있어요. Claude에게 "오늘 트렌딩 논문이 뭐야?"라고 직접 물어보세요.',
     searchLimits: '검색 결과 수',
-    searchLimitsDesc: '소스별 최대 결과 수 (1–100). 다음 검색부터 적용됩니다.',
+    searchLimitsDesc: '소스별 최대 결과 수 (0–100). 0으로 설정하면 해당 소스를 건너뜁니다.',
     papersLimit: '논문 (Semantic Scholar)',
     modelsLimit: '모델 (Hugging Face)',
     reposLimit: '저장소 (GitHub)',

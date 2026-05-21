@@ -77,15 +77,23 @@ def create_research_thread(
 
     executor = ThreadPoolExecutor(max_workers=3)
     try:
-        futures = {
-            executor.submit(
+        futures = {}
+        if paper_limit > 0:
+            futures[executor.submit(
                 semantic_scholar_service.search_papers, keyword, start_date, end_date, paper_limit
-            ): "papers",
-            executor.submit(hf_service.search_models, keyword, start_date, model_limit): "models",
-            executor.submit(
+            )] = "papers"
+        else:
+            _progress("source_done", "papers:0")
+        if model_limit > 0:
+            futures[executor.submit(hf_service.search_models, keyword, start_date, model_limit)] = "models"
+        else:
+            _progress("source_done", "models:0")
+        if repo_limit > 0:
+            futures[executor.submit(
                 github_service.search_repositories, keyword, start_date, end_date, repo_limit
-            ): "repos",
-        }
+            )] = "repos"
+        else:
+            _progress("source_done", "repos:0")
         processed: set = set()
         try:
             for future in as_completed(futures, timeout=60):

@@ -26,7 +26,7 @@ export default function Settings({ onClose, userId }) {
   const [limits, setLimits] = useState(readLimits);
 
   const updateLimit = (key, raw) => {
-    const val = Math.max(1, Math.min(100, parseInt(raw, 10) || 1));
+    const val = Math.max(0, Math.min(100, parseInt(raw, 10) || 0));
     const next = { ...limits, [key]: val };
     setLimits(next);
     localStorage.setItem('search_limits', JSON.stringify(next));
@@ -189,7 +189,7 @@ export default function Settings({ onClose, userId }) {
               <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611' }}>{label}</span>
               <input
                 type="number"
-                min={1}
+                min={0}
                 max={100}
                 value={limits[key]}
                 onChange={e => updateLimit(key, e.target.value)}
