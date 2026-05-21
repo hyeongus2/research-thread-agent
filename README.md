@@ -35,12 +35,12 @@ Search across three sources simultaneously with a single keyword:
 - Claude-generated overview of the research landscape for your query
 - Every result includes a clickable link to the original source
 
-### Learning Path (In Development)
+### Learning Path
 Enter any research topic (e.g., *Retrieval-Augmented Generation*) and get:
-- Key papers from each era, ordered by historical development
-- Hugging Face models and datasets relevant to that period
-- GitHub implementations from the same time
-- Claude-generated summary explaining what changed and why
+- Key papers grouped into chronological eras (Before 2018 / 2018–2020 / 2021–2022 / 2023–2024 / 2025–2026 / …)
+- Claude-generated summary of what changed in each era
+- Hugging Face models and GitHub repos relevant to the topic
+- Results cached for 7 days so repeat lookups are instant
 
 ---
 
@@ -167,7 +167,15 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.3.4 (current)
+### v0.4.0 (current)
+- [x] Learning Path: era-based historical view of any research topic — BookOpen icon in feed header opens topic input
+- [x] Era bucketing: Before 2018 / 2018–2020 / 2021–2022 then 2-year pairs (2023–2024, 2025–2026, …); odd current year gets a single-year final bucket
+- [x] arXiv: Relevance sort for Learning Path to span multiple eras (vs SubmittedDate for Quick Search)
+- [x] Claude-generated per-era summaries + topic overview; graceful fallback without API key
+- [x] Learning Path results cached in SQLite for 7 days — instant on repeat lookups
+- [x] HF models + GitHub repos fetched once at topic level and shown in each era tab
+
+### v0.3.4
 - [x] Quick Search: result limits raised — fetch 20 per source, keep top 15 after Claude scoring (max 45 results total, up from 20)
 - [x] Fix overview showing static text when arXiv fails: always attempts Claude call so invalid key falls through to the API key registration prompt
 - [x] arXiv: 2 s pre-request sleep + longer retry delay (5 s) + 2 retries to reduce consecutive-search 429s
@@ -219,7 +227,7 @@ research-thread-agent/
 - [x] One-command setup and run scripts (Windows + Mac/Linux)
 
 ### Upcoming
-- [ ] Learning Path: Era-based historical topic exploration
+- [x] Learning Path: Era-based historical topic exploration
 - [ ] Notifications: Subscriptions, in-app alerts, email digest
 - [ ] Electron desktop packaging (no terminal required)
 - [ ] MCP server for Claude.ai chat integration

@@ -67,8 +67,30 @@ def search_papers_by_topic_all_years(
     topic: str,
     max_results: int = 100,
 ) -> list[dict]:
-    """Fetch all available papers for a topic without date filtering.
+    """Fetch papers for a topic without date filtering, sorted by relevance.
 
+    Uses Relevance sort (not SubmittedDate) so results span multiple eras
+    rather than clustering in the most recent months.
     Used by historical_thread_service to build era-grouped Learning Paths.
     """
-    return search_papers(topic, max_results=max_results)
+    time.sleep(2)
+    client = arxiv.Client(num_retries=2, delay_seconds=5.0)
+    search = arxiv.Search(
+        query=topic,
+        max_results=max_results,
+        sort_by=arxiv.SortCriterion.Relevance,
+    )
+    papers = []
+    for result in client.results(search):
+        papers.append({
+            "title": result.title,
+            "authors": [a.name for a in result.authors],
+            "abstract": result.summary,
+            "url": result.entry_id,
+            "pdf_url": result.pdf_url,
+            "published_date": result.published.date() if result.published else None,
+            "categories": result.categories,
+        })
+        time.sleep(settings.ARXIV_RATE_LIMIT_DELAY)
+    logger.info("arXiv all-years search '%s' returned %d papers", topic, len(papers))
+    return papers

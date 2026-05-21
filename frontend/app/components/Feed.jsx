@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Settings, Bell, ArrowUpRight, Search, X } from 'lucide-react';
+import { Settings, Bell, ArrowUpRight, Search, X, BookOpen } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import LearningPath from './LearningPath';
 
 const API = 'http://localhost:8000/api';
 
@@ -431,6 +432,9 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
   const { t, lang } = useLanguage();
   const tf = t.feed;
   const ts = t.search;
+  const tl = t.learningPath;
+
+  const [mode, setMode] = useState('search'); // 'search' | 'learning'
 
   const today = new Date();
   const dateLabel = today.toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' });
@@ -591,6 +595,10 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
 
   const inSearchMode = searchState !== 'idle';
 
+  if (mode === 'learning') {
+    return <LearningPath userId={userId} onBack={() => setMode('search')} />;
+  }
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#FAF7F2' }}>
 
@@ -624,6 +632,13 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setMode('learning')}
+            title={tl.tabBtn}
+            style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611', cursor: 'pointer' }}
+          >
+            <BookOpen size={18} />
+          </button>
           <button style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611' }}>
             <Bell size={18} />
           </button>
