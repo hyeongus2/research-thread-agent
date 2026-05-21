@@ -5,7 +5,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from services import arxiv_service, claude_service, database_service, github_service, hf_service
+from services import semantic_scholar_service, claude_service, database_service, github_service, hf_service
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -115,7 +115,7 @@ def build_learning_path(topic: str, db: Session) -> dict:
         return cached
 
     logger.info("Building learning path for topic '%s'", topic)
-    papers = arxiv_service.search_papers_by_topic_all_years(topic, max_results=100)
+    papers = semantic_scholar_service.search_papers(topic, limit=100)
     era_groups = group_papers_by_era(papers)
 
     # Fetch shared HF and GitHub results once (topic-level, not per-era)

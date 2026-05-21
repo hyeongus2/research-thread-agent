@@ -42,6 +42,7 @@ Search across three sources simultaneously with a single keyword:
 ### Learning Path
 Enter any research topic (e.g., *Retrieval-Augmented Generation*) and get:
 - Key papers grouped into chronological eras (Before 2018 / 2018–2020 / 2021–2022 / 2023–2024 / 2025–2026 / …)
+- Papers sourced from Semantic Scholar (citation-sorted), same as Quick Search
 - Claude-generated summary of what changed in each era
 - Hugging Face models and GitHub repos relevant to the topic
 - Results cached for 7 days so repeat lookups are instant
@@ -54,8 +55,8 @@ Enter any research topic (e.g., *Retrieval-Augmented Generation*) and get:
 |---|---|
 | Frontend | Next.js 15, React 18 (mobile-first PWA) |
 | Backend | FastAPI + uvicorn (Python, port 8000) |
-| AI | Claude API (`claude-sonnet-4-20250514`) — on-demand only |
-| Data sources | Semantic Scholar API, Hugging Face Hub API, GitHub REST API, arXiv API (Learning Path) |
+| AI | Claude API (`claude-sonnet-4-6`) — on-demand only |
+| Data sources | Semantic Scholar API (+ OpenAlex fallback), Hugging Face Hub API, GitHub REST API |
 | Storage | SQLite via SQLAlchemy |
 | Scheduler | APScheduler |
 
@@ -145,10 +146,9 @@ research-thread-agent/
 │   ├── schemas.py                     # Pydantic request/response models
 │   └── routes/                        # auth, search, learning, subscriptions, notifications
 ├── services/                          # Pure Python business logic
-│   ├── semantic_scholar_service.py    # Semantic Scholar paper search (citation-sorted)
+│   ├── semantic_scholar_service.py    # Semantic Scholar paper search (citation-sorted); OpenAlex fallback
 │   ├── hf_service.py                  # HF Hub model search (download-sorted)
 │   ├── github_service.py              # GitHub repo search (star-sorted)
-│   ├── arxiv_service.py               # arXiv — Learning Path only
 │   ├── claude_service.py              # On-demand AI summaries (overview + per-paper)
 │   ├── thread_service.py              # Quick Search orchestration
 │   └── historical_thread_service.py   # Learning Path orchestration
@@ -167,7 +167,7 @@ research-thread-agent/
 | Semantic Scholar | 100 req/5 min (no key) · 1 req/sec (with key) | Single request returns up to 100 papers |
 | GitHub | 5,000 req/hour (authenticated) | Requires `GITHUB_TOKEN` |
 | Hugging Face | Higher with token | `HF_API_TOKEN` recommended |
-| arXiv | 3 req/sec | Learning Path only; 0.34s delay between calls |
+| OpenAlex | 10 req/sec | Automatic fallback when Semantic Scholar is rate-limited |
 | Claude API | Per-token billing | On-demand only — never called automatically |
 
 ---
@@ -176,6 +176,8 @@ research-thread-agent/
 
 ### v0.5.0 (current)
 - [x] Quick Search: Semantic Scholar replaces arXiv as paper source (citation-count sorting)
+- [x] Learning Path: Semantic Scholar replaces arXiv (consistent source across both modes)
+- [x] OpenAlex automatic fallback when Semantic Scholar is rate-limited (no arXiv dependency)
 - [x] Papers / Models / Repos fully separated into tabs (not mixed list)
 - [x] Page number pagination with 10 / 25 / 50 per-page selector
 - [x] Paper cards: inline abstract expand/collapse, citation count + venue badge
@@ -188,7 +190,6 @@ research-thread-agent/
 ### v0.4.0
 - [x] Learning Path: era-based historical view of any research topic
 - [x] Era bucketing: Before 2018 / 2018–2020 / 2021–2022 then 2-year pairs; odd current year gets a single-year final bucket
-- [x] arXiv Relevance sort for Learning Path (vs SubmittedDate for Quick Search)
 - [x] Claude-generated per-era summaries + topic overview; graceful fallback without API key
 - [x] Learning Path results cached in SQLite for 7 days — instant on repeat lookups
 - [x] HF models + GitHub repos fetched once at topic level and shown in each era tab
