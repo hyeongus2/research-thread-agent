@@ -60,6 +60,10 @@ def search_papers(
             logger.warning("Semantic Scholar rate limited; retrying after 10 s")
             time.sleep(10)
             resp = requests.get(_BASE_URL, params=params, headers=headers, timeout=30)
+        if resp.status_code == 403 and "year" in params:
+            logger.warning("Semantic Scholar 403 with year=%s; retrying without date filter", params["year"])
+            params_no_year = {k: v for k, v in params.items() if k != "year"}
+            resp = requests.get(_BASE_URL, params=params_no_year, headers=headers, timeout=30)
         resp.raise_for_status()
         data = resp.json()
     except requests.RequestException as exc:

@@ -13,7 +13,7 @@ class Settings:
     USER_EMAIL: str = os.getenv("USER_EMAIL", "")
 
     DATABASE_URL: str = "sqlite:///data/research_thread.db"
-    CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
+    CLAUDE_MODEL: str = "claude-sonnet-4-6"
 
     # arXiv allows max 3 requests/second; 0.34s delay keeps us safely under
     ARXIV_RATE_LIMIT_DELAY: float = 0.34

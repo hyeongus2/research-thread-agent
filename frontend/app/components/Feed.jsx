@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Settings, Bell, ArrowUpRight, Search, X, BookOpen, ChevronUp, ChevronDown } from 'lucide-react';
+import { Settings, Bell, ArrowUpRight, Search, X, BookOpen, ChevronUp, ChevronDown, Home } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import LearningPath from './LearningPath';
 
@@ -44,16 +44,12 @@ function getPeriodDates(period, nMonths, customFrom, customTo) {
   };
 }
 
-// =============================================================================
-// Pagination helper
-// =============================================================================
 function getPageNumbers(page, totalPages) {
   if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
   const result = [];
   const delta = 1;
   const left = Math.max(2, page - delta);
   const right = Math.min(totalPages - 1, page + delta);
-
   result.push(1);
   if (left > 2) result.push('…');
   for (let i = left; i <= right; i++) result.push(i);
@@ -108,14 +104,12 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
       borderRadius: 4,
       overflow: 'hidden',
     }}>
-      {/* Clickable card body */}
       <a
         href={url}
         target="_blank"
         rel="noreferrer"
         style={{ display: 'block', padding: '18px 20px 14px', textDecoration: 'none', color: '#1A1611' }}
       >
-        {/* Top row: type badge + citation badge + arrow */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{
@@ -127,10 +121,7 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
               {typeLabel}
             </span>
             {badge && (
-              <span style={{
-                fontFamily: "'Geist', sans-serif", fontSize: 11,
-                color: '#6B6358', fontWeight: 500,
-              }}>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontWeight: 500 }}>
                 {badge}
               </span>
             )}
@@ -138,7 +129,6 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
           <ArrowUpRight size={14} style={{ color: '#6B6358', flexShrink: 0 }} />
         </div>
 
-        {/* Title */}
         <h3 style={{
           fontFamily: "'Fraunces', serif",
           fontSize: 17, lineHeight: 1.25, fontWeight: 500,
@@ -147,7 +137,6 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
           {title}
         </h3>
 
-        {/* Abstract (papers only) */}
         {type === 'paper' && abstract && (
           <p style={{
             fontFamily: "'Geist', sans-serif",
@@ -162,8 +151,7 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
           </p>
         )}
 
-        {/* Model / repo description */}
-        {type !== 'paper' && (item.description) && (
+        {type !== 'paper' && item.description && (
           <p style={{
             fontFamily: "'Geist', sans-serif",
             fontSize: 12, lineHeight: 1.5, color: '#3A342B',
@@ -177,7 +165,6 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
           </p>
         )}
 
-        {/* Meta */}
         {meta && (
           <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>
             {meta}
@@ -185,7 +172,6 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
         )}
       </a>
 
-      {/* Card footer: expand toggle + AI summary button */}
       {(needsToggle || type === 'paper') && (
         <div style={{
           borderTop: '1px solid #F0EBE2',
@@ -195,7 +181,6 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
           justifyContent: 'space-between',
           gap: 8,
         }}>
-          {/* Abstract toggle */}
           {needsToggle ? (
             <button
               onClick={() => setExpanded(v => !v)}
@@ -209,7 +194,6 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
             </button>
           ) : <span />}
 
-          {/* AI 요약 button */}
           {type === 'paper' && abstract && (
             summary ? (
               <p style={{
@@ -220,10 +204,7 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
                 {summary}
               </p>
             ) : summaryLoading ? (
-              <span style={{
-                fontFamily: "'Geist', sans-serif", fontSize: 11,
-                color: '#6B6358', fontStyle: 'italic',
-              }}>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>
                 {ts.aiLoading}
               </span>
             ) : (
@@ -252,7 +233,7 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
 }
 
 // =============================================================================
-// Tab bar
+// Tab bar — each tab uses its own color when active
 // =============================================================================
 function TabBar({ activeTab, counts, onTab, perPage, onPerPage, ts }) {
   const tabs = ['paper', 'model', 'repo'];
@@ -265,20 +246,20 @@ function TabBar({ activeTab, counts, onTab, perPage, onPerPage, ts }) {
       gap: 8,
       flexWrap: 'wrap',
     }}>
-      {/* Tabs */}
       <div style={{ display: 'flex', gap: 4 }}>
         {tabs.map(tab => {
           const active = activeTab === tab;
           const count = counts[tab] ?? 0;
+          const colors = TYPE_COLORS[tab];
           return (
             <button
               key={tab}
               onClick={() => onTab(tab)}
               style={{
                 padding: '6px 12px',
-                background: active ? '#1A1611' : 'transparent',
+                background: active ? colors.fg : 'transparent',
                 color: active ? '#FAF7F2' : '#6B6358',
-                border: '1px solid ' + (active ? '#1A1611' : '#D8D0BE'),
+                border: '1px solid ' + (active ? colors.fg : '#D8D0BE'),
                 borderRadius: 4,
                 fontFamily: "'Geist', sans-serif",
                 fontSize: 12,
@@ -292,7 +273,7 @@ function TabBar({ activeTab, counts, onTab, perPage, onPerPage, ts }) {
               {count > 0 && (
                 <span style={{
                   marginLeft: 5,
-                  background: active ? 'rgba(255,255,255,0.2)' : '#E8E2D5',
+                  background: active ? 'rgba(255,255,255,0.25)' : '#E8E2D5',
                   color: active ? '#FAF7F2' : '#6B6358',
                   borderRadius: 10,
                   padding: '0 5px',
@@ -307,7 +288,6 @@ function TabBar({ activeTab, counts, onTab, perPage, onPerPage, ts }) {
         })}
       </div>
 
-      {/* Per-page selector */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         {[10, 25, 50].map(n => (
           <button
@@ -342,64 +322,33 @@ function TabBar({ activeTab, counts, onTab, perPage, onPerPage, ts }) {
 function Pagination({ page, totalPages, onPage }) {
   if (totalPages <= 1) return null;
   const pages = getPageNumbers(page, totalPages);
-
   return (
     <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 4,
-      padding: '16px 0 8px',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      gap: 4, padding: '16px 0 8px',
     }}>
-      <button
-        onClick={() => onPage(page - 1)}
-        disabled={page === 1}
-        style={pageBtn(false, page === 1)}
-      >
-        ‹
-      </button>
+      <button onClick={() => onPage(page - 1)} disabled={page === 1} style={pageBtn(false, page === 1)}>‹</button>
       {pages.map((p, i) =>
         p === '…' ? (
-          <span key={`dot-${i}`} style={{
-            padding: '0 6px',
-            fontFamily: "'Geist', sans-serif",
-            fontSize: 12, color: '#9B9185',
-          }}>
-            …
-          </span>
+          <span key={`dot-${i}`} style={{ padding: '0 6px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185' }}>…</span>
         ) : (
-          <button
-            key={p}
-            onClick={() => onPage(p)}
-            style={pageBtn(p === page, false)}
-          >
-            {p}
-          </button>
+          <button key={p} onClick={() => onPage(p)} style={pageBtn(p === page, false)}>{p}</button>
         )
       )}
-      <button
-        onClick={() => onPage(page + 1)}
-        disabled={page === totalPages}
-        style={pageBtn(false, page === totalPages)}
-      >
-        ›
-      </button>
+      <button onClick={() => onPage(page + 1)} disabled={page === totalPages} style={pageBtn(false, page === totalPages)}>›</button>
     </div>
   );
 }
 
 function pageBtn(active, disabled) {
   return {
-    minWidth: 32, height: 32,
-    padding: '0 8px',
+    minWidth: 32, height: 32, padding: '0 8px',
     background: active ? '#1A1611' : 'transparent',
     color: disabled ? '#C8C0B0' : active ? '#FAF7F2' : '#6B6358',
     border: '1px solid ' + (active ? '#1A1611' : disabled ? '#E8E2D5' : '#D8D0BE'),
     borderRadius: 4,
-    fontFamily: "'Geist', sans-serif",
-    fontSize: 12,
-    cursor: disabled ? 'default' : 'pointer',
-    transition: 'all 0.15s',
+    fontFamily: "'Geist', sans-serif", fontSize: 12,
+    cursor: disabled ? 'default' : 'pointer', transition: 'all 0.15s',
   };
 }
 
@@ -446,7 +395,7 @@ function SourceErrorBanner({ sourceErrors, lang }) {
 }
 
 // =============================================================================
-// Loading progress (simplified: source badges + elapsed)
+// Loading progress
 // =============================================================================
 const SOURCE_META = [
   { key: 'papers', label: 'Semantic Scholar' },
@@ -489,18 +438,13 @@ function SearchProgress({ lang, elapsed, sourceStatus }) {
                 {label}
               </span>
               {isDone && raw > 0 && (
-                <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 9, color: '#9B9185' }}>
-                  {raw}
-                </span>
+                <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 9, color: '#9B9185' }}>{raw}</span>
               )}
             </div>
           );
         })}
       </div>
-      <div style={{
-        textAlign: 'center', fontFamily: "'Geist Mono', monospace",
-        fontSize: 11, color: '#6B6358',
-      }}>
+      <div style={{ textAlign: 'center', fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#6B6358' }}>
         {elapsed}s
       </div>
     </div>
@@ -508,12 +452,15 @@ function SearchProgress({ lang, elapsed, sourceStatus }) {
 }
 
 // =============================================================================
-// Empty state
+// Empty search state (shown in search tab before any search)
 // =============================================================================
-function EmptyFeed({ onSuggestionClick }) {
+function EmptySearch({ onSuggestionClick }) {
   const { t } = useLanguage();
   const tf = t.feed;
-  const suggestions = ['reasoning', 'multimodal agent', 'LoRA', 'RAG', 'MoE', 'RLHF'];
+  const suggestions = [
+    'chain-of-thought', 'vision-language model', 'LoRA',
+    'KV cache', 'speculative decoding', 'test-time compute',
+  ];
   return (
     <div style={{ padding: '48px 8px 0', textAlign: 'center' }}>
       <div style={{ fontSize: 36, marginBottom: 20 }}>🔍</div>
@@ -551,6 +498,117 @@ function EmptyFeed({ onSuggestionClick }) {
 }
 
 // =============================================================================
+// Feed view (interest feed placeholder)
+// =============================================================================
+function FeedView({ onQuickSearch, t }) {
+  const tf = t.feed;
+  const trendingTopics = [
+    'chain-of-thought', 'vision-language model', 'LoRA',
+    'KV cache', 'speculative decoding', 'test-time compute',
+    'MoE', 'DPO',
+  ];
+  return (
+    <div style={{ padding: '20px 0 16px' }}>
+      <div style={{
+        fontFamily: "'Geist', sans-serif", fontSize: 10,
+        color: '#6B6358', letterSpacing: '0.15em', marginBottom: 12,
+      }}>
+        {tf.trendingLabel}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 32 }}>
+        {trendingTopics.map(kw => (
+          <button
+            key={kw}
+            onClick={() => onQuickSearch(kw)}
+            style={{
+              padding: '7px 14px',
+              background: '#FFFFFF',
+              border: '1px solid #D8D0BE',
+              borderRadius: 20,
+              fontFamily: "'Geist', sans-serif",
+              fontSize: 12,
+              color: '#3A342B',
+              cursor: 'pointer',
+            }}
+          >
+            {kw}
+          </button>
+        ))}
+      </div>
+
+      <div style={{
+        padding: '24px 20px',
+        background: '#FFFFFF',
+        border: '1px solid #E8E2D5',
+        borderRadius: 4,
+        textAlign: 'center',
+      }}>
+        <div style={{
+          fontFamily: "'Geist', sans-serif", fontSize: 10,
+          color: '#6B6358', letterSpacing: '0.15em', marginBottom: 12,
+        }}>
+          {tf.subscribeLabel}
+        </div>
+        <p style={{
+          fontFamily: "'Geist', sans-serif", fontSize: 13,
+          color: '#6B6358', lineHeight: 1.6, margin: 0, fontStyle: 'italic',
+        }}>
+          {tf.comingSoon}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Bottom navigation bar
+// =============================================================================
+function BottomNav({ view, onView, t }) {
+  const tf = t.feed;
+  return (
+    <div style={{
+      borderTop: '1px solid #E8E2D5',
+      background: '#FAF7F2',
+      display: 'flex',
+      height: 56,
+      flexShrink: 0,
+    }}>
+      {[
+        { key: 'feed', label: tf.navFeed, IconEl: Home },
+        { key: 'search', label: tf.navSearch, IconEl: Search },
+      ].map(({ key, label, IconEl }) => {
+        const active = view === key;
+        return (
+          <button
+            key={key}
+            onClick={() => onView(key)}
+            style={{
+              flex: 1,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              gap: 4,
+              background: 'none', border: 'none',
+              cursor: 'pointer',
+              color: active ? '#1A1611' : '#9B9185',
+              transition: 'color 0.15s',
+            }}
+          >
+            <IconEl size={18} />
+            <span style={{
+              fontFamily: "'Geist', sans-serif",
+              fontSize: 10,
+              fontWeight: active ? 600 : 400,
+            }}>
+              {label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// =============================================================================
 // Feed main
 // =============================================================================
 export default function Feed({ onSettings, userId }) {
@@ -559,7 +617,8 @@ export default function Feed({ onSettings, userId }) {
   const ts = t.search;
   const tl = t.learningPath;
 
-  const [mode, setMode] = useState('search');
+  const [mode, setMode] = useState('main'); // 'main' | 'learning'
+  const [view, setView] = useState('feed'); // 'feed' | 'search'
 
   const today = new Date();
   const dateLabel = today.toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' });
@@ -583,12 +642,13 @@ export default function Feed({ onSettings, userId }) {
   // Tab / pagination
   const [activeTab, setActiveTab] = useState('paper');
   const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(25);
+  const [perPage, setPerPage] = useState(10);
 
   // AI overview
   const [overviewText, setOverviewText] = useState(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [overviewNoKey, setOverviewNoKey] = useState(false);
+  const [overviewError, setOverviewError] = useState(false);
 
   // Per-paper AI summary
   const [paperSummaries, setPaperSummaries] = useState({});
@@ -631,6 +691,7 @@ export default function Feed({ onSettings, userId }) {
     setOverviewText(null);
     setOverviewLoading(false);
     setOverviewNoKey(false);
+    setOverviewError(false);
     setPaperSummaries({});
     setSummaryLoading({});
     if (elapsedRef.current) clearInterval(elapsedRef.current);
@@ -739,7 +800,7 @@ export default function Feed({ onSettings, userId }) {
 
   // ── AI overview ───────────────────────────────────────────────────────────
   const fetchOverview = async () => {
-    if (overviewLoading || overviewText) return;
+    if (overviewLoading || overviewText || overviewError) return;
     setOverviewLoading(true);
     try {
       const titles = (searchResults?.papers || []).slice(0, 10).map(p => p.title);
@@ -751,10 +812,14 @@ export default function Feed({ onSettings, userId }) {
       const data = await res.json();
       if (data.no_api_key) {
         setOverviewNoKey(true);
+      } else if (data.overview) {
+        setOverviewText(data.overview);
       } else {
-        setOverviewText(data.overview || null);
+        setOverviewError(true);
       }
-    } catch {}
+    } catch {
+      setOverviewError(true);
+    }
     setOverviewLoading(false);
   };
 
@@ -781,8 +846,16 @@ export default function Feed({ onSettings, userId }) {
   const scrollToTop    = () => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   const scrollToBottom = () => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
 
+  // ── Switch to search view and run suggestion ──────────────────────────────
+  const handleQuickSearch = (kw) => {
+    setView('search');
+    setKeywords([]);
+    setQuery('');
+    runSearch([], kw);
+  };
+
   if (mode === 'learning') {
-    return <LearningPath userId={userId} onBack={() => setMode('search')} />;
+    return <LearningPath userId={userId} onBack={() => setMode('main')} />;
   }
 
   return (
@@ -816,275 +889,261 @@ export default function Feed({ onSettings, userId }) {
         </div>
       </div>
 
-      {/* Search bar */}
-      <div style={{ padding: '14px 16px 0', background: '#FAF7F2' }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-          <div style={{
-            flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6,
-            background: '#FFFFFF', border: '1px solid #D8D0BE', borderRadius: 4,
-            padding: '6px 10px', minHeight: 40,
-          }}>
-            <Search size={14} style={{ color: '#6B6358', flexShrink: 0 }} />
-            {keywords.map(kw => (
-              <span key={kw} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                background: '#1A1611', color: '#FAF7F2',
-                padding: '2px 8px', borderRadius: 12,
-                fontFamily: "'Geist', sans-serif", fontSize: 11, fontWeight: 500,
-              }}>
-                {kw}
-                <button
-                  onClick={() => setKeywords(prev => prev.filter(k => k !== kw))}
-                  style={{ background: 'none', border: 'none', padding: 0, color: '#FAF7F2', cursor: 'pointer', lineHeight: 0 }}
-                >
-                  <X size={10} />
-                </button>
-              </span>
-            ))}
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={keywords.length === 0 ? ts.placeholder : '+ add keyword...'}
-              style={{
-                flex: 1, minWidth: 80, border: 'none', outline: 'none', background: 'transparent',
-                fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', padding: '2px 0',
-              }}
-            />
-            {(query || keywords.length > 0) && (
-              <button onClick={handleClear} style={{ background: 'none', border: 'none', padding: 2, color: '#6B6358', lineHeight: 0 }}>
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          <button
-            onClick={handleSearchClick}
-            disabled={(!query.trim() && keywords.length === 0) || searchState === 'loading'}
-            style={{
-              padding: '0 16px',
-              background: (query.trim() || keywords.length > 0) ? '#1A1611' : '#D8D0BE',
-              color: '#FAF7F2', border: 'none', borderRadius: 4,
-              fontFamily: "'Geist', sans-serif", fontSize: 13, fontWeight: 500,
-              cursor: (query.trim() || keywords.length > 0) ? 'pointer' : 'default',
-              transition: 'background 0.15s', whiteSpace: 'nowrap',
-            }}
-          >
-            {ts.searchBtn}
-          </button>
-        </div>
-
-        {/* Period pills */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2 }}>
-          {['week', 'month', 'threeMonths', 'lastNMonths', 'custom', 'all'].map(p => (
-            <button key={p} onClick={() => setPeriod(p)} style={{
-              padding: '5px 10px',
-              background: period === p ? '#1A1611' : 'transparent',
-              color: period === p ? '#FAF7F2' : '#6B6358',
-              border: '1px solid ' + (period === p ? '#1A1611' : '#D8D0BE'),
-              borderRadius: 20, fontFamily: "'Geist', sans-serif", fontSize: 11,
-              fontWeight: period === p ? 600 : 400, whiteSpace: 'nowrap',
-              cursor: 'pointer', transition: 'all 0.15s',
+      {/* Search bar — only in search view */}
+      {view === 'search' && (
+        <div style={{ padding: '14px 16px 0', background: '#FAF7F2' }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{
+              flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6,
+              background: '#FFFFFF', border: '1px solid #D8D0BE', borderRadius: 4,
+              padding: '6px 10px', minHeight: 40,
             }}>
-              {ts.periods[p]}
-            </button>
-          ))}
-        </div>
-
-        {period === 'lastNMonths' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>
-              {ts.fromLabel.toLowerCase()}
-            </span>
-            <input
-              type="number" min={1} max={60} value={nMonths}
-              onChange={e => setNMonths(Math.max(1, Math.min(60, Number(e.target.value))))}
-              style={nMonthsInputStyle}
-            />
-            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>
-              {ts.nMonthsLabel}
-            </span>
-          </div>
-        )}
-
-        {period === 'custom' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.fromLabel}</span>
-            <input type="month" value={customFrom} max={customTo} onChange={e => setCustomFrom(e.target.value)} style={monthInputStyle} />
-            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>–</span>
-            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.toLabel}</span>
-            <input type="month" value={customTo} min={customFrom} onChange={e => setCustomTo(e.target.value)} style={monthInputStyle} />
-          </div>
-        )}
-      </div>
-
-      {/* Content area with scroll buttons */}
-      <div style={{ position: 'relative', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div
-          ref={scrollRef}
-          style={{ flex: 1, overflowY: 'auto', padding: '0 16px 80px', background: '#FAF7F2' }}
-        >
-          {/* ── Empty state ── */}
-          {searchState === 'idle' && <EmptyFeed onSuggestionClick={handleSuggestion} />}
-
-          {/* ── Loading ── */}
-          {searchState === 'loading' && (
-            <SearchProgress lang={lang} elapsed={elapsed} sourceStatus={sourceStatus} />
-          )}
-
-          {/* ── Results ── */}
-          {searchState === 'done' && (
-            <>
-              {/* Back to feed */}
-              <button onClick={handleClear} style={{
-                background: 'none', border: 'none', padding: '8px 4px 4px',
-                fontFamily: "'Geist', sans-serif", fontSize: 12,
-                color: '#6B6358', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-              }}>
-                ← {ts.backToFeed}
-              </button>
-
-              <SourceErrorBanner sourceErrors={sourceErrors} lang={lang} />
-
-              {/* AI Overview section */}
-              <div style={{
-                margin: '4px 0 16px',
-                padding: '12px 16px',
-                background: '#FFFFFF',
-                borderLeft: '3px solid #C84B31',
-                borderRadius: '0 4px 4px 0',
-              }}>
-                <div style={{
-                  fontFamily: "'Geist', sans-serif", fontSize: 10,
-                  color: '#6B6358', letterSpacing: '0.15em', marginBottom: 8,
+              <Search size={14} style={{ color: '#6B6358', flexShrink: 0 }} />
+              {keywords.map(kw => (
+                <span key={kw} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  background: '#1A1611', color: '#FAF7F2',
+                  padding: '2px 8px', borderRadius: 12,
+                  fontFamily: "'Geist', sans-serif", fontSize: 11, fontWeight: 500,
                 }}>
-                  OVERVIEW
-                </div>
-                {overviewText ? (
-                  <p style={{
-                    fontFamily: "'Geist', sans-serif", fontSize: 13,
-                    color: '#1A1611', lineHeight: 1.6, margin: 0,
-                  }}>
-                    {overviewText}
-                  </p>
-                ) : overviewNoKey ? (
-                  <p style={{
-                    fontFamily: "'Geist', sans-serif", fontSize: 12,
-                    color: '#6B6358', lineHeight: 1.6, margin: 0, fontStyle: 'italic',
-                  }}>
-                    {ts.noApiKeyOverview}
-                  </p>
-                ) : overviewLoading ? (
-                  <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', fontStyle: 'italic', margin: 0 }}>
-                    {ts.aiLoading}
-                  </p>
-                ) : (
+                  {kw}
                   <button
-                    onClick={fetchOverview}
-                    style={{
-                      background: 'none',
-                      border: '1px solid #D8D0BE',
-                      borderRadius: 3,
-                      padding: '5px 12px',
-                      fontFamily: "'Geist', sans-serif",
-                      fontSize: 12, color: '#6B6358', cursor: 'pointer',
-                    }}
+                    onClick={() => setKeywords(prev => prev.filter(k => k !== kw))}
+                    style={{ background: 'none', border: 'none', padding: 0, color: '#FAF7F2', cursor: 'pointer', lineHeight: 0 }}
                   >
-                    {ts.aiOverviewBtn}
+                    <X size={10} />
                   </button>
-                )}
-              </div>
-
-              {/* Tab bar + per-page selector */}
-              <TabBar
-                activeTab={activeTab}
-                counts={tabCounts}
-                onTab={handleTab}
-                perPage={perPage}
-                onPerPage={handlePerPage}
-                ts={ts}
+                </span>
+              ))}
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={keywords.length === 0 ? ts.placeholder : '+ add keyword...'}
+                style={{
+                  flex: 1, minWidth: 80, border: 'none', outline: 'none', background: 'transparent',
+                  fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', padding: '2px 0',
+                }}
               />
-
-              {/* Result count for current tab */}
-              <div style={{
-                fontFamily: "'Geist', sans-serif", fontSize: 11,
-                color: '#9B9185', marginBottom: 10, padding: '0 2px',
-              }}>
-                {ts.resultsFor(tabItems.length, searchResults?.keyword || '')}
-              </div>
-
-              {/* Cards */}
-              {pageItems.length === 0 ? (
-                <div style={{ padding: '40px 24px', textAlign: 'center' }}>
-                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#1A1611', fontStyle: 'italic' }}>
-                    {ts.noResults(searchResults?.keyword || '')}
-                  </div>
-                </div>
-              ) : (
-                pageItems.map((item, i) => {
-                  const title = item.title || item.name || '';
-                  return (
-                    <ResultCard
-                      key={`${activeTab}-${pageStart + i}`}
-                      item={item}
-                      type={activeTab}
-                      summary={paperSummaries[title]}
-                      summaryLoading={!!summaryLoading[title]}
-                      onSummarize={() => fetchPaperSummary(title, item.abstract)}
-                    />
-                  );
-                })
+              {(query || keywords.length > 0) && (
+                <button onClick={handleClear} style={{ background: 'none', border: 'none', padding: 2, color: '#6B6358', lineHeight: 0 }}>
+                  <X size={14} />
+                </button>
               )}
+            </div>
+            <button
+              onClick={handleSearchClick}
+              disabled={(!query.trim() && keywords.length === 0) || searchState === 'loading'}
+              style={{
+                padding: '0 16px',
+                background: (query.trim() || keywords.length > 0) ? '#1A1611' : '#D8D0BE',
+                color: '#FAF7F2', border: 'none', borderRadius: 4,
+                fontFamily: "'Geist', sans-serif", fontSize: 13, fontWeight: 500,
+                cursor: (query.trim() || keywords.length > 0) ? 'pointer' : 'default',
+                transition: 'background 0.15s', whiteSpace: 'nowrap',
+              }}
+            >
+              {ts.searchBtn}
+            </button>
+          </div>
 
-              {/* Pagination */}
-              <Pagination page={page} totalPages={totalPages} onPage={setPage} />
-            </>
+          {/* Period pills */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2 }}>
+            {['week', 'month', 'threeMonths', 'lastNMonths', 'custom', 'all'].map(p => (
+              <button key={p} onClick={() => setPeriod(p)} style={{
+                padding: '5px 10px',
+                background: period === p ? '#1A1611' : 'transparent',
+                color: period === p ? '#FAF7F2' : '#6B6358',
+                border: '1px solid ' + (period === p ? '#1A1611' : '#D8D0BE'),
+                borderRadius: 20, fontFamily: "'Geist', sans-serif", fontSize: 11,
+                fontWeight: period === p ? 600 : 400, whiteSpace: 'nowrap',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}>
+                {ts.periods[p]}
+              </button>
+            ))}
+          </div>
+
+          {period === 'lastNMonths' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>
+                {ts.fromLabel.toLowerCase()}
+              </span>
+              <input
+                type="number" min={1} max={60} value={nMonths}
+                onChange={e => setNMonths(Math.max(1, Math.min(60, Number(e.target.value))))}
+                style={nMonthsInputStyle}
+              />
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>
+                {ts.nMonthsLabel}
+              </span>
+            </div>
           )}
 
-          {/* ── Error ── */}
-          {searchState === 'error' && (
-            <div style={{ padding: '40px 24px', textAlign: 'center' }}>
-              <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#C84B31', fontStyle: 'italic', marginBottom: 12 }}>
-                {ts.searchError}
-              </div>
-              <button onClick={handleClear} style={{
-                background: 'none', border: '1px solid #D8D0BE', padding: '8px 16px',
-                fontFamily: "'Geist', sans-serif", fontSize: 12,
-                color: '#6B6358', cursor: 'pointer', borderRadius: 4,
-              }}>
-                ← {ts.backToFeed}
-              </button>
+          {period === 'custom' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.fromLabel}</span>
+              <input type="month" value={customFrom} max={customTo} onChange={e => setCustomFrom(e.target.value)} style={monthInputStyle} />
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>–</span>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.toLabel}</span>
+              <input type="month" value={customTo} min={customFrom} onChange={e => setCustomTo(e.target.value)} style={monthInputStyle} />
             </div>
           )}
         </div>
+      )}
 
-        {/* Scroll navigation buttons */}
-        {(searchState === 'done' || searchState === 'idle') && (
-          <div style={{
-            position: 'absolute',
-            bottom: 90,
-            right: 16,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            zIndex: 10,
-          }}>
-            <button
-              onClick={scrollToTop}
-              title={ts.scrollTop}
-              style={scrollBtnStyle}
-            >
-              <ChevronUp size={14} />
-            </button>
-            <button
-              onClick={scrollToBottom}
-              title={ts.scrollBottom}
-              style={scrollBtnStyle}
-            >
-              <ChevronDown size={14} />
-            </button>
-          </div>
-        )}
+      {/* Content area */}
+      <div style={{ position: 'relative', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <div
+          ref={scrollRef}
+          style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px', background: '#FAF7F2' }}
+        >
+          {/* ── Feed view ── */}
+          {view === 'feed' && (
+            <FeedView onQuickSearch={handleQuickSearch} t={t} />
+          )}
+
+          {/* ── Search view ── */}
+          {view === 'search' && (
+            <>
+              {searchState === 'idle' && <EmptySearch onSuggestionClick={handleSuggestion} />}
+
+              {searchState === 'loading' && (
+                <SearchProgress lang={lang} elapsed={elapsed} sourceStatus={sourceStatus} />
+              )}
+
+              {searchState === 'done' && (
+                <>
+                  <button onClick={handleClear} style={{
+                    background: 'none', border: 'none', padding: '8px 4px 4px',
+                    fontFamily: "'Geist', sans-serif", fontSize: 12,
+                    color: '#6B6358', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                    ← {ts.backToFeed}
+                  </button>
+
+                  <SourceErrorBanner sourceErrors={sourceErrors} lang={lang} />
+
+                  {/* AI Overview */}
+                  <div style={{
+                    margin: '4px 0 16px', padding: '12px 16px',
+                    background: '#FFFFFF', borderLeft: '3px solid #C84B31',
+                    borderRadius: '0 4px 4px 0',
+                  }}>
+                    <div style={{
+                      fontFamily: "'Geist', sans-serif", fontSize: 10,
+                      color: '#6B6358', letterSpacing: '0.15em', marginBottom: 8,
+                    }}>
+                      OVERVIEW
+                    </div>
+                    {overviewText ? (
+                      <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', lineHeight: 1.6, margin: 0 }}>
+                        {overviewText}
+                      </p>
+                    ) : overviewNoKey ? (
+                      <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
+                        {ts.noApiKeyOverview}
+                      </p>
+                    ) : overviewError ? (
+                      <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#C84B31', lineHeight: 1.6, margin: 0 }}>
+                        {ts.overviewError}
+                      </p>
+                    ) : overviewLoading ? (
+                      <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', fontStyle: 'italic', margin: 0 }}>
+                        {ts.aiLoading}
+                      </p>
+                    ) : (
+                      <button
+                        onClick={fetchOverview}
+                        style={{
+                          background: 'none', border: '1px solid #D8D0BE', borderRadius: 3,
+                          padding: '5px 12px', fontFamily: "'Geist', sans-serif",
+                          fontSize: 12, color: '#6B6358', cursor: 'pointer',
+                        }}
+                      >
+                        {ts.aiOverviewBtn}
+                      </button>
+                    )}
+                  </div>
+
+                  <TabBar
+                    activeTab={activeTab}
+                    counts={tabCounts}
+                    onTab={handleTab}
+                    perPage={perPage}
+                    onPerPage={handlePerPage}
+                    ts={ts}
+                  />
+
+                  <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', marginBottom: 10, padding: '0 2px' }}>
+                    {ts.resultsFor(tabItems.length, searchResults?.keyword || '')}
+                  </div>
+
+                  {pageItems.length === 0 ? (
+                    <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+                      <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#1A1611', fontStyle: 'italic' }}>
+                        {ts.noResults(searchResults?.keyword || '')}
+                      </div>
+                    </div>
+                  ) : (
+                    pageItems.map((item, i) => {
+                      const title = item.title || item.name || '';
+                      return (
+                        <ResultCard
+                          key={`${activeTab}-${pageStart + i}`}
+                          item={item}
+                          type={activeTab}
+                          summary={paperSummaries[title]}
+                          summaryLoading={!!summaryLoading[title]}
+                          onSummarize={() => fetchPaperSummary(title, item.abstract)}
+                        />
+                      );
+                    })
+                  )}
+
+                  <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+                </>
+              )}
+
+              {searchState === 'error' && (
+                <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#C84B31', fontStyle: 'italic', marginBottom: 12 }}>
+                    {ts.searchError}
+                  </div>
+                  <button onClick={handleClear} style={{
+                    background: 'none', border: '1px solid #D8D0BE', padding: '8px 16px',
+                    fontFamily: "'Geist', sans-serif", fontSize: 12,
+                    color: '#6B6358', cursor: 'pointer', borderRadius: 4,
+                  }}>
+                    ← {ts.backToFeed}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Scroll buttons — fixed position, outside the app frame to the right */}
+      <div style={{
+        position: 'fixed',
+        right: 8,
+        bottom: 68,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        zIndex: 20,
+      }}>
+        <button onClick={scrollToTop} title={ts.scrollTop} style={scrollBtnStyle}>
+          <ChevronUp size={14} />
+        </button>
+        <button onClick={scrollToBottom} title={ts.scrollBottom} style={scrollBtnStyle}>
+          <ChevronDown size={14} />
+        </button>
+      </div>
+
+      {/* Bottom navigation */}
+      <BottomNav view={view} onView={setView} t={t} />
     </div>
   );
 }
