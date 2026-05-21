@@ -1,0 +1,29 @@
+# Claude Code guidance (local only)
+CLAUDE.md
+
+# Environment variables
+.env
+
+# Database
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# ChromaDB local storage
+chroma_db/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS
+.DS_Store
+Thumbs.db
