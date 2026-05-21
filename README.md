@@ -167,7 +167,13 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.3.3 (current)
+### v0.3.4 (current)
+- [x] Quick Search: result limits raised — fetch 20 per source, keep top 15 after Claude scoring (max 45 results total, up from 20)
+- [x] Fix overview showing static text when arXiv fails: always attempts Claude call so invalid key falls through to the API key registration prompt
+- [x] arXiv: 2 s pre-request sleep + longer retry delay (5 s) + 2 retries to reduce consecutive-search 429s
+- [x] Search timeout raised from 45 s to 60 s to accommodate larger result sets
+
+### v0.3.3
 - [x] Browser tab favicon: `frontend/app/favicon.ico`
 - [x] Quick Search: loading progress now driven by real SSE events from the backend (fetching → scoring → overview), replacing the time-estimate approximation
 - [x] Quick Search: per-source completion badges shown in real time (arXiv ✓, Hugging Face ✓, GitHub ✓) as each source finishes
