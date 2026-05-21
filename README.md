@@ -47,40 +47,71 @@ Enter any research topic (e.g., *Retrieval-Augmented Generation*) and get:
 ### Prerequisites
 
 - Python 3.9+
-- An [Anthropic API key](https://console.anthropic.com)
-- A [GitHub personal access token](https://github.com/settings/tokens)
+- A [GitHub personal access token](https://github.com/settings/tokens) (free, no special scopes needed)
+- An [Anthropic API key](https://console.anthropic.com) (required for AI features in Quick Search / Learning Path)
+
+> **Note on Anthropic API billing**: The API is billed separately from a Claude.ai Pro subscription. Data collection (arXiv, Hugging Face, GitHub) works without an API key — the key is only needed when AI summarization features are implemented.
 
 ### Installation
 
+**Windows:**
+```bat
+git clone https://github.com/hyeongus2/research-thread-agent.git
+cd research-thread-agent
+setup.bat
+```
+
+**Mac / Linux:**
 ```bash
 git clone https://github.com/hyeongus2/research-thread-agent.git
 cd research-thread-agent
-pip install -r requirements.txt
+chmod +x setup.sh && ./setup.sh
 ```
+
+`setup` automatically creates a `.venv` virtual environment, installs all dependencies, and copies `.env.example` → `.env` on first run.
 
 ### Configuration
 
-```bash
-cp .env.example .env
-```
-
-Open `.env` and fill in your API keys:
+Open the generated `.env` file and fill in your keys:
 
 ```
-ANTHROPIC_API_KEY=sk-ant-...   # required
+ANTHROPIC_API_KEY=sk-ant-...   # required for AI features
 GITHUB_TOKEN=ghp_...           # required
 HF_API_TOKEN=hf_...            # optional
-RESEND_API_KEY=re_...          # optional, for email notifications
-USER_EMAIL=you@example.com     # optional, for email notifications
 ```
 
 ### Run
 
-```bash
-streamlit run streamlit_app.py
+**Windows:**
+```bat
+run.bat
 ```
 
-Open [http://localhost:8501](http://localhost:8501) in your browser.
+**Mac / Linux:**
+```bash
+./run.sh
+```
+
+The app opens at [http://localhost:8501](http://localhost:8501).
+
+| Page | URL |
+|---|---|
+| Home | [http://localhost:8501](http://localhost:8501) |
+| Quick Search | [http://localhost:8501/Quick_Search](http://localhost:8501/Quick_Search) |
+| Learning Path | [http://localhost:8501/Learning_Path](http://localhost:8501/Learning_Path) |
+| Settings | [http://localhost:8501/Settings](http://localhost:8501/Settings) |
+
+> The app runs entirely on your local machine. There is no cost for keeping it running.
+
+---
+
+## Data & Storage
+
+All data is stored in `data/research_thread.db` (SQLite, auto-created on first run, excluded from git).
+
+- **Search history** accumulates over time — this is intentional.
+- **Learning Path** results are cached for 7 days, then regenerated on next request.
+- To start fresh: go to **Settings → Reset Database**, or run `python scripts/reset_db.py`.
 
 ---
 
@@ -88,6 +119,8 @@ Open [http://localhost:8501](http://localhost:8501) in your browser.
 
 ```
 research-thread-agent/
+├── setup.bat / setup.sh      # One-command setup (venv + install)
+├── run.bat / run.sh          # Start the app
 ├── streamlit_app.py          # App entry point
 ├── pages/                    # Streamlit multi-page views
 ├── services/                 # Data collection and business logic
@@ -98,6 +131,8 @@ research-thread-agent/
 │   ├── thread_service.py
 │   └── ...
 ├── models/                   # SQLAlchemy ORM models
+├── scripts/                  # Utility scripts
+│   └── reset_db.py           # Wipe and reinitialize the database
 ├── utils/                    # DB connection, logging, validators
 └── config/                   # App settings
 ```
@@ -114,9 +149,10 @@ research-thread-agent/
 
 ---
 
-## Roadmap (v0.1.0 — In Development)
+## Roadmap (v0.1.1)
 
 - [x] Foundation: DB schema, data collection services, app scaffold
+- [x] One-command setup script, DB reset utility
 - [ ] Quick Search: Research Thread generation with Claude + RAG
 - [ ] Learning Path: Era-based historical topic exploration
 - [ ] Notifications: Subscriptions, in-app alerts, email digest
