@@ -10,13 +10,21 @@ fi
 
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."
-    python3 -m venv .venv
+    python3 -m venv .venv 2>/dev/null || python -m venv .venv
 else
     echo ".venv already exists, skipping."
 fi
 
 echo "Activating virtual environment and installing dependencies..."
-source .venv/bin/activate
+if [ -f ".venv/bin/activate" ]; then
+    source .venv/bin/activate
+elif [ -f ".venv/Scripts/activate" ]; then
+    source .venv/Scripts/activate
+else
+    echo "ERROR: Could not find venv activate script. On Windows, use setup.bat instead."
+    exit 1
+fi
+
 pip install -r requirements.txt
 
 echo ""
