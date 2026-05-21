@@ -6,6 +6,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from config.settings import settings
 from services import arxiv_service, claude_service, github_service, hf_service
 from services.database_service import save_search_history
 from utils.logger import get_logger
@@ -118,6 +119,7 @@ def create_research_thread(
     thread = {
         "keyword": keyword,
         "overview": overview,
+        "has_ai": bool(settings.ANTHROPIC_API_KEY),
         "papers": _serialize(papers),
         "models": _serialize(models),
         "repos": _serialize(repos),

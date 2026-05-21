@@ -50,7 +50,7 @@ const en = {
     upvotes: 'upvotes',
   },
   search: {
-    placeholder: 'Search papers, models, repos...',
+    placeholder: 'Search papers, models, repos... (comma to add multiple)',
     searchBtn: 'Search',
     clearBtn: 'Clear',
     periods: {
@@ -70,11 +70,16 @@ const en = {
       repo: 'Repos',
     },
     loading: 'Searching...',
+    loadingHint: 'Fetching from arXiv, Hugging Face, GitHub — may take 20–30 s',
     resultsFor: (n, kw) => `${n} result${n !== 1 ? 's' : ''} for "${kw}"`,
     noResults: (kw) => `No results found for "${kw}"`,
     overview: 'OVERVIEW',
     relevance: 'relevance',
     viewSource: 'View source',
+    backToFeed: 'Back to feed',
+    searchError: 'Search failed or timed out.',
+    noApiKey: 'Add ANTHROPIC_API_KEY to .env to enable AI summaries.',
+    noApiKeyOverview: 'Add ANTHROPIC_API_KEY to .env to see an AI-generated overview of this topic.',
   },
   settings: {
     close: 'Close',

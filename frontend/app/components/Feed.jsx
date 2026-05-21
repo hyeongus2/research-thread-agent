@@ -44,7 +44,7 @@ function getPeriodDates(period, nMonths, customFrom, customTo) {
 // =============================================================================
 // Search result card (real API data)
 // =============================================================================
-function ResultCard({ item, type }) {
+function ResultCard({ item, type, hasAi }) {
   const { t, lang } = useLanguage();
   const ts = t.search;
   const colors = TYPE_COLORS[type];
@@ -52,7 +52,9 @@ function ResultCard({ item, type }) {
   const relevance = Math.round((item.relevance_score || 0) * 100);
 
   const title = item.title || item.name || '';
-  const summary = item.summary || item.abstract?.slice(0, 200) || item.description || '';
+  // item.summary === null means API key not set; '' means Claude failed; string means real summary
+  const aiSummary = item.summary;
+  const fallbackText = item.abstract?.slice(0, 200) || item.description || '';
   const url = item.url || item.pdf_url || '#';
 
   let meta = '';
@@ -121,12 +123,13 @@ function ResultCard({ item, type }) {
         fontWeight: 500,
         color: '#1A1611',
         margin: 0,
-        marginBottom: summary ? 10 : 0,
+        marginBottom: 10,
       }}>
         {title}
       </h3>
 
-      {summary && (
+      {/* AI summary or fallback */}
+      {aiSummary ? (
         <p style={{
           fontFamily: "'Geist', sans-serif",
           fontSize: 13,
@@ -135,9 +138,32 @@ function ResultCard({ item, type }) {
           margin: 0,
           marginBottom: meta ? 10 : 0,
         }}>
-          {summary}
+          {aiSummary}
         </p>
-      )}
+      ) : !hasAi ? (
+        <p style={{
+          fontFamily: "'Geist', sans-serif",
+          fontSize: 12,
+          lineHeight: 1.5,
+          color: '#6B6358',
+          margin: 0,
+          marginBottom: meta ? 10 : 0,
+          fontStyle: 'italic',
+        }}>
+          {ts.noApiKey}
+        </p>
+      ) : fallbackText ? (
+        <p style={{
+          fontFamily: "'Geist', sans-serif",
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: '#3A342B',
+          margin: 0,
+          marginBottom: meta ? 10 : 0,
+        }}>
+          {fallbackText}
+        </p>
+      ) : null}
 
       {meta && (
         <span style={{
@@ -222,6 +248,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
 
   // Search state
   const [query, setQuery] = useState('');
+  const [keywords, setKeywords] = useState([]); // confirmed keyword chips
   const [period, setPeriod] = useState('month');
   const [nMonths, setNMonths] = useState(6);
   const [customFrom, setCustomFrom] = useState(() => toYearMonth(new Date(new Date().setMonth(new Date().getMonth() - 6))));
@@ -235,34 +262,73 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
       prev.includes(type) ? (prev.length > 1 ? prev.filter(t => t !== type) : prev) : [...prev, type]
     );
 
-  const handleSearch = async (overrideQuery) => {
-    const kw = (overrideQuery || query).trim();
-    if (!kw) return;
-    if (overrideQuery) setQuery(overrideQuery);
+  // Add current input as a keyword chip
+  const commitKeyword = () => {
+    const kw = query.trim().replace(/,$/, '');
+    if (kw && !keywords.includes(kw)) {
+      setKeywords(prev => [...prev, kw]);
+    }
+    setQuery('');
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      if (query.trim()) commitKeyword();
+      else runSearch(keywords);
+    } else if (e.key === ',') {
+      e.preventDefault();
+      commitKeyword();
+    } else if (e.key === 'Backspace' && !query && keywords.length > 0) {
+      setKeywords(prev => prev.slice(0, -1));
+    }
+  };
+
+  const runSearch = async (kws, singleKw) => {
+    const allKws = singleKw ? [singleKw] : [...kws, ...(query.trim() ? [query.trim()] : [])];
+    if (allKws.length === 0) return;
+    const combined = allKws.join(' OR ');
     setSearchState('loading');
     const { start, end } = getPeriodDates(period, nMonths, customFrom, customTo);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
     try {
       const res = await fetch(`${API}/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          keyword: kw,
+          keyword: combined,
           start_date: start,
           end_date: end,
           info_types: typeFilters,
           user_id: userId || 1,
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       const data = await res.json();
       setSearchResults(data);
       setSearchState('done');
     } catch {
+      clearTimeout(timeout);
       setSearchState('error');
     }
   };
 
+  const handleSearchClick = () => {
+    if (query.trim()) commitKeyword();
+    runSearch(keywords, query.trim() || undefined);
+  };
+
+  // Called from EmptyFeed suggestion chips
+  const handleSuggestion = (kw) => {
+    setKeywords([]);
+    setQuery('');
+    runSearch([], kw);
+  };
+
   const handleClear = () => {
     setQuery('');
+    setKeywords([]);
     setSearchState('idle');
     setSearchResults(null);
   };
@@ -327,48 +393,63 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
             flex: 1,
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
+            flexWrap: 'wrap',
+            gap: 6,
             background: '#FFFFFF',
             border: '1px solid #D8D0BE',
             borderRadius: 4,
-            padding: '0 12px',
+            padding: '6px 10px',
+            minHeight: 40,
           }}>
             <Search size={14} style={{ color: '#6B6358', flexShrink: 0 }} />
+            {/* Keyword chips */}
+            {keywords.map(kw => (
+              <span key={kw} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                background: '#1A1611', color: '#FAF7F2',
+                padding: '2px 8px', borderRadius: 12,
+                fontFamily: "'Geist', sans-serif", fontSize: 11, fontWeight: 500,
+              }}>
+                {kw}
+                <button
+                  onClick={() => setKeywords(prev => prev.filter(k => k !== kw))}
+                  style={{ background: 'none', border: 'none', padding: 0, color: '#FAF7F2', cursor: 'pointer', lineHeight: 0 }}
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
             <input
               value={query}
               onChange={e => setQuery(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder={ts.placeholder}
+              onKeyDown={handleKeyDown}
+              placeholder={keywords.length === 0 ? ts.placeholder : '+ add keyword...'}
               style={{
-                flex: 1,
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontFamily: "'Geist', sans-serif",
-                fontSize: 13,
-                color: '#1A1611',
-                padding: '10px 0',
+                flex: 1, minWidth: 80,
+                border: 'none', outline: 'none', background: 'transparent',
+                fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611',
+                padding: '2px 0',
               }}
             />
-            {query && (
+            {(query || keywords.length > 0) && (
               <button onClick={handleClear} style={{ background: 'none', border: 'none', padding: 2, color: '#6B6358', lineHeight: 0 }}>
                 <X size={14} />
               </button>
             )}
           </div>
           <button
-            onClick={handleSearch}
-            disabled={!query.trim() || searchState === 'loading'}
+            onClick={handleSearchClick}
+            disabled={(!query.trim() && keywords.length === 0) || searchState === 'loading'}
             style={{
               padding: '0 16px',
-              background: query.trim() ? '#1A1611' : '#D8D0BE',
+              background: (query.trim() || keywords.length > 0) ? '#1A1611' : '#D8D0BE',
               color: '#FAF7F2',
               border: 'none',
               borderRadius: 4,
               fontFamily: "'Geist', sans-serif",
               fontSize: 13,
               fontWeight: 500,
-              cursor: query.trim() ? 'pointer' : 'default',
+              cursor: (query.trim() || keywords.length > 0) ? 'pointer' : 'default',
               transition: 'background 0.15s',
               whiteSpace: 'nowrap',
             }}
@@ -486,14 +567,17 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
 
         {/* ── Empty state (no search yet) ── */}
         {!inSearchMode && (
-          <EmptyFeed onSuggestionClick={(kw) => handleSearch(kw)} />
+          <EmptyFeed onSuggestionClick={handleSuggestion} />
         )}
 
         {/* ── Loading ── */}
         {searchState === 'loading' && (
           <div style={{ padding: '60px 24px', textAlign: 'center' }}>
-            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: '#1A1611', fontStyle: 'italic' }}>
+            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: '#1A1611', fontStyle: 'italic', marginBottom: 12 }}>
               {ts.loading}
+            </div>
+            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>
+              {ts.loadingHint}
             </div>
           </div>
         )}
@@ -501,24 +585,37 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
         {/* ── Search results ── */}
         {searchState === 'done' && (
           <>
+            {/* Back to feed link */}
+            <button
+              onClick={handleClear}
+              style={{
+                background: 'none', border: 'none', padding: '8px 4px 4px',
+                fontFamily: "'Geist', sans-serif", fontSize: 12,
+                color: '#6B6358', cursor: 'pointer', display: 'flex',
+                alignItems: 'center', gap: 4,
+              }}
+            >
+              ← {ts.backToFeed}
+            </button>
+
             {/* Overview */}
-            {searchResults?.overview && (
+            <div style={{
+              margin: '4px 0 16px',
+              padding: '14px 16px',
+              background: '#FFFFFF',
+              borderLeft: '3px solid #C84B31',
+              borderRadius: '0 4px 4px 0',
+            }}>
               <div style={{
-                margin: '4px 0 16px',
-                padding: '14px 16px',
-                background: '#FFFFFF',
-                borderLeft: '3px solid #C84B31',
-                borderRadius: '0 4px 4px 0',
+                fontFamily: "'Geist', sans-serif",
+                fontSize: 10,
+                color: '#6B6358',
+                letterSpacing: '0.15em',
+                marginBottom: 6,
               }}>
-                <div style={{
-                  fontFamily: "'Geist', sans-serif",
-                  fontSize: 10,
-                  color: '#6B6358',
-                  letterSpacing: '0.15em',
-                  marginBottom: 6,
-                }}>
-                  {ts.overview}
-                </div>
+                {ts.overview}
+              </div>
+              {searchResults?.overview ? (
                 <p style={{
                   fontFamily: "'Geist', sans-serif",
                   fontSize: 13,
@@ -528,8 +625,19 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
                 }}>
                   {searchResults.overview}
                 </p>
-              </div>
-            )}
+              ) : (
+                <p style={{
+                  fontFamily: "'Geist', sans-serif",
+                  fontSize: 12,
+                  color: '#6B6358',
+                  lineHeight: 1.6,
+                  margin: 0,
+                  fontStyle: 'italic',
+                }}>
+                  {ts.noApiKeyOverview}
+                </p>
+              )}
+            </div>
 
             {/* Result count */}
             <div style={{
@@ -552,7 +660,12 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
               </div>
             ) : (
               allResults.map((item, i) => (
-                <ResultCard key={`${item._type}-${i}`} item={item} type={item._type} />
+                <ResultCard
+                  key={`${item._type}-${i}`}
+                  item={item}
+                  type={item._type}
+                  hasAi={searchResults?.has_ai !== false}
+                />
               ))
             )}
           </>
@@ -561,9 +674,19 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
         {/* ── Error ── */}
         {searchState === 'error' && (
           <div style={{ padding: '40px 24px', textAlign: 'center' }}>
-            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#C84B31', fontStyle: 'italic' }}>
-              Search failed. Check your API keys and server.
+            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#C84B31', fontStyle: 'italic', marginBottom: 12 }}>
+              {ts.searchError}
             </div>
+            <button
+              onClick={handleClear}
+              style={{
+                background: 'none', border: '1px solid #D8D0BE', padding: '8px 16px',
+                fontFamily: "'Geist', sans-serif", fontSize: 12,
+                color: '#6B6358', cursor: 'pointer', borderRadius: 4,
+              }}
+            >
+              ← {ts.backToFeed}
+            </button>
           </div>
         )}
       </div>

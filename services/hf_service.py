@@ -35,7 +35,6 @@ def search_models(
     for model in api.list_models(
         search=keyword,
         sort="downloads",
-        direction=-1,
         limit=max_results * 2,  # fetch extra to allow date filtering
     ):
         last_modified = getattr(model, "lastModified", None) or getattr(
@@ -81,7 +80,6 @@ def search_datasets(
     for dataset in api.list_datasets(
         search=keyword,
         sort="downloads",
-        direction=-1,
         limit=max_results,
     ):
         datasets.append({

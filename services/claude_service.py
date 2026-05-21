@@ -33,7 +33,7 @@ def score_relevance(keyword: str, items: list[dict]) -> list[dict]:
     if not settings.ANTHROPIC_API_KEY:
         for item in items:
             item.setdefault("relevance_score", 0.5)
-            item.setdefault("summary", "")
+            item.setdefault("summary", None)  # None signals "no API key" to the frontend
         return items
 
     items_text = "\n\n".join(
@@ -73,7 +73,7 @@ def score_relevance(keyword: str, items: list[dict]) -> list[dict]:
         logger.error("Claude relevance scoring failed: %s", exc)
         for item in items:
             item.setdefault("relevance_score", 0.5)
-            item.setdefault("summary", "")
+            item.setdefault("summary", None)
 
     return items
 
@@ -88,7 +88,9 @@ def generate_overview(keyword: str, papers: list[dict]) -> str:
     Returns:
         Plain-text overview string.
     """
-    if not settings.ANTHROPIC_API_KEY or not papers:
+    if not settings.ANTHROPIC_API_KEY:
+        return None  # None signals "no API key" to the frontend
+    if not papers:
         return f'Showing recent research on "{keyword}".'
 
     titles = "\n".join(f"- {p.get('title', '')}" for p in papers[:8])
@@ -112,4 +114,4 @@ def generate_overview(keyword: str, papers: list[dict]) -> str:
 
     except Exception as exc:
         logger.error("Claude overview generation failed: %s", exc)
-        return f'Showing recent research on "{keyword}".'
+        return None

@@ -50,7 +50,7 @@ const ko = {
     upvotes: '추천',
   },
   search: {
-    placeholder: '논문, 모델, 저장소 검색...',
+    placeholder: '논문, 모델, 저장소 검색... (쉼표로 여러 키워드 추가)',
     searchBtn: '검색',
     clearBtn: '지우기',
     periods: {
@@ -70,11 +70,16 @@ const ko = {
       repo: '저장소',
     },
     loading: '검색 중...',
+    loadingHint: 'arXiv, Hugging Face, GitHub에서 가져오는 중 — 20~30초 소요될 수 있어요',
     resultsFor: (n, kw) => `"${kw}" 검색 결과 ${n}개`,
     noResults: (kw) => `"${kw}"에 대한 결과가 없어요`,
     overview: '개요',
     relevance: '관련도',
     viewSource: '원문 보기',
+    backToFeed: '피드로 돌아가기',
+    searchError: '검색에 실패했거나 시간이 초과됐어요.',
+    noApiKey: '.env에 ANTHROPIC_API_KEY를 추가하면 AI 요약이 활성화됩니다.',
+    noApiKeyOverview: '.env에 ANTHROPIC_API_KEY를 추가하면 AI가 생성한 주제 개요를 볼 수 있어요.',
   },
   settings: {
     close: '닫기',
