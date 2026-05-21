@@ -14,6 +14,18 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
+def _classify_error(exc: Exception) -> tuple[str, int]:
+    """Return (error_kind, retry_seconds) for a fetch exception."""
+    msg = str(exc)
+    if "429" in msg or "rate limit" in msg.lower() or "too many" in msg.lower():
+        return "rate_limit", 600  # arXiv typically clears within 10 minutes
+    if "401" in msg or "bad credentials" in msg.lower() or "authentication" in msg.lower():
+        return "auth_error", 0
+    if "timeout" in msg.lower() or "timed out" in msg.lower():
+        return "timeout", 0
+    return "error", 0
+
+
 def _to_str(v):
     """Convert date/datetime to ISO string; leave everything else unchanged."""
     if hasattr(v, "isoformat"):
@@ -73,7 +85,7 @@ def create_research_thread(
         futures: dict = {}
         if "paper" in info_types:
             futures[executor.submit(
-                arxiv_service.search_papers, keyword, start_date, end_date, 15
+                arxiv_service.search_papers, keyword, start_date, end_date, 10
             )] = "papers"
         if "model" in info_types:
             futures[executor.submit(
@@ -84,9 +96,9 @@ def create_research_thread(
                 github_service.search_repositories, keyword, start_date, end_date, 8
             )] = "repos"
 
-        processed: set = set()
+            processed: set = set()
         try:
-            for future in as_completed(futures, timeout=30):
+            for future in as_completed(futures, timeout=45):
                 processed.add(future)
                 key = futures[future]
                 try:
@@ -99,14 +111,15 @@ def create_research_thread(
                         repos = result
                     _progress("source_done", f"{key}:{len(result)}")
                 except Exception as exc:
+                    kind, retry_secs = _classify_error(exc)
                     logger.warning("Fetch failed for %s: %s", key, exc)
-                    _progress("source_done", f"{key}:-1")
+                    _progress("source_done", f"{key}:-1:{kind}:{retry_secs}")
         except FutureTimeoutError:
-            logger.warning("Source fetch timed out after 30 s; proceeding with partial results")
+            logger.warning("Source fetch timed out after 45 s; proceeding with partial results")
             for future, key in futures.items():
                 if future not in processed:
                     future.cancel()
-                    _progress("source_done", f"{key}:-1")
+                    _progress("source_done", f"{key}:-1:timeout:0")
     finally:
         executor.shutdown(wait=False)
 

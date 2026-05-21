@@ -128,8 +128,10 @@ function ResultCard({ item, type, hasAi }) {
         {title}
       </h3>
 
-      {/* AI summary or fallback */}
-      {aiSummary ? (
+      {/* AI summary or fallback.
+          summary===null means Claude not available (no key OR invalid key);
+          summary===string means real AI output. */}
+      {typeof aiSummary === 'string' && aiSummary ? (
         <p style={{
           fontFamily: "'Geist', sans-serif",
           fontSize: 13,
@@ -140,7 +142,7 @@ function ResultCard({ item, type, hasAi }) {
         }}>
           {aiSummary}
         </p>
-      ) : !hasAi ? (
+      ) : aiSummary === null ? (
         <p style={{
           fontFamily: "'Geist', sans-serif",
           fontSize: 12,
@@ -175,6 +177,69 @@ function ResultCard({ item, type, hasAi }) {
         </span>
       )}
     </a>
+  );
+}
+
+// Error kind → human label
+const ERROR_LABELS = {
+  en: {
+    rate_limit: (min) => min > 0 ? `Rate limited — retry in ${min}m` : 'Rate limited',
+    auth_error: () => 'Invalid token — check .env',
+    timeout:    () => 'Timed out',
+    error:      () => 'Failed',
+  },
+  ko: {
+    rate_limit: (min) => min > 0 ? `횟수 초과 — ${min}분 후 재시도` : '횟수 초과',
+    auth_error: () => '토큰 오류 — .env 확인',
+    timeout:    () => '시간 초과',
+    error:      () => '오류',
+  },
+};
+
+// =============================================================================
+// Source error banner — shown below "Back to feed" after search completes
+// =============================================================================
+function SourceErrorBanner({ sourceErrors, lang }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const hasCountdown = Object.values(sourceErrors).some(e => e.kind === 'rate_limit' && e.retryAt);
+    if (!hasCountdown) return;
+    const id = setInterval(() => setTick(t => t + 1), 30000);
+    return () => clearInterval(id);
+  }, [sourceErrors]);
+
+  const labels = ERROR_LABELS[lang] || ERROR_LABELS.en;
+  const entries = Object.entries(sourceErrors);
+  if (entries.length === 0) return null;
+
+  return (
+    <div style={{
+      margin: '4px 0 8px',
+      padding: '10px 14px',
+      background: '#FFF8F5',
+      border: '1px solid #F0C8B8',
+      borderRadius: 4,
+      display: 'flex',
+      flexWrap: 'wrap',
+      gap: '6px 16px',
+    }}>
+      {entries.map(([src, info]) => {
+        const srcLabel = { papers: 'arXiv', models: 'Hugging Face', repos: 'GitHub' }[src] || src;
+        const minLeft = info.retryAt ? Math.max(0, Math.ceil((info.retryAt - Date.now()) / 60000)) : 0;
+        const msgFn = labels[info.kind] || labels.error;
+        return (
+          <span key={src} style={{
+            fontFamily: "'Geist', sans-serif",
+            fontSize: 11,
+            color: '#8B3A1B',
+          }}>
+            <span style={{ fontWeight: 600 }}>{srcLabel}</span>
+            {' · '}
+            {msgFn(minLeft)}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
@@ -383,6 +448,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
   const [currentStage, setCurrentStage] = useState('fetching_sources');
   const [elapsed, setElapsed] = useState(0);
   const [sourceStatus, setSourceStatus] = useState({});
+  const [sourceErrors, setSourceErrors] = useState({});
   const elapsedRef = useRef(null);
 
   const toggleType = (type) =>
@@ -420,6 +486,7 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
     setCurrentStage('fetching_sources');
     setElapsed(0);
     setSourceStatus({});
+    setSourceErrors({});
     if (elapsedRef.current) clearInterval(elapsedRef.current);
     const startedAt = Date.now();
     elapsedRef.current = setInterval(() => {
@@ -470,10 +537,17 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
             setSearchState('error');
             return;
           } else if (event.stage === 'source_done') {
-            // msg format: "papers:8" or "repos:-1"
-            const [src, countStr] = (event.msg || '').split(':');
-            const count = parseInt(countStr, 10);
+            // msg format: "papers:8" (ok) or "papers:-1:rate_limit:600" (error)
+            const parts = (event.msg || '').split(':');
+            const src = parts[0];
+            const count = parseInt(parts[1], 10);
+            const errorKind = parts[2] || null;
+            const retrySecs = parseInt(parts[3], 10) || 0;
             setSourceStatus(prev => ({ ...prev, [src]: isNaN(count) ? -1 : count }));
+            if (errorKind && count === -1) {
+              const retryAt = retrySecs > 0 ? Date.now() + retrySecs * 1000 : null;
+              setSourceErrors(prev => ({ ...prev, [src]: { kind: errorKind, retryAt } }));
+            }
           } else {
             setCurrentStage(event.stage);
           }
@@ -763,6 +837,9 @@ export default function Feed({ onSettings, onPaperTap, saved, onToggleSave, user
             >
               ← {ts.backToFeed}
             </button>
+
+            {/* Source error banner */}
+            <SourceErrorBanner sourceErrors={sourceErrors} lang={lang} />
 
             {/* Overview */}
             <div style={{
