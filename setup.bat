@@ -15,9 +15,14 @@ if not exist ".venv" (
     echo .venv already exists, skipping.
 )
 
-echo Activating virtual environment and installing dependencies...
+echo Installing Python dependencies...
 call .venv\Scripts\activate.bat
 pip install -r requirements.txt
+
+echo Installing frontend dependencies...
+cd frontend
+npm install
+cd ..
 
 echo.
 echo Setup complete.

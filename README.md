@@ -33,9 +33,10 @@ Enter any research topic (e.g., *Retrieval-Augmented Generation*) and get:
 
 | Layer | Technology |
 |---|---|
-| UI | Streamlit 1.28+ |
+| Frontend | Next.js 15, React 18 (mobile-first PWA) |
+| Backend | FastAPI + uvicorn (Python, port 8000) |
 | AI | Claude API (`claude-sonnet-4-20250514`) |
-| Vector search | ChromaDB + LangChain |
+| Vector search | ChromaDB |
 | Data sources | arXiv API, Hugging Face Hub API, GitHub REST API |
 | Storage | SQLite via SQLAlchemy |
 | Scheduler | APScheduler |
@@ -47,6 +48,7 @@ Enter any research topic (e.g., *Retrieval-Augmented Generation*) and get:
 ### Prerequisites
 
 - Python 3.9+
+- Node.js 18+
 - A [GitHub personal access token](https://github.com/settings/tokens) (free, no special scopes needed)
 - An [Anthropic API key](https://console.anthropic.com) (required for AI features in Quick Search / Learning Path)
 
@@ -68,7 +70,7 @@ cd research-thread-agent
 chmod +x setup.sh && ./setup.sh
 ```
 
-`setup` automatically creates a `.venv` virtual environment, installs all dependencies, and copies `.env.example` → `.env` on first run.
+`setup` automatically creates a `.venv` virtual environment, installs all Python and Node dependencies, and copies `.env.example` → `.env` on first run.
 
 ### Configuration
 
@@ -92,14 +94,8 @@ run.bat
 ./run.sh
 ```
 
-The app opens at [http://localhost:8501](http://localhost:8501).
-
-| Page | URL |
-|---|---|
-| Home | [http://localhost:8501](http://localhost:8501) |
-| Quick Search | [http://localhost:8501/Quick_Search](http://localhost:8501/Quick_Search) |
-| Learning Path | [http://localhost:8501/Learning_Path](http://localhost:8501/Learning_Path) |
-| Settings | [http://localhost:8501/Settings](http://localhost:8501/Settings) |
+- Frontend (app): [http://localhost:3000](http://localhost:3000)
+- Backend API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 > The app runs entirely on your local machine. There is no cost for keeping it running.
 
@@ -119,22 +115,27 @@ All data is stored in `data/research_thread.db` (SQLite, auto-created on first r
 
 ```
 research-thread-agent/
-├── setup.bat / setup.sh      # One-command setup (venv + install)
-├── run.bat / run.sh          # Start the app
-├── streamlit_app.py          # App entry point
-├── pages/                    # Streamlit multi-page views
-├── services/                 # Data collection and business logic
+├── setup.bat / setup.sh      # One-command setup (venv + npm install)
+├── run.bat / run.sh          # Start both servers
+├── frontend/                 # Next.js 15 app (port 3000)
+│   └── app/
+│       ├── page.jsx          # Root state machine (welcome → onboarding → feed)
+│       └── components/       # Welcome, Onboarding, Feed, PaperDetail, Settings
+├── api/                      # FastAPI backend (port 8000)
+│   ├── main.py               # App entry point, CORS, lifespan
+│   ├── schemas.py            # Pydantic request/response models
+│   └── routes/               # auth, search, learning, subscriptions, notifications
+├── services/                 # Pure Python business logic
 │   ├── arxiv_service.py
 │   ├── hf_service.py
 │   ├── github_service.py
-│   ├── claude_service.py
-│   ├── thread_service.py
+│   ├── claude_service.py     # (Phase 2)
+│   ├── thread_service.py     # (Phase 2)
 │   └── ...
 ├── models/                   # SQLAlchemy ORM models
 ├── scripts/                  # Utility scripts
 │   └── reset_db.py           # Wipe and reinitialize the database
-├── utils/                    # DB connection, logging, validators
-└── config/                   # App settings
+└── utils/                    # DB connection, logging, validators
 ```
 
 ---
@@ -149,14 +150,21 @@ research-thread-agent/
 
 ---
 
-## Roadmap (v0.1.2)
+## Roadmap
 
-- [x] Foundation: DB schema, data collection services, app scaffold
-- [x] One-command setup script, DB reset utility
-- [x] Cross-platform setup (Windows .bat, Mac/Linux .sh with venv fixes)
+### v0.2.0 (current)
+- [x] FastAPI backend scaffold with full route structure
+- [x] Next.js 15 frontend — onboarding flow (categories → keywords → calibration → feed)
+- [x] SQLite schema + SQLAlchemy ORM
+- [x] Data collection services: arXiv, Hugging Face, GitHub
+- [x] One-command setup and run scripts (Windows + Mac/Linux)
+
+### Upcoming
 - [ ] Quick Search: Research Thread generation with Claude + RAG
 - [ ] Learning Path: Era-based historical topic exploration
 - [ ] Notifications: Subscriptions, in-app alerts, email digest
+- [ ] Electron desktop packaging (no terminal required)
+- [ ] MCP server for Claude.ai chat integration
 
 ---
 

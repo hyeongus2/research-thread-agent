@@ -1,5 +1,6 @@
 # Claude Code guidance (local only)
 CLAUDE.md
+.claude/
 
 # Environment variables
 .env
@@ -20,6 +21,10 @@ build/
 
 # ChromaDB local storage
 chroma_db/
+
+# Next.js
+frontend/.next/
+frontend/node_modules/
 
 # Streamlit
 .streamlit/secrets.toml

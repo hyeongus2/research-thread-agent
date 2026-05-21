@@ -1,0 +1,93 @@
+export const CATEGORIES = [
+  { key: 'NLP', label: 'NLP / LLM', emoji: '💬' },
+  { key: 'CV', label: 'Vision', emoji: '👁' },
+  { key: 'RL', label: 'RL / Agent', emoji: '🎯' },
+  { key: 'ML', label: 'Theory / ML', emoji: '📐' },
+  { key: 'Robotics', label: 'Robotics', emoji: '🤖' },
+  { key: 'Audio', label: 'Speech / Audio', emoji: '🔊' },
+  { key: 'Multimodal', label: 'Multimodal', emoji: '🎨' },
+  { key: 'Systems', label: 'Systems / Efficiency', emoji: '⚡' },
+];
+
+export const SUGGESTED_KEYWORDS = [
+  'RAG', 'MoE', 'diffusion', 'RLHF', 'long context',
+  'in-context learning', 'agent', 'multimodal', 'quantization', 'distillation',
+];
+
+// Placeholder papers used for calibration during onboarding.
+// Replaced by live API data in Phase 2.
+export const MOCK_PAPERS = [
+  {
+    id: 1,
+    arxivId: '2503.09127',
+    headline: 'Diffusion in a Single Step — Without Losing Quality',
+    tldr: '40× faster inference than 50-step DDIM at comparable quality, via a new time-consistency loss in consistency distillation.',
+    reason: 'Connected to your saved DDIM paper from last week',
+    upvotes: 142,
+    models: 3,
+    demos: 1,
+    daysAgo: 2,
+    category: 'CV',
+    figure: 'curves',
+    authors: 'Y. Chen et al.',
+  },
+  {
+    id: 2,
+    arxivId: '2503.08442',
+    headline: 'Is 100K Context Enough to Replace RAG?',
+    tldr: 'Long-context models ace needle-in-haystack but still lose to RAG on multi-hop reasoning — the strongest rebuttal to "context kills retrieval."',
+    reason: 'Trending in RAG — 230 upvotes on HF in 24 h',
+    upvotes: 231,
+    models: 0,
+    demos: 2,
+    daysAgo: 1,
+    category: 'NLP',
+    figure: 'bars',
+    authors: 'M. Park et al.',
+  },
+  {
+    id: 3,
+    arxivId: '2503.07891',
+    headline: 'MoE Expert Specialization Is a Myth',
+    tldr: 'Dissecting Mixtral 8×7B reveals experts route by token statistics, not topics — the popular interpretation is wrong.',
+    reason: 'Matches your keywords: "MoE", "interpretability"',
+    upvotes: 89,
+    models: 1,
+    demos: 0,
+    daysAgo: 3,
+    category: 'NLP',
+    figure: 'heatmap',
+    authors: 'L. Zhang et al.',
+  },
+  {
+    id: 4,
+    arxivId: '2503.06554',
+    headline: 'Where Agents Fail: A Taxonomy of 200 Breakdowns',
+    tldr: '70 % of GPT-4o agent failures trace to wrong assumptions in the planning stage — improving planning beats better tool use.',
+    reason: 'Matches your keywords: "agent", "planning"',
+    upvotes: 67,
+    models: 0,
+    demos: 1,
+    daysAgo: 4,
+    category: 'NLP',
+    figure: 'pie',
+    authors: 'K. Suzuki et al.',
+  },
+];
+
+export const TOKENS = {
+  bg: '#FAF7F2',
+  surface: '#FFFFFF',
+  ink: '#1A1611',
+  inkSoft: '#3A342B',
+  subtle: '#6B6358',
+  border: '#E8E2D5',
+  borderSoft: '#F0EAD9',
+  borderInput: '#D8D0BE',
+  accent: '#C84B31',
+  accentDark: '#8B2E1B',
+  accentSoft: '#FFE8E0',
+  fontDisplay: "'Fraunces', serif",
+  fontBody: "'Geist', system-ui, sans-serif",
+  fontMono: "'Geist Mono', 'Courier New', monospace",
+};
