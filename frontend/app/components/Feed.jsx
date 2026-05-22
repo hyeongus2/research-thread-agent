@@ -440,11 +440,13 @@ function MyFeedView({ userId, refreshKey = 0 }) {
     loadPapers();
   }, [userId, refreshKey, loadPapers]);
 
-  // Auto-start SSE check when no papers after initial load
+  // Auto-start SSE check: always when user explicitly refreshed (refreshKey > 0), or when no papers on initial load
   useEffect(() => {
-    if (!loading && !checking && papers.length === 0 && userId && !checkStartedRef.current) {
-      checkStartedRef.current = true;
-      startCheck();
+    if (!loading && !checking && userId && !checkStartedRef.current) {
+      if (papers.length === 0 || refreshKey > 0) {
+        checkStartedRef.current = true;
+        startCheck();
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, papers.length]);

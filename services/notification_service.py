@@ -137,7 +137,7 @@ def _maybe_send_email(db: Session, user: User, notifications: list[Notification]
         .filter(NotificationSettings.user_id == user.id)
         .first()
     )
-    if not settings or not settings.email_enabled:
+    if settings and not settings.email_enabled:
         return
 
     sent = email_service.send_digest(notifications)
