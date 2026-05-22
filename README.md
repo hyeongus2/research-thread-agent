@@ -174,7 +174,16 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.5.0 (current)
+### v0.5.1 (current)
+- [x] Learning Path: per-paper AI analysis (Problem / Solution / Significance / Limitations)
+- [x] Learning Path: real-time SSE progress display (sources found, era-by-era analysis status)
+- [x] Learning Path: recent-era boost — fetches a targeted batch of papers from the last 2 years so recent eras (e.g., 2025) are always populated even when citation-count sorting buries them
+- [x] Learning Path: configurable limits in Settings (papers total, max per era, models, repos)
+- [x] Language-aware AI responses — Overview, Summary, and Learning Path era analysis respect the current UI language (EN / KO)
+- [x] Multi-keyword AND semantics across Semantic Scholar, Hugging Face, and GitHub
+- [x] OpenAlex fallback label shown dynamically in Quick Search progress badges
+
+### v0.5.0
 - [x] Quick Search: Semantic Scholar replaces arXiv as paper source (citation-count sorting)
 - [x] Learning Path: Semantic Scholar replaces arXiv (consistent source across both modes)
 - [x] OpenAlex automatic fallback when Semantic Scholar is rate-limited (no arXiv dependency)

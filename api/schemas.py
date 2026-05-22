@@ -42,11 +42,13 @@ class SearchRequest(BaseModel):
 
 class SummarizePaperRequest(BaseModel):
     abstract: str
+    lang: str = "en"
 
 
 class SummarizeOverviewRequest(BaseModel):
     keyword: str
     paper_titles: list[str] = []
+    lang: str = "en"
 
 
 class SearchHistoryItem(BaseModel):
@@ -60,6 +62,11 @@ class SearchHistoryItem(BaseModel):
 class LearningPathRequest(BaseModel):
     topic: str
     user_id: int
+    lang: str = "en"
+    papers_total: int = 100
+    papers_per_era: int = 10
+    models_count: int = 5
+    repos_count: int = 5
 
 
 # ── Subscriptions ─────────────────────────────────────────────────────────────

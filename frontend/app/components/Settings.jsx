@@ -7,12 +7,20 @@ import { useLanguage } from '../context/LanguageContext';
 const API = 'http://localhost:8000/api';
 
 const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25 };
+const DEFAULT_LP_LIMITS = { papersTotal: 100, papersPerEra: 10, models: 5, repos: 5 };
 
 function readLimits() {
   try {
     const stored = localStorage.getItem('search_limits');
     return stored ? { ...DEFAULT_LIMITS, ...JSON.parse(stored) } : DEFAULT_LIMITS;
   } catch { return DEFAULT_LIMITS; }
+}
+
+function readLpLimits() {
+  try {
+    const stored = localStorage.getItem('learning_path_limits');
+    return stored ? { ...DEFAULT_LP_LIMITS, ...JSON.parse(stored) } : DEFAULT_LP_LIMITS;
+  } catch { return DEFAULT_LP_LIMITS; }
 }
 
 export default function Settings({ onClose, userId }) {
@@ -24,6 +32,7 @@ export default function Settings({ onClose, userId }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetDone, setResetDone] = useState(false);
   const [limits, setLimits] = useState(readLimits);
+  const [lpLimits, setLpLimits] = useState(readLpLimits);
 
   const updateLimit = (key, raw) => {
     const val = Math.max(0, Math.min(100, parseInt(raw, 10) || 0));
@@ -37,6 +46,21 @@ export default function Settings({ onClose, userId }) {
     localStorage.setItem('search_limits', JSON.stringify(DEFAULT_LIMITS));
   };
 
+  const LP_BOUNDS = { papersTotal: [20, 100], papersPerEra: [3, 20], models: [0, 20], repos: [0, 20] };
+
+  const updateLpLimit = (key, raw) => {
+    const [min, max] = LP_BOUNDS[key];
+    const val = Math.max(min, Math.min(max, parseInt(raw, 10) || min));
+    const next = { ...lpLimits, [key]: val };
+    setLpLimits(next);
+    localStorage.setItem('learning_path_limits', JSON.stringify(next));
+  };
+
+  const resetLpLimits = () => {
+    setLpLimits(DEFAULT_LP_LIMITS);
+    localStorage.setItem('learning_path_limits', JSON.stringify(DEFAULT_LP_LIMITS));
+  };
+
   const handleReset = async () => {
     try {
       await fetch(`${API}/admin/reset-db`, { method: 'POST' });
@@ -44,6 +68,9 @@ export default function Settings({ onClose, userId }) {
       // best-effort; backend may not expose this in all environments
     }
     localStorage.removeItem('user_id');
+    localStorage.removeItem('search_limits');
+    localStorage.removeItem('learning_path_limits');
+    localStorage.removeItem('lang');
     setResetDone(true);
     setTimeout(() => window.location.reload(), 1200);
   };
@@ -218,6 +245,57 @@ export default function Settings({ onClose, userId }) {
             }}
           >
             {ts.resetLimits}
+          </button>
+        </div>
+
+        {/* Learning Path limits */}
+        <div style={sectionLabel}>{ts.lpLimits}</div>
+        <div style={{
+          background: '#FFFFFF', border: '1px solid #E8E2D5',
+          borderRadius: 4, padding: '16px', marginBottom: 28,
+        }}>
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.5, marginBottom: 16 }}>
+            {ts.lpLimitsDesc}
+          </div>
+          {[
+            { key: 'papersTotal', label: ts.lpPapersTotal, min: 20, max: 100 },
+            { key: 'papersPerEra', label: ts.lpPapersPerEra, min: 3, max: 20 },
+            { key: 'models', label: ts.lpModels, min: 0, max: 20 },
+            { key: 'repos', label: ts.lpRepos, min: 0, max: 20 },
+          ].map(({ key, label, min, max }) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611' }}>{label}</span>
+              <input
+                type="number"
+                min={min}
+                max={max}
+                value={lpLimits[key]}
+                onChange={e => updateLpLimit(key, e.target.value)}
+                style={{
+                  width: 64, padding: '5px 8px',
+                  border: '1px solid #D8D0BE', borderRadius: 4,
+                  fontFamily: "'Geist Mono', monospace", fontSize: 13,
+                  color: '#1A1611', background: '#FAF7F2',
+                  outline: 'none', textAlign: 'center',
+                }}
+              />
+            </div>
+          ))}
+          <button
+            onClick={resetLpLimits}
+            style={{
+              marginTop: 4,
+              padding: '8px 14px',
+              background: 'transparent',
+              border: '1px solid #D8D0BE',
+              borderRadius: 4,
+              fontFamily: "'Geist', sans-serif",
+              fontSize: 12,
+              color: '#6B6358',
+              cursor: 'pointer',
+            }}
+          >
+            {ts.resetLpLimits}
           </button>
         </div>
 
