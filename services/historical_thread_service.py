@@ -1,6 +1,6 @@
 """Historical thread service for building era-grouped Learning Paths."""
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, date as _date
 from typing import Generator, Optional
 
@@ -38,67 +38,61 @@ def _era_buckets() -> list[tuple]:
     return buckets
 
 
-def group_papers_by_era(papers: list[dict], papers_per_era: int = 10) -> dict[str, list[dict]]:
-    """Group papers into chronological era buckets (max papers_per_era per era)."""
-    buckets = _era_buckets()
-    groups: dict[str, list] = {label: [] for _, _, label in buckets}
-
-    for paper in papers:
-        pub = paper.get("published_date")
-        if pub is None:
-            continue
-        if hasattr(pub, "year"):
-            year = pub.year
-        else:
-            try:
-                year = int(str(pub)[:4])
-            except (ValueError, TypeError):
-                continue
-
-        for start, end, label in buckets:
-            if start is None:
-                if year <= end:
-                    groups[label].append(paper)
-                    break
-            else:
-                if start <= year <= end:
-                    groups[label].append(paper)
-                    break
-
-    for label in list(groups.keys()):
-        groups[label].sort(
-            key=lambda p: str(p.get("published_date") or ""),
-            reverse=True,
-        )
-        groups[label] = groups[label][:papers_per_era]
-
-    return {label: papers for label, papers in groups.items() if papers}
-
-
-def _fetch_papers_with_recent_boost(
+def _fetch_papers_per_era(
     topic: str,
-    papers_total: int,
+    papers_per_era: int,
     _source_out: Optional[list] = None,
-) -> list[dict]:
-    """Fetch citation-sorted papers, then supplement with recent papers.
+) -> dict[str, list[dict]]:
+    """Fetch papers for each era using separate date-filtered queries (parallel).
 
-    Semantic Scholar sorts by citation count, so recent (< 2 years old) papers
-    rarely make it into the top N results even if they are relevant. This helper
-    makes a second targeted request for recent papers and merges them in so that
-    the most recent era is always populated.
+    Each era gets its own Semantic Scholar request with start/end date bounds,
+    so recent eras receive papers ranked by citation count *within that window*
+    rather than being starved by all-time citation leaders.
+
+    Args:
+        topic: Research topic keyword(s).
+        papers_per_era: Maximum papers to fetch per era.
+        _source_out: Optional single-element list; populated with the source
+            label ("Semantic Scholar" or "OpenAlex") from the first completed era.
+
+    Returns:
+        Ordered dict mapping era label → list of paper dicts (non-empty eras only).
     """
-    papers = semantic_scholar_service.search_papers(topic, None, None, papers_total, _source_out)
+    buckets = _era_buckets()
+    source_recorded = False
 
-    current_year = datetime.utcnow().year
-    recent_start = _date(current_year - 1, 1, 1)
-    try:
-        recent = semantic_scholar_service.search_papers(topic, recent_start, None, 30)
-        seen_titles = {p["title"].lower() for p in papers}
-        papers += [p for p in recent if p["title"].lower() not in seen_titles]
-    except Exception:
-        pass
+    def _fetch_one(start_year, end_year, label):
+        start = _date(start_year, 1, 1) if start_year is not None else None
+        end = _date(end_year, 12, 31)
+        src: list = []
+        try:
+            papers = semantic_scholar_service.search_papers(topic, start, end, papers_per_era, src)
+        except Exception as exc:
+            logger.warning("Era '%s' fetch failed: %s", label, exc)
+            papers = []
+        return label, papers, src
 
-    return papers
+    era_results: dict[str, list] = {}
+
+    with ThreadPoolExecutor(max_workers=min(len(buckets), 8)) as executor:
+        future_map = {
+            executor.submit(_fetch_one, start, end, label): label
+            for start, end, label in buckets
+        }
+        for future in as_completed(future_map):
+            label, papers, src = future.result()
+            if papers:
+                era_results[label] = papers
+            if _source_out is not None and src and not source_recorded:
+                _source_out.extend(src)
+                source_recorded = True
+
+    # Restore insertion order (buckets order) for era_results
+    ordered = {}
+    for _, _, label in buckets:
+        if label in era_results:
+            ordered[label] = era_results[label]
+    return ordered
 
 
 def _serialize_paper(paper: dict) -> dict:
@@ -112,14 +106,13 @@ def _serialize_paper(paper: dict) -> dict:
 
 def _build_result(
     topic: str,
-    papers: list[dict],
     era_groups: dict,
     models_payload: list,
     repos_payload: list,
     models_error: bool,
     repos_error: bool,
     lang: str,
-) -> dict:
+) -> tuple[dict, str]:
     """Shared result assembly: call Claude per era and compose the final dict."""
     ai_key_missing = not settings.ANTHROPIC_API_KEY
     eras = []
@@ -164,7 +157,8 @@ def _build_result(
         else (all_years[0] if all_years else "")
     )
 
-    description = claude_service.generate_overview(topic, papers[:10], lang=lang)
+    overview_papers = [p for era in eras for p in era.get("papers", [])][:10]
+    description = claude_service.generate_overview(topic, overview_papers, lang=lang)
 
     return {
         "topic": topic,
@@ -181,7 +175,6 @@ def build_learning_path(
     topic: str,
     db: Session,
     lang: str = "en",
-    papers_total: int = 100,
     papers_per_era: int = 10,
     models_count: int = 5,
     repos_count: int = 5,
@@ -193,14 +186,13 @@ def build_learning_path(
         return cached
 
     logger.info("Building learning path for topic '%s'", topic)
-    papers = _fetch_papers_with_recent_boost(topic, papers_total)
-    era_groups = group_papers_by_era(papers, papers_per_era)
+    era_groups = _fetch_papers_per_era(topic, papers_per_era)
 
     models_payload, models_error = _fetch_models(topic, models_count)
     repos_payload, repos_error = _fetch_repos(topic, repos_count)
 
     result, year_range = _build_result(
-        topic, papers, era_groups,
+        topic, era_groups,
         models_payload, repos_payload,
         models_error, repos_error, lang,
     )
@@ -239,7 +231,6 @@ def build_learning_path_stream(
     topic: str,
     db: Session,
     lang: str = "en",
-    papers_total: int = 100,
     papers_per_era: int = 10,
     models_count: int = 5,
     repos_count: int = 5,
@@ -258,21 +249,21 @@ def build_learning_path_stream(
 
     logger.info("Building learning path (stream) for topic '%s'", topic)
 
-    # ── Concurrent fetch: papers + models + repos ──────────────────────────────
+    # ── Concurrent fetch: papers-per-era + models + repos ─────────────────────
     yield {"type": "fetching_sources"}
 
+    papers_source_out: list = []
+    era_groups: dict = {}
+
     with ThreadPoolExecutor(max_workers=3) as executor:
-        papers_source_out: list = []
-        papers_future = executor.submit(
-            _fetch_papers_with_recent_boost, topic, papers_total, papers_source_out
-        )
+        era_future    = executor.submit(_fetch_papers_per_era, topic, papers_per_era, papers_source_out)
         models_future = executor.submit(_fetch_models, topic, models_count)
         repos_future  = executor.submit(_fetch_repos, topic, repos_count)
 
-        papers = papers_future.result()
+        era_groups = era_future.result()
         actual_source = papers_source_out[0] if papers_source_out else "Semantic Scholar"
-        era_groups = group_papers_by_era(papers, papers_per_era)
-        yield {"type": "papers_done", "total": len(papers), "source": actual_source}
+        total_papers = sum(len(v) for v in era_groups.values())
+        yield {"type": "papers_done", "total": total_papers, "source": actual_source}
         for label, era_papers in era_groups.items():
             yield {"type": "era_found", "label": label, "count": len(era_papers)}
 
@@ -323,7 +314,8 @@ def build_learning_path_stream(
         yield {"type": "era_analyzed", "label": label}
 
     # ── Overview ────────────────────────────────────────────────────────────────
-    description = claude_service.generate_overview(topic, papers[:10], lang=lang)
+    overview_papers = [p for era in eras for p in era.get("papers", [])][:10]
+    description = claude_service.generate_overview(topic, overview_papers, lang=lang)
 
     all_years = sorted({
         str(p.get("published_date") or "")[:4]

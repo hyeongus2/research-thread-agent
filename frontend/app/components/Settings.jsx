@@ -7,7 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 const API = 'http://localhost:8000/api';
 
 const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25 };
-const DEFAULT_LP_LIMITS = { papersTotal: 100, papersPerEra: 10, models: 5, repos: 5 };
+const DEFAULT_LP_LIMITS = { papersPerEra: 10, models: 5, repos: 5 };
 
 function readLimits() {
   try {
@@ -46,7 +46,7 @@ export default function Settings({ onClose, userId }) {
     localStorage.setItem('search_limits', JSON.stringify(DEFAULT_LIMITS));
   };
 
-  const LP_BOUNDS = { papersTotal: [20, 100], papersPerEra: [3, 20], models: [0, 20], repos: [0, 20] };
+  const LP_BOUNDS = { papersPerEra: [3, 20], models: [0, 20], repos: [0, 20] };
 
   const updateLpLimit = (key, raw) => {
     const [min, max] = LP_BOUNDS[key];
@@ -258,7 +258,6 @@ export default function Settings({ onClose, userId }) {
             {ts.lpLimitsDesc}
           </div>
           {[
-            { key: 'papersTotal', label: ts.lpPapersTotal, min: 20, max: 100 },
             { key: 'papersPerEra', label: ts.lpPapersPerEra, min: 3, max: 20 },
             { key: 'models', label: ts.lpModels, min: 0, max: 20 },
             { key: 'repos', label: ts.lpRepos, min: 0, max: 20 },

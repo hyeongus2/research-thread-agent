@@ -17,7 +17,7 @@ router = APIRouter()
 def learning_path(body: LearningPathRequest, db: Session = Depends(get_db)):
     return historical_thread_service.build_learning_path(
         topic=body.topic, db=db, lang=body.lang,
-        papers_total=body.papers_total, papers_per_era=body.papers_per_era,
+        papers_per_era=body.papers_per_era,
         models_count=body.models_count, repos_count=body.repos_count,
     )
 
@@ -32,7 +32,7 @@ def learning_path_stream(body: LearningPathRequest, db: Session = Depends(get_db
         try:
             for event in historical_thread_service.build_learning_path_stream(
                 topic=body.topic, db=db, lang=body.lang,
-                papers_total=body.papers_total, papers_per_era=body.papers_per_era,
+                papers_per_era=body.papers_per_era,
                 models_count=body.models_count, repos_count=body.repos_count,
             ):
                 event_q.put(event)

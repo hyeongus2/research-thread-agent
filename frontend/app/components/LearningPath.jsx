@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const API = 'http://localhost:8000/api';
 
-const DEFAULT_LP_LIMITS = { papersTotal: 100, papersPerEra: 10, models: 5, repos: 5 };
+const DEFAULT_LP_LIMITS = { papersPerEra: 10, models: 5, repos: 5 };
 
 function readLpLimits() {
   try {
@@ -299,7 +299,6 @@ export default function LearningPath({ userId, onBack }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           topic: trimmed, user_id: userId || 1, lang,
-          papers_total: lpLimits.papersTotal,
           papers_per_era: lpLimits.papersPerEra,
           models_count: lpLimits.models,
           repos_count: lpLimits.repos,
