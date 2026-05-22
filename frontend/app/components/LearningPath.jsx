@@ -298,17 +298,22 @@ function BuildProgress({ topic, progress, tl }) {
               borderBottom: '1px solid #F5F0E8',
               fontFamily: "'Geist', sans-serif", fontSize: 12,
             }}>
-              <span style={{ color: '#1A1611' }}>
-                {tl.eraFound(era.label, era.count)}
+              <span style={{ color: era.status === 'fetching' ? '#C84B31' : '#1A1611' }}>
+                {era.status === 'fetching'
+                  ? tl.fetchingEra(era.label)
+                  : tl.eraFound(era.label, era.count)}
               </span>
               <span style={{
                 color: era.status === 'done' ? '#1B7A2E'
                   : era.status === 'analyzing' ? '#C84B31'
+                  : era.status === 'fetching' ? '#C84B31'
                   : '#C8C0B0',
-                fontSize: 11, fontWeight: era.status === 'analyzing' ? 600 : 400,
+                fontSize: 11,
+                fontWeight: (era.status === 'analyzing' || era.status === 'fetching') ? 600 : 400,
               }}>
                 {era.status === 'done' ? tl.eraAnalyzed
                   : era.status === 'analyzing' ? tl.analyzingEra(era.label)
+                  : era.status === 'fetching' ? '…'
                   : tl.eraPending}
               </span>
             </div>
@@ -330,7 +335,6 @@ const INIT_PROGRESS = {
   reposCount: null,
   reposError: false,
   eras: [],
-  currentEra: null,
 };
 
 export default function LearningPath({ userId, onBack }) {
@@ -393,10 +397,19 @@ export default function LearningPath({ userId, onBack }) {
               papersTotal: event.total,
               papersSource: event.source || 'Semantic Scholar',
             }));
+          } else if (event.type === 'era_fetching') {
+            setProgress(p => ({
+              ...p,
+              eras: [...p.eras, { label: event.label, count: null, status: 'fetching' }],
+            }));
           } else if (event.type === 'era_found') {
             setProgress(p => ({
               ...p,
-              eras: [...p.eras, { label: event.label, count: event.count, status: 'pending' }],
+              eras: p.eras.map(e =>
+                e.label === event.label
+                  ? { ...e, count: event.count, status: 'pending' }
+                  : e
+              ),
             }));
           } else if (event.type === 'models_done') {
             setProgress(p => ({ ...p, modelsCount: event.count }));

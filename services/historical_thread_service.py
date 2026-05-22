@@ -242,24 +242,40 @@ def build_learning_path_stream(
         return
 
     logger.info("Building learning path (stream) for topic '%s'", topic)
-
-    # ── Concurrent fetch: papers-per-era + models + repos ─────────────────────
     yield {"type": "fetching_sources"}
 
-    papers_source_out: list = []
+    # ── models + repos in background; era papers fetched sequentially here ─────
     era_groups: dict = {}
+    papers_source: str = "Semantic Scholar"
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        era_future    = executor.submit(_fetch_papers_per_era, topic, papers_per_era, papers_source_out)
-        models_future = executor.submit(_fetch_models, topic, models_count)
-        repos_future  = executor.submit(_fetch_repos, topic, repos_count)
+    with ThreadPoolExecutor(max_workers=2) as bg:
+        models_future = bg.submit(_fetch_models, topic, models_count)
+        repos_future  = bg.submit(_fetch_repos, topic, repos_count)
 
-        era_groups = era_future.result()
-        actual_source = papers_source_out[0] if papers_source_out else "Semantic Scholar"
+        buckets = _era_buckets()
+        source_recorded = False
+
+        for i, (start_year, end_year, label) in enumerate(buckets):
+            yield {"type": "era_fetching", "label": label}
+            if i > 0:
+                time.sleep(_ERA_FETCH_DELAY)
+            start = _date(start_year, 1, 1) if start_year is not None else None
+            end = _date(end_year, 12, 31)
+            src: list = []
+            try:
+                papers = semantic_scholar_service.search_papers(topic, start, end, papers_per_era, src)
+            except Exception as exc:
+                logger.warning("Era '%s' fetch failed: %s", label, exc)
+                papers = []
+            if papers:
+                era_groups[label] = papers
+            if src and not source_recorded:
+                papers_source = src[0]
+                source_recorded = True
+            yield {"type": "era_found", "label": label, "count": len(papers), "source": papers_source}
+
         total_papers = sum(len(v) for v in era_groups.values())
-        yield {"type": "papers_done", "total": total_papers, "source": actual_source}
-        for label, era_papers in era_groups.items():
-            yield {"type": "era_found", "label": label, "count": len(era_papers)}
+        yield {"type": "papers_done", "total": total_papers, "source": papers_source}
 
         models_payload, models_error = models_future.result()
         if models_error:

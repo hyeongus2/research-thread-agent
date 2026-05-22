@@ -127,6 +127,7 @@ const ko = {
     eraAnalyzed: '✓',
     eraPending: '○',
     topicLabel: '주제',
+    fetchingEra: (label) => `${label} 수집 중…`,
     showAbstract: '초록 보기',
     hideAbstract: '초록 접기',
     noApiKeyCard: '.env에 ANTHROPIC_API_KEY를 등록하면 논문별 상세 분석(문제 / 해결 / 의의 / 한계)을 볼 수 있어요.',

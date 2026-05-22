@@ -127,6 +127,7 @@ const en = {
     eraAnalyzed: '✓',
     eraPending: '○',
     topicLabel: 'TOPIC',
+    fetchingEra: (label) => `Fetching ${label}…`,
     showAbstract: 'Show abstract',
     hideAbstract: 'Hide abstract',
     noApiKeyCard: 'Add ANTHROPIC_API_KEY to .env to see per-paper analysis (problem / solution / significance / limitations).',
