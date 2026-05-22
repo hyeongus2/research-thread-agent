@@ -63,6 +63,7 @@ export default function Page() {
 
   // Feed state
   const [userId, setUserId] = useState(null);
+  const [myFeedRefreshKey, setMyFeedRefreshKey] = useState(0);
   const [openPaper, setOpenPaper] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [saved, setSaved] = useState([]);
@@ -94,6 +95,7 @@ export default function Page() {
       const data = await res.json();
       localStorage.setItem('user_id', String(data.user_id));
       setUserId(data.user_id);
+      setMyFeedRefreshKey(1); // triggers MyFeedView to auto-start SSE check on first mount
     } catch (err) {
       // If backend is unreachable during development, still proceed
       console.warn('Onboarding API unavailable, continuing offline:', err);
@@ -151,6 +153,7 @@ export default function Page() {
           <Feed
             onSettings={() => setShowSettings(true)}
             userId={userId}
+            myFeedRefreshKey={myFeedRefreshKey}
           />
         </div>
       )}
@@ -159,7 +162,11 @@ export default function Page() {
         <PaperDetail paper={openPaper} onClose={() => setOpenPaper(null)} />
       )}
       {showSettings && (
-        <Settings userId={userId} onClose={() => setShowSettings(false)} />
+        <Settings
+          userId={userId}
+          onClose={() => setShowSettings(false)}
+          onInterestsSaved={() => setMyFeedRefreshKey(k => k + 1)}
+        />
       )}
     </div>
   );

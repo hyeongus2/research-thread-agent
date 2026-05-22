@@ -60,6 +60,10 @@ def _search_semantic_scholar(
         logger.warning("Semantic Scholar 429; retrying after 10 s")
         time.sleep(10)
         resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
+    if resp.status_code == 429:
+        logger.warning("Semantic Scholar 429 again; retrying after 30 s")
+        time.sleep(30)
+        resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
 
     if resp.status_code == 403 and "year" in current_params:
         logger.warning("Semantic Scholar 403 with year filter; retrying without date")

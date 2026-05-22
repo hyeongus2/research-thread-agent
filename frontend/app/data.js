@@ -1,14 +1,14 @@
 export const CATEGORIES = [
-  { key: 'NLP',        label: 'NLP / LLM',          emoji: '💬' },
-  { key: 'CV',         label: 'Computer Vision',     emoji: '👁' },
-  { key: 'GenAI',      label: 'Generative AI',       emoji: '✨' },
-  { key: 'Agents',     label: 'AI Agents',           emoji: '🤖' },
-  { key: 'RL',         label: 'Reinforcement Learning', emoji: '🎯' },
-  { key: 'Multimodal', label: 'Multimodal',          emoji: '🔀' },
-  { key: 'Audio',      label: 'Speech / Audio',      emoji: '🔊' },
-  { key: 'Robotics',   label: 'Robotics',            emoji: '🦾' },
-  { key: 'Theory',     label: 'ML Theory',           emoji: '📐' },
-  { key: 'Systems',    label: 'Systems / Efficiency', emoji: '⚡' },
+  { key: 'NLP/LLM',                label: 'NLP/LLM',                emoji: '💬' },
+  { key: 'Computer Vision',        label: 'Computer Vision',        emoji: '👁' },
+  { key: 'Generative AI',          label: 'Generative AI',          emoji: '✨' },
+  { key: 'AI Agents',              label: 'AI Agents',              emoji: '🤖' },
+  { key: 'Reinforcement Learning', label: 'Reinforcement Learning', emoji: '🎯' },
+  { key: 'Multimodal',             label: 'Multimodal',             emoji: '🔀' },
+  { key: 'Speech/Audio',           label: 'Speech/Audio',           emoji: '🔊' },
+  { key: 'Robotics',               label: 'Robotics',               emoji: '🦾' },
+  { key: 'ML Theory',              label: 'ML Theory',              emoji: '📐' },
+  { key: 'Systems/Efficiency',     label: 'Systems/Efficiency',     emoji: '⚡' },
 ];
 
 export const SUGGESTED_KEYWORDS = [

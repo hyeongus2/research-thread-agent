@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const API = 'http://localhost:8000/api';
@@ -23,7 +23,13 @@ function readLpLimits() {
   } catch { return DEFAULT_LP_LIMITS; }
 }
 
-export default function Settings({ onClose, userId }) {
+const ALL_CATEGORIES = [
+  'NLP/LLM', 'Computer Vision', 'Generative AI', 'AI Agents',
+  'Reinforcement Learning', 'Multimodal', 'Speech/Audio',
+  'Robotics', 'ML Theory', 'Systems/Efficiency',
+];
+
+export default function Settings({ onClose, userId, onInterestsSaved }) {
   const { t, lang, setLang } = useLanguage();
   const ts = t.settings;
 
@@ -34,6 +40,61 @@ export default function Settings({ onClose, userId }) {
   const [historyCleared, setHistoryCleared] = useState(false);
   const [limits, setLimits] = useState(readLimits);
   const [lpLimits, setLpLimits] = useState(readLpLimits);
+
+  // Interests state
+  const [selCategories, setSelCategories] = useState([]);
+  const [selKeywords, setSelKeywords] = useState([]);
+  const [kwInput, setKwInput] = useState('');
+  const [interestsSaved, setInterestsSaved] = useState(false);
+  const [interestsSaving, setInterestsSaving] = useState(false);
+  const kwRef = useRef(null);
+
+  // Load current preferences on mount
+  useEffect(() => {
+    fetch(`${API}/me?user_id=${userId || 1}`)
+      .then(r => r.json())
+      .then(d => {
+        const prefs = d.preferences || {};
+        setSelCategories(prefs.categories || []);
+        setSelKeywords(prefs.keywords || []);
+      })
+      .catch(() => {});
+  }, [userId]);
+
+  const toggleCategory = (cat) => {
+    setSelCategories(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const addKeyword = () => {
+    const kw = kwInput.trim();
+    if (kw && !selKeywords.includes(kw)) {
+      setSelKeywords(prev => [...prev, kw]);
+    }
+    setKwInput('');
+  };
+
+  const removeKeyword = (kw) => setSelKeywords(prev => prev.filter(k => k !== kw));
+
+  const handleKwKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addKeyword(); }
+  };
+
+  const handleSaveInterests = async () => {
+    setInterestsSaving(true);
+    try {
+      await fetch(`${API}/me/preferences?user_id=${userId || 1}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categories: selCategories, keywords: selKeywords }),
+      });
+      if (onInterestsSaved) onInterestsSaved();
+      setInterestsSaved(true);
+      setTimeout(() => setInterestsSaved(false), 3000);
+    } catch (_) {}
+    setInterestsSaving(false);
+  };
 
   const updateLimit = (key, raw) => {
     const val = Math.max(0, Math.min(100, parseInt(raw, 10) || 0));
@@ -305,6 +366,98 @@ export default function Settings({ onClose, userId }) {
           >
             {ts.resetLpLimits}
           </button>
+        </div>
+
+        {/* Interests */}
+        <div style={sectionLabel}>{ts.interests}</div>
+        <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: '16px', marginBottom: 28 }}>
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.5, marginBottom: 16 }}>
+            {ts.interestsDesc}
+          </div>
+
+          {/* Categories */}
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9E9485', letterSpacing: '0.1em', marginBottom: 10 }}>
+            {ts.interestsCategories}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
+            {ALL_CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => toggleCategory(cat)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 20,
+                  border: '1px solid',
+                  borderColor: selCategories.includes(cat) ? '#1A1611' : '#D8D0BE',
+                  background: selCategories.includes(cat) ? '#1A1611' : 'transparent',
+                  color: selCategories.includes(cat) ? '#FAF7F2' : '#6B6358',
+                  fontFamily: "'Geist', sans-serif",
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Keywords */}
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9E9485', letterSpacing: '0.1em', marginBottom: 10 }}>
+            {ts.interestsKeywords}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            {selKeywords.map(kw => (
+              <span key={kw} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#F0EBE0', padding: '4px 10px', borderRadius: 12, fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611' }}>
+                {kw}
+                <button onClick={() => removeKeyword(kw)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', lineHeight: 0, color: '#6B6358' }}>
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <input
+              ref={kwRef}
+              value={kwInput}
+              onChange={e => setKwInput(e.target.value)}
+              onKeyDown={handleKwKeyDown}
+              placeholder={ts.interestsKwPlaceholder}
+              style={{
+                flex: 1, padding: '8px 10px',
+                border: '1px solid #D8D0BE', borderRadius: 4,
+                fontFamily: "'Geist', sans-serif", fontSize: 13,
+                color: '#1A1611', background: '#FAF7F2', outline: 'none',
+              }}
+            />
+            <button
+              onClick={addKeyword}
+              style={{ padding: '8px 14px', background: '#1A1611', color: '#FAF7F2', border: 'none', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 13, cursor: 'pointer' }}
+            >
+              +
+            </button>
+          </div>
+
+          {interestsSaved ? (
+            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611' }}>
+              {ts.interestsSaved}
+            </div>
+          ) : (
+            <button
+              onClick={handleSaveInterests}
+              disabled={interestsSaving}
+              style={{
+                padding: '10px 18px',
+                background: interestsSaving ? '#D8D0BE' : '#C84B31',
+                color: '#FAF7F2',
+                border: 'none', borderRadius: 4,
+                fontFamily: "'Geist', sans-serif", fontSize: 13, fontWeight: 500,
+                cursor: interestsSaving ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {ts.interestsSaveBtn}
+            </button>
+          )}
         </div>
 
         {/* Data management */}

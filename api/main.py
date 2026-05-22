@@ -5,13 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from api.routes import auth, feed, learning, notifications, search, subscriptions
+from services.scheduler_service import start_scheduler, stop_scheduler
 from utils.database import Base, engine, get_db, init_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    start_scheduler()
     yield
+    stop_scheduler()
 
 
 app = FastAPI(title="Research Thread Agent API", lifespan=lifespan)

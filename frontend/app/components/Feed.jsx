@@ -408,19 +408,302 @@ function TrendingFeed({ onQuickSearch }) {
 }
 
 // =============================================================================
-// My Feed stub
+// My Feed
 // =============================================================================
-function MyFeedView() {
+function MyFeedView({ userId, refreshKey = 0 }) {
   const { t } = useLanguage();
+  const tf = t.feed;
+  const ts = t.search;
+  const [papers, setPapers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(false);
+  const [checkProgress, setCheckProgress] = useState([]); // [{label, status, newCount}]
+  const [expandedAbstracts, setExpandedAbstracts] = useState({});
+  const checkStartedRef = useRef(false);
+  const esRef = useRef(null);
+
+  const loadPapers = useCallback(() => {
+    setLoading(true);
+    fetch(`${API}/feed/my-feed?user_id=${userId || 1}`)
+      .then(r => r.json())
+      .then(d => setPapers(d.papers || []))
+      .catch(() => setPapers([]))
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  // Reset and reload when refreshKey or userId changes
+  useEffect(() => {
+    checkStartedRef.current = false;
+    if (esRef.current) { esRef.current.close(); esRef.current = null; }
+    setChecking(false);
+    setCheckProgress([]);
+    loadPapers();
+  }, [userId, refreshKey, loadPapers]);
+
+  // Auto-start SSE check when no papers after initial load
+  useEffect(() => {
+    if (!loading && !checking && papers.length === 0 && userId && !checkStartedRef.current) {
+      checkStartedRef.current = true;
+      startCheck();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, papers.length]);
+
+  const startCheck = () => {
+    if (esRef.current) esRef.current.close();
+    setChecking(true);
+    setCheckProgress([]);
+    const es = new EventSource(`${API}/notifications/check/stream?user_id=${userId || 1}`);
+    esRef.current = es;
+    es.onmessage = (e) => {
+      try {
+        const ev = JSON.parse(e.data);
+        if (ev.stage === 'fetching') {
+          setCheckProgress(prev => [...prev, { label: ev.label, status: 'loading' }]);
+        } else if (ev.stage === 'fetched') {
+          setCheckProgress(prev => {
+            const next = [...prev];
+            if (next.length > 0)
+              next[next.length - 1] = { ...next[next.length - 1], status: ev.error ? 'error' : 'done', newCount: ev.new || 0 };
+            return next;
+          });
+        } else if (ev.stage === 'done' || ev.stage === 'error') {
+          es.close(); esRef.current = null;
+          setChecking(false);
+          loadPapers();
+        }
+      } catch (_) {}
+    };
+    es.onerror = () => {
+      es.close(); esRef.current = null;
+      setChecking(false);
+      loadPapers();
+    };
+  };
+
+  const toggleAbstract = (id) =>
+    setExpandedAbstracts(prev => ({ ...prev, [id]: !prev[id] }));
+
+  const relTime = (isoTs) => {
+    if (!isoTs) return '';
+    const diff = Date.now() - new Date(isoTs).getTime();
+    const h = Math.floor(diff / 3600000);
+    if (h < 1) return '< 1h ago';
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  };
+
+  // Progress view while SSE check is running
+  if (checking) {
+    return (
+      <div style={{ padding: '24px 16px 80px' }}>
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9E9485', letterSpacing: '0.08em', marginBottom: 16 }}>
+          {tf.myFeedGenerating}
+        </div>
+        {checkProgress.map((item, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontFamily: "'Geist', sans-serif", fontSize: 12 }}>
+            <span style={{ width: 14, color: item.status === 'done' ? '#1A1611' : item.status === 'error' ? '#9E9485' : '#C84B31' }}>
+              {item.status === 'done' ? '✓' : item.status === 'error' ? '✕' : '…'}
+            </span>
+            <span style={{ color: item.status === 'loading' ? '#9E9485' : '#1A1611' }}>{item.label}</span>
+            {item.status === 'done' && item.newCount > 0 && (
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#C84B31' }}>+{item.newCount}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding: '60px 24px', textAlign: 'center', fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#9E9485' }}>
+        {tf.myFeedLoading}
+      </div>
+    );
+  }
+
+  if (papers.length === 0) {
+    return (
+      <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+        <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontStyle: 'italic', color: '#1A1611', marginBottom: 12 }}>
+          {tf.navMyFeed}
+        </div>
+        <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', lineHeight: 1.6, margin: 0 }}>
+          {tf.myFeedEmpty}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ padding: '60px 24px', textAlign: 'center' }}>
-      <div style={{ fontSize: 32, marginBottom: 20 }}>📬</div>
-      <p style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontStyle: 'italic', color: '#1A1611', margin: '0 0 12px' }}>
-        {t.feed.navMyFeed}
-      </p>
-      <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', lineHeight: 1.6, margin: 0 }}>
-        {t.feed.myFeedComingSoon}
-      </p>
+    <div style={{ padding: '16px 16px 80px' }}>
+      {papers.map(p => (
+        <div key={p.id} style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 8, marginBottom: 12, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 14px 0' }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+              {p.topic && (
+                <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#C84B31', background: '#FFF0EC', padding: '2px 7px', borderRadius: 10, letterSpacing: '0.05em' }}>
+                  {p.topic}
+                </span>
+              )}
+              {p.citation_count > 0 && (
+                <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9E9485' }}>
+                  {ts.citations(p.citation_count)}
+                </span>
+              )}
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9E9485' }}>
+                {relTime(p.created_at)}
+              </span>
+              {!p.is_read && (
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C84B31', display: 'inline-block' }} />
+              )}
+            </div>
+            <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 500, color: '#1A1611', textDecoration: 'none', lineHeight: 1.4, display: 'block', marginBottom: 10 }}>
+              {p.title}
+              <ArrowUpRight size={12} style={{ color: '#9E9485', marginLeft: 4, verticalAlign: 'middle', flexShrink: 0 }} />
+            </a>
+          </div>
+          {p.abstract && (
+            <>
+              <div style={{
+                padding: '0 14px',
+                fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#4A4035', lineHeight: 1.6,
+                ...(expandedAbstracts[p.id]
+                  ? { marginBottom: 12 }
+                  : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 0 }
+                ),
+              }}>
+                {p.abstract}
+              </div>
+              <button
+                onClick={() => toggleAbstract(p.id)}
+                style={{
+                  width: '100%', padding: '8px 14px', marginTop: 8,
+                  background: 'none', border: 'none', borderTop: '1px solid #F0EBE0',
+                  textAlign: 'left', cursor: 'pointer',
+                  fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                {expandedAbstracts[p.id] ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {expandedAbstracts[p.id] ? tf.myFeedHideAbstract : tf.myFeedShowAbstract}
+              </button>
+            </>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// =============================================================================
+// Notification dropdown
+// =============================================================================
+function NotificationDropdown({ userId, onClose }) {
+  const { t } = useLanguage();
+  const tn = t.notifications;
+  const [notifs, setNotifs] = useState([]);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    fetch(`${API}/notifications?user_id=${userId || 1}`)
+      .then(r => r.json())
+      .then(setNotifs)
+      .catch(() => {});
+  }, [userId]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  const markRead = async (id) => {
+    await fetch(`${API}/notifications/${id}/read?user_id=${userId || 1}`, { method: 'PATCH' });
+    setNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+  };
+
+  const markAllRead = async () => {
+    await fetch(`${API}/notifications/read-all?user_id=${userId || 1}`, { method: 'POST' });
+    setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
+  };
+
+  const handleClick = (n) => {
+    if (!n.is_read) markRead(n.id);
+    if (n.source_url) window.open(n.source_url, '_blank');
+  };
+
+  const relTime = (ts) => {
+    const diff = Date.now() - new Date(ts);
+    const h = Math.floor(diff / 3600000);
+    if (h < 1) return '< 1h ago';
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  };
+
+  const unread = notifs.filter(n => !n.is_read).length;
+
+  return (
+    <div ref={ref} style={{
+      position: 'absolute', top: '100%', right: 0, zIndex: 200,
+      background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 8,
+      width: 320, maxHeight: 400, overflow: 'hidden',
+      display: 'flex', flexDirection: 'column',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
+    }}>
+      {/* Header */}
+      <div style={{ padding: '12px 14px', borderBottom: '1px solid #E8E2D5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, fontWeight: 600, color: '#1A1611', letterSpacing: '0.08em' }}>
+          {tn.title}
+        </span>
+        {unread > 0 && (
+          <button onClick={markAllRead} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#C84B31' }}>
+            {tn.markAllRead}
+          </button>
+        )}
+      </div>
+
+      {/* List */}
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        {notifs.length === 0 ? (
+          <div style={{ padding: '24px 14px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9E9485', textAlign: 'center' }}>
+            {tn.empty}
+          </div>
+        ) : notifs.map(n => (
+          <div
+            key={n.id}
+            onClick={() => handleClick(n)}
+            style={{
+              padding: '10px 14px', borderBottom: '1px solid #F0EBE0', cursor: n.source_url ? 'pointer' : 'default',
+              background: n.is_read ? 'transparent' : '#FDF8F2',
+              display: 'flex', gap: 10, alignItems: 'flex-start',
+            }}
+          >
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: n.is_read ? 'transparent' : '#C84B31', marginTop: 5, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', fontWeight: n.is_read ? 400 : 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {n.title}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                {n.topic && (
+                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', background: '#F0EBE0', padding: '1px 6px', borderRadius: 10 }}>
+                    {n.topic}
+                  </span>
+                )}
+                <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9E9485' }}>
+                  {relTime(n.created_at)}
+                </span>
+              </div>
+            </div>
+            {n.source_url && (
+              <ArrowUpRight size={12} style={{ color: '#9E9485', flexShrink: 0, marginTop: 3 }} />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -555,7 +838,7 @@ function SearchModeToggle({ mode, onMode, t }) {
 // =============================================================================
 // Feed main
 // =============================================================================
-export default function Feed({ onSettings, userId }) {
+export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
   const { t, lang } = useLanguage();
   const tf = t.feed;
   const ts = t.search;
@@ -600,6 +883,24 @@ export default function Feed({ onSettings, userId }) {
 
   // Papers source label
   const [papersSourceLabel, setPapersSourceLabel] = useState('Semantic Scholar');
+
+  // Notification dropdown
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const bellRef = useRef(null);
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const res = await fetch(`${API}/notifications/count?user_id=${userId || 1}`);
+        const d = await res.json();
+        setUnreadCount(d.unread || 0);
+      } catch (_) {}
+    };
+    fetchCount();
+    const id = setInterval(fetchCount, 60000);
+    return () => clearInterval(id);
+  }, [userId]);
 
   // Search history dropdown
   const [showHistory, setShowHistory] = useState(false);
@@ -818,9 +1119,23 @@ export default function Feed({ onSettings, userId }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611' }}>
-            <Bell size={18} />
-          </button>
+          <div ref={bellRef} style={{ position: 'relative' }}>
+            <button onClick={() => setShowNotifs(p => !p)} style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611', cursor: 'pointer', position: 'relative' }}>
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span style={{
+                  position: 'absolute', top: 4, right: 4,
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: '#C84B31', border: '1.5px solid #FAF7F2',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 8, color: '#FFF', fontFamily: "'Geist', sans-serif", fontWeight: 700,
+                }} />
+              )}
+            </button>
+            {showNotifs && (
+              <NotificationDropdown userId={userId} onClose={() => setShowNotifs(false)} />
+            )}
+          </div>
           <button onClick={onSettings} style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611', cursor: 'pointer' }}>
             <Settings size={18} />
           </button>
@@ -913,7 +1228,7 @@ export default function Feed({ onSettings, userId }) {
           {view === 'trending' && <TrendingFeed onQuickSearch={handleQuickSearch} />}
 
           {/* My Feed tab */}
-          {view === 'myFeed' && <MyFeedView />}
+          {view === 'myFeed' && <MyFeedView userId={userId} refreshKey={myFeedRefreshKey} />}
 
           {/* Search tab */}
           {view === 'search' && (

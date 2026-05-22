@@ -6,7 +6,8 @@ Automatically collects papers, models, and repositories from **Semantic Scholar*
 
 - **Quick Search** — Papers, models, and repos for a keyword, sorted by quality signal (citations / downloads / stars)
 - **Learning Path** — Historical development of a topic, organized chronologically by era
-- **Trending Feed** — Community-upvoted papers from Hugging Face (daily or weekly)
+- **Trending Feed** — Community-upvoted papers from Hugging Face (daily / weekly / monthly)
+- **My Feed** — Personalized paper alerts based on your subscribed categories and keywords
 
 All data is stored on your local machine (SQLite). No external server, no account required, no telemetry.
 
@@ -152,7 +153,9 @@ research-thread-agent/
 │   ├── github_service.py              # GitHub repo search (star-sorted)
 │   ├── claude_service.py              # On-demand AI summaries (overview + per-paper)
 │   ├── thread_service.py              # Quick Search orchestration
-│   └── historical_thread_service.py   # Learning Path orchestration
+│   ├── historical_thread_service.py   # Learning Path orchestration
+│   ├── notification_service.py        # My Feed: check subscriptions, create notification records
+│   └── scheduler_service.py           # APScheduler daily background check
 ├── models/                            # SQLAlchemy ORM models
 ├── scripts/                           # Utility scripts
 │   └── reset_db.py                    # Wipe and reinitialize the database
@@ -175,7 +178,19 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.7.1 (current)
+### v0.8.0 (current)
+- [x] My Feed: personalized paper alerts from subscribed categories and keywords
+  - Background scheduler (daily) checks each user's preferences against Semantic Scholar
+  - Real-time SSE generation progress per topic (same pattern as Learning Path)
+  - Papers sorted globally by citation count; inline abstract expand/collapse; citation count badge per card
+  - Bell icon in header shows unread count badge; click opens notification dropdown
+  - Notification dropdown: mark single or all as read, source link opens in new tab
+  - Auto-generates feed after onboarding completes; re-generates when Settings interests are saved
+- [x] Semantic Scholar 429 handling: triple-retry (immediate → 10 s → 30 s) before OpenAlex fallback
+- [x] Trending and My Feed results cached for 24 h (no redundant fetches within the same day)
+- [x] Category key unification — onboarding, Settings, and notification service now use identical keys
+
+### v0.7.1
 - [x] Trending Feed: monthly period filter added (30-day parallel fetch, deduplicated)
 - [x] Trending Feed: each card now has inline expand/collapse for the summary text (same pattern as Quick Search)
 - [x] Quick Search: AI Summary no-key hint fix — empty-string guard removed so retries work; hint text now fills available space
@@ -245,7 +260,6 @@ research-thread-agent/
 - [x] Settings → Reset Database
 
 ### Upcoming
-- [ ] Phase 4: Subscriptions, in-app notifications, email digest (bell icon → dropdown)
 - [ ] Phase 5: Electron desktop packaging (no terminal required)
 - [ ] Phase 6: MCP server for Claude.ai chat integration
 

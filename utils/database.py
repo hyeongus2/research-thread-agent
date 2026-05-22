@@ -27,3 +27,14 @@ def init_db() -> None:
     # Import all models so their tables are registered with Base.metadata
     from models import user, subscription, notification, thread, settings  # noqa: F401
     Base.metadata.create_all(bind=engine)
+    # Add columns introduced after initial schema creation (SQLite ALTER TABLE is limited)
+    with engine.connect() as conn:
+        try:
+            conn.execute(
+                __import__("sqlalchemy").text(
+                    "ALTER TABLE notifications ADD COLUMN citation_count INTEGER DEFAULT 0"
+                )
+            )
+            conn.commit()
+        except Exception:
+            pass  # column already exists
