@@ -31,7 +31,8 @@ const ANALYSIS_COLORS = {
 // =============================================================================
 // Paper / Model / Repo card
 // =============================================================================
-function EraCard({ item, type, lang, tl }) {
+function EraCard({ item, type, lang, tl, noApiKey }) {
+  const [abstractOpen, setAbstractOpen] = useState(false);
   const colors = TYPE_COLORS[type];
   const typeLabel = { paper: 'PAPER', model: 'MODEL', repo: 'REPO' }[type];
   const title = item.title || item.name || '';
@@ -48,7 +49,8 @@ function EraCard({ item, type, lang, tl }) {
           { month: 'short', year: 'numeric' }
         )
       : '';
-    meta = [authors, d].filter(Boolean).join(' · ');
+    const cites = item.citation_count > 0 ? `${item.citation_count.toLocaleString()} citations` : '';
+    meta = [authors, d, cites].filter(Boolean).join(' · ');
   } else if (type === 'model') {
     const dl = item.downloads ? `↓ ${(item.downloads / 1000).toFixed(0)}K` : '';
     meta = [item.pipeline_tag, dl].filter(Boolean).join(' · ');
@@ -64,23 +66,17 @@ function EraCard({ item, type, lang, tl }) {
     { key: 'limitations',  label: tl.limitations },
   ];
   const hasAnalysis = type === 'paper' && analysisFields.some(f => item[f.key]);
+  const hasAbstract = type === 'paper' && item.abstract;
 
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      style={{
-        display: 'block',
-        background: '#FFFFFF',
-        border: '1px solid #E8E2D5',
-        marginBottom: 12,
-        padding: '14px 16px',
-        borderRadius: 4,
-        textDecoration: 'none',
-        color: '#1A1611',
-      }}
-    >
+    <div style={{
+      background: '#FFFFFF',
+      border: '1px solid #E8E2D5',
+      marginBottom: 12,
+      padding: '14px 16px',
+      borderRadius: 4,
+    }}>
+      {/* Type badge + link icon */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span style={{
           background: colors.bg, color: colors.fg,
@@ -90,22 +86,62 @@ function EraCard({ item, type, lang, tl }) {
         }}>
           {typeLabel}
         </span>
-        <ArrowUpRight size={13} style={{ color: '#6B6358' }} />
+        <a href={url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
+          <ArrowUpRight size={13} style={{ color: '#6B6358' }} />
+        </a>
       </div>
-      <div style={{
-        fontFamily: "'Fraunces', serif",
-        fontSize: 15, fontWeight: 500,
-        color: '#1A1611', lineHeight: 1.3,
-        marginBottom: meta ? 6 : 0,
-      }}>
-        {title}
-      </div>
+
+      {/* Title */}
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        style={{ textDecoration: 'none', color: '#1A1611' }}
+      >
+        <div style={{
+          fontFamily: "'Fraunces', serif",
+          fontSize: 15, fontWeight: 500,
+          color: '#1A1611', lineHeight: 1.3,
+          marginBottom: meta ? 6 : 0,
+        }}>
+          {title}
+        </div>
+      </a>
+
       {meta && (
         <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>
           {meta}
         </span>
       )}
 
+      {/* Abstract toggle (paper only) */}
+      {hasAbstract && (
+        <div style={{ marginTop: 8 }}>
+          <p style={{
+            fontFamily: "'Geist', sans-serif",
+            fontSize: 12, color: '#3A342B',
+            lineHeight: 1.55, margin: 0,
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: abstractOpen ? undefined : 2,
+            overflow: abstractOpen ? 'visible' : 'hidden',
+          }}>
+            {item.abstract}
+          </p>
+          <button
+            onClick={() => setAbstractOpen(v => !v)}
+            style={{
+              marginTop: 4, background: 'none', border: 'none', padding: 0,
+              fontFamily: "'Geist', sans-serif", fontSize: 11,
+              color: '#6B6358', cursor: 'pointer', textDecoration: 'underline',
+            }}
+          >
+            {abstractOpen ? tl.hideAbstract : tl.showAbstract}
+          </button>
+        </div>
+      )}
+
+      {/* AI analysis */}
       {hasAnalysis && (
         <div style={{
           marginTop: 12, paddingTop: 12,
@@ -135,7 +171,19 @@ function EraCard({ item, type, lang, tl }) {
           )}
         </div>
       )}
-    </a>
+
+      {/* API key prompt (paper only, when no analysis) */}
+      {type === 'paper' && !hasAnalysis && noApiKey && (
+        <div style={{
+          marginTop: 10, paddingTop: 10,
+          borderTop: '1px solid #F0EAD9',
+          fontFamily: "'Geist', sans-serif", fontSize: 11,
+          color: '#A09880', lineHeight: 1.4,
+        }}>
+          {tl.noApiKeyCard}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -174,11 +222,21 @@ function InlineNotice({ text, isError }) {
 // =============================================================================
 // Real-time progress display during build
 // =============================================================================
-function BuildProgress({ progress, tl }) {
-  const { papersTotal, papersSource, modelsCount, modelsError, reposCount, reposError, eras, currentEra } = progress;
+function BuildProgress({ topic, progress, tl }) {
+  const { papersTotal, papersSource, modelsCount, modelsError, reposCount, reposError, eras } = progress;
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px 0' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 20px 0' }}>
+      {/* Topic being built */}
+      {topic && (
+        <div style={{
+          fontFamily: "'Fraunces', serif", fontSize: 16,
+          color: '#6B6358', fontStyle: 'italic',
+          marginBottom: 6, textAlign: 'center',
+        }}>
+          "{topic}"
+        </div>
+      )}
       <div style={{
         fontFamily: "'Fraunces', serif", fontSize: 20,
         color: '#1A1611', fontStyle: 'italic', textAlign: 'center', marginBottom: 28,
@@ -194,11 +252,11 @@ function BuildProgress({ progress, tl }) {
             done: papersTotal !== null, error: false,
           },
           {
-            label: modelsError ? tl.modelsError : modelsCount !== null ? tl.modelsFound(modelsCount) : 'Hugging Face',
+            label: modelsError ? tl.modelsErrorShort : modelsCount !== null ? tl.modelsFound(modelsCount) : 'Hugging Face',
             done: modelsCount !== null, error: modelsError,
           },
           {
-            label: reposError ? tl.reposError : reposCount !== null ? tl.reposFound(reposCount) : 'GitHub',
+            label: reposError ? tl.reposErrorShort : reposCount !== null ? tl.reposFound(reposCount) : 'GitHub',
             done: reposCount !== null, error: reposError,
           },
         ].map((src, i) => (
@@ -284,7 +342,6 @@ export default function LearningPath({ userId, onBack }) {
   const [result, setResult] = useState(null);
   const [activeEra, setActiveEra] = useState(0);
   const [progress, setProgress] = useState(INIT_PROGRESS);
-  // currentEra used only for SSE tracking, not rendered directly
 
   const build = async () => {
     const trimmed = topic.trim();
@@ -446,15 +503,31 @@ export default function LearningPath({ userId, onBack }) {
       )}
 
       {/* Loading */}
-      {state === 'loading' && <BuildProgress progress={progress} tl={tl} />}
+      {state === 'loading' && <BuildProgress topic={topic} progress={progress} tl={tl} />}
 
       {/* Results */}
       {state === 'done' && result && (
         <>
+          {/* Topic title */}
+          <div style={{ padding: '14px 16px 0' }}>
+            <div style={{
+              fontFamily: "'Geist', sans-serif", fontSize: 10,
+              color: '#6B6358', letterSpacing: '0.15em', marginBottom: 2,
+            }}>
+              {tl.topicLabel}
+            </div>
+            <div style={{
+              fontFamily: "'Fraunces', serif", fontSize: 20,
+              fontStyle: 'italic', color: '#1A1611',
+            }}>
+              {result.topic}
+            </div>
+          </div>
+
           {/* Topic overview */}
           {result.description && (
             <div style={{
-              margin: '14px 16px 0', padding: '14px 16px',
+              margin: '10px 16px 0', padding: '14px 16px',
               background: '#FFFFFF', borderLeft: '3px solid #C84B31',
               borderRadius: '0 4px 4px 0',
             }}>
@@ -521,7 +594,10 @@ export default function LearningPath({ userId, onBack }) {
                 <>
                   <SectionLabel text={tl.papers} />
                   {era.papers.map((p, i) => (
-                    <EraCard key={i} item={p} type="paper" lang={lang} tl={tl} />
+                    <EraCard
+                      key={i} item={p} type="paper" lang={lang} tl={tl}
+                      noApiKey={era.ai_status === 'no_key'}
+                    />
                   ))}
                 </>
               )}

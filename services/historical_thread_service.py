@@ -1,6 +1,7 @@
 """Historical thread service for building era-grouped Learning Paths."""
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, date as _date
 from typing import Generator, Optional
 
@@ -38,30 +39,39 @@ def _era_buckets() -> list[tuple]:
     return buckets
 
 
+_ERA_FETCH_DELAY = 1.5  # seconds between era requests to stay under Semantic Scholar rate limit
+
+
 def _fetch_papers_per_era(
     topic: str,
     papers_per_era: int,
     _source_out: Optional[list] = None,
 ) -> dict[str, list[dict]]:
-    """Fetch papers for each era using separate date-filtered queries (parallel).
+    """Fetch papers for each era using separate sequential date-filtered queries.
 
     Each era gets its own Semantic Scholar request with start/end date bounds,
     so recent eras receive papers ranked by citation count *within that window*
     rather than being starved by all-time citation leaders.
 
+    Requests are sequential with a 1.5-second delay to stay within the
+    unauthenticated Semantic Scholar rate limit (~100 req / 5 min).
+
     Args:
         topic: Research topic keyword(s).
         papers_per_era: Maximum papers to fetch per era.
         _source_out: Optional single-element list; populated with the source
-            label ("Semantic Scholar" or "OpenAlex") from the first completed era.
+            label ("Semantic Scholar" or "OpenAlex") from the first era.
 
     Returns:
         Ordered dict mapping era label → list of paper dicts (non-empty eras only).
     """
     buckets = _era_buckets()
+    ordered: dict[str, list] = {}
     source_recorded = False
 
-    def _fetch_one(start_year, end_year, label):
+    for i, (start_year, end_year, label) in enumerate(buckets):
+        if i > 0:
+            time.sleep(_ERA_FETCH_DELAY)
         start = _date(start_year, 1, 1) if start_year is not None else None
         end = _date(end_year, 12, 31)
         src: list = []
@@ -70,28 +80,12 @@ def _fetch_papers_per_era(
         except Exception as exc:
             logger.warning("Era '%s' fetch failed: %s", label, exc)
             papers = []
-        return label, papers, src
+        if papers:
+            ordered[label] = papers
+        if _source_out is not None and src and not source_recorded:
+            _source_out.extend(src)
+            source_recorded = True
 
-    era_results: dict[str, list] = {}
-
-    with ThreadPoolExecutor(max_workers=min(len(buckets), 8)) as executor:
-        future_map = {
-            executor.submit(_fetch_one, start, end, label): label
-            for start, end, label in buckets
-        }
-        for future in as_completed(future_map):
-            label, papers, src = future.result()
-            if papers:
-                era_results[label] = papers
-            if _source_out is not None and src and not source_recorded:
-                _source_out.extend(src)
-                source_recorded = True
-
-    # Restore insertion order (buckets order) for era_results
-    ordered = {}
-    for _, _, label in buckets:
-        if label in era_results:
-            ordered[label] = era_results[label]
     return ordered
 
 

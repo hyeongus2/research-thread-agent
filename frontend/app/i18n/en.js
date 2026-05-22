@@ -126,6 +126,10 @@ const en = {
     analyzingEra: (label) => `Analyzing ${label}…`,
     eraAnalyzed: '✓',
     eraPending: '○',
+    topicLabel: 'TOPIC',
+    showAbstract: 'Show abstract',
+    hideAbstract: 'Hide abstract',
+    noApiKeyCard: 'Add ANTHROPIC_API_KEY to .env to see per-paper analysis (problem / solution / significance / limitations).',
   },
   settings: {
     close: 'Close',

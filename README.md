@@ -174,7 +174,13 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.5.2 (current)
+### v0.5.3 (current)
+- [x] Learning Path: topic title shown in results and loading screens
+- [x] Learning Path: abstract expand/collapse on paper cards (same as Quick Search)
+- [x] Learning Path: per-paper API key prompt when ANTHROPIC_API_KEY not set
+- [x] Learning Path: sequential era fetching with delay — fixes rate-limit gaps in recent eras
+
+### v0.5.2
 - [x] Learning Path: per-era date-filtered queries — each era fetches its own papers by date range so recent eras (2025) are populated equally regardless of citation count
 - [x] Learning Path: configurable papers-per-era in Settings (3–20, default 10)
 
