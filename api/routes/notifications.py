@@ -81,7 +81,12 @@ def read_all_notifications(user_id: int, db: Session = Depends(get_db)):
 @router.get("/notifications/settings")
 def get_notification_settings(user_id: int, db: Session = Depends(get_db)):
     s = db.query(NotificationSettings).filter(NotificationSettings.user_id == user_id).first()
-    return {"email_enabled": s.email_enabled if s else False}
+    if not s:
+        return {"email_enabled": True, "breakthrough_enabled": False}
+    return {
+        "email_enabled": s.email_enabled,
+        "breakthrough_enabled": s.breakthrough_enabled,
+    }
 
 
 @router.patch("/notifications/settings")
@@ -90,13 +95,24 @@ def update_notification_settings(
 ):
     s = db.query(NotificationSettings).filter(NotificationSettings.user_id == user_id).first()
     if not s:
-        s = NotificationSettings(user_id=user_id, email_enabled=body.email_enabled)
+        s = NotificationSettings(
+            user_id=user_id,
+            email_enabled=body.email_enabled if body.email_enabled is not None else True,
+            breakthrough_enabled=body.breakthrough_enabled or False,
+        )
         db.add(s)
     else:
-        s.email_enabled = body.email_enabled
+        if body.email_enabled is not None:
+            s.email_enabled = body.email_enabled
+        if body.breakthrough_enabled is not None:
+            s.breakthrough_enabled = body.breakthrough_enabled
         s.updated_at = datetime.utcnow()
     db.commit()
-    return {"ok": True, "email_enabled": s.email_enabled}
+    return {
+        "ok": True,
+        "email_enabled": s.email_enabled,
+        "breakthrough_enabled": s.breakthrough_enabled,
+    }
 
 
 def _run_check_sync():

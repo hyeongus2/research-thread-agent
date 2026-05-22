@@ -18,6 +18,7 @@ class NotificationSettings(Base):
     notify_paper: Mapped[bool] = mapped_column(Boolean, default=True)
     notify_model: Mapped[bool] = mapped_column(Boolean, default=True)
     notify_repo: Mapped[bool] = mapped_column(Boolean, default=True)
+    breakthrough_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped[object] = relationship("User", back_populates="notification_settings")

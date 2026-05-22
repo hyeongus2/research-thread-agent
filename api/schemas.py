@@ -96,4 +96,5 @@ class NotificationResponse(BaseModel):
 
 
 class NotificationSettingsUpdate(BaseModel):
-    email_enabled: bool
+    email_enabled: Optional[bool] = None
+    breakthrough_enabled: Optional[bool] = None

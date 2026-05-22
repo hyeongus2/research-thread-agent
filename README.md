@@ -178,7 +178,12 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.8.0 (current)
+### v0.9.0 (current)
+- [x] Daily Digest email toggle defaults to **on** for new users (and correctly reads `true` when no settings row exists)
+- [x] Breakthrough Alerts toggle now persists — stored in `notification_settings.breakthrough_enabled`; reopening Settings reflects the saved state
+- [x] Notification settings PATCH accepts either field independently so toggling one does not reset the other
+
+### v0.8.0
 - [x] My Feed: personalized paper alerts from subscribed categories and keywords
   - Background scheduler (daily) checks each user's preferences against Semantic Scholar
   - Real-time SSE generation progress per topic (same pattern as Learning Path)

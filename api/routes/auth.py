@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from api.schemas import OnboardingRequest, OnboardingResponse, UserResponse
+from models.settings import NotificationSettings
 from models.subscription import Subscription
 from services.database_service import (
     add_subscription,
@@ -32,6 +33,11 @@ def complete_onboarding(body: OnboardingRequest, db: Session = Depends(get_db)):
 
     for category in body.categories:
         add_subscription(db, user_id=user.id, topic=category)
+
+    existing = db.query(NotificationSettings).filter(NotificationSettings.user_id == user.id).first()
+    if not existing:
+        db.add(NotificationSettings(user_id=user.id, email_enabled=True))
+        db.commit()
 
     return OnboardingResponse(user_id=user.id, username=user.username)
 

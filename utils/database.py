@@ -38,3 +38,12 @@ def init_db() -> None:
             conn.commit()
         except Exception:
             pass  # column already exists
+        try:
+            conn.execute(
+                __import__("sqlalchemy").text(
+                    "ALTER TABLE notification_settings ADD COLUMN breakthrough_enabled BOOLEAN DEFAULT 0"
+                )
+            )
+            conn.commit()
+        except Exception:
+            pass  # column already exists

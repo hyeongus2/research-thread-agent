@@ -62,7 +62,10 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
       .catch(() => {});
     fetch(`${API}/notifications/settings?user_id=${uid}`)
       .then(r => r.json())
-      .then(d => setDigestOn(d.email_enabled || false))
+      .then(d => {
+        setDigestOn(d.email_enabled ?? true);
+        setBreakthroughOn(d.breakthrough_enabled ?? false);
+      })
       .catch(() => {});
   }, [userId]);
 
@@ -74,6 +77,18 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email_enabled: next }),
+      });
+    } catch (_) {}
+  };
+
+  const handleBreakthroughToggle = async () => {
+    const next = !breakthroughOn;
+    setBreakthroughOn(next);
+    try {
+      await fetch(`${API}/notifications/settings?user_id=${userId || 1}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ breakthrough_enabled: next }),
       });
     } catch (_) {}
   };
@@ -248,7 +263,7 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
             title={ts.breakthroughAlerts}
             description={ts.breakthroughDesc}
             on={breakthroughOn}
-            onToggle={() => setBreakthroughOn(v => !v)}
+            onToggle={handleBreakthroughToggle}
             noBorder
           />
         </div>
