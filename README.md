@@ -220,40 +220,16 @@ research-thread-agent/
 - [x] HF Daily Papers trending feed on the Trending tab
 - [x] Learning Path cache TTL raised from 7 days → 90 days
 
-### v0.5.4
-- [x] Quick Search: search history auto-expires after 30 days (purged on each new search)
-- [x] Settings: "Clear search history" button — removes Quick Search records while keeping preferences and Learning Path cache
-
-### v0.5.3
-- [x] Learning Path: topic title shown in results and loading screens
-- [x] Learning Path: abstract expand/collapse on paper cards (same as Quick Search)
-- [x] Learning Path: per-paper API key prompt when ANTHROPIC_API_KEY not set
-- [x] Learning Path: sequential era fetching with delay — fixes rate-limit gaps in recent eras
-
-### v0.5.2
-- [x] Learning Path: per-era date-filtered queries — each era fetches its own papers by date range so recent eras (2025) are populated equally regardless of citation count
-- [x] Learning Path: configurable papers-per-era in Settings (3–20, default 10)
-
-### v0.5.1
-- [x] Learning Path: per-paper AI analysis (Problem / Solution / Significance / Limitations)
-- [x] Learning Path: real-time SSE progress display (sources found, era-by-era analysis status)
-- [x] Learning Path: configurable limits in Settings (papers per era, models, repos)
-- [x] Language-aware AI responses — Overview, Summary, and Learning Path era analysis respect the current UI language (EN / KO)
-- [x] Multi-keyword AND semantics across Semantic Scholar, Hugging Face, and GitHub
-- [x] OpenAlex fallback label shown dynamically in Quick Search progress badges
-
-### v0.5.0
-- [x] Quick Search: Semantic Scholar replaces arXiv as paper source (citation-count sorting)
-- [x] Learning Path: Semantic Scholar replaces arXiv (consistent source across both modes)
-- [x] OpenAlex automatic fallback when Semantic Scholar is rate-limited (no arXiv dependency)
-- [x] Papers / Models / Repos fully separated into tabs (not mixed list)
-- [x] Page number pagination with 10 / 25 / 50 per-page selector
-- [x] Paper cards: inline abstract expand/collapse, citation count + venue badge
-- [x] AI Overview and AI Summary on-demand buttons (no automatic LLM calls)
-- [x] ChromaDB / RAG removed — no longer needed
-- [x] Batch LLM relevance scoring removed — API quality signals replace it
-- [x] Scroll-to-top / scroll-to-bottom buttons in all scrollable areas
-- [x] Result limits raised: 100 papers / 50 models / 50 repos
+### v0.5.x
+- [x] Quick Search: Semantic Scholar replaces arXiv (citation-count sorting); OpenAlex automatic fallback
+- [x] Papers / Models / Repos separated into tabs; pagination (10 / 25 / 50 per page); result limits raised to 100 / 50 / 50
+- [x] Paper cards: inline abstract expand/collapse, citation count + venue badge; scroll-to-top / bottom buttons
+- [x] AI Overview and AI Summary on-demand buttons (no automatic LLM calls); language-aware responses (EN / KO)
+- [x] Multi-keyword AND semantics across all three sources
+- [x] Learning Path: Semantic Scholar replaces arXiv; per-era date-filtered queries; configurable limits in Settings
+- [x] Learning Path: per-paper AI analysis (Problem / Solution / Significance / Limitations); real-time SSE progress
+- [x] Learning Path: sequential era fetching with delay; abstract expand/collapse; topic title in results
+- [x] Quick Search: search history auto-expires after 30 days; Settings "Clear search history" button
 
 ### v0.4.0
 - [x] Learning Path: era-based historical view of any research topic
