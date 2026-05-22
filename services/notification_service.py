@@ -64,6 +64,7 @@ def _check_user(db: Session, user: User, progress_cb: Optional[Callable] = None)
 
     since = date.today() - timedelta(days=_FETCH_WINDOW_DAYS)
     total_new = 0
+    new_notifs: list[Notification] = []
 
     for i, (label, query) in enumerate(queries):
         if i > 0:
@@ -92,7 +93,7 @@ def _check_user(db: Session, user: User, progress_cb: Optional[Callable] = None)
                 continue
             seen_urls.add(url)
             new_count += 1
-            db.add(Notification(
+            notif = Notification(
                 user_id=user.id,
                 title=p.get("title", ""),
                 content=p.get("abstract") or "",
@@ -100,7 +101,9 @@ def _check_user(db: Session, user: User, progress_cb: Optional[Callable] = None)
                 topic=label,
                 source_url=url,
                 citation_count=p.get("citation_count") or 0,
-            ))
+            )
+            db.add(notif)
+            new_notifs.append(notif)
 
         total_new += new_count
         if progress_cb:
@@ -110,10 +113,40 @@ def _check_user(db: Session, user: User, progress_cb: Optional[Callable] = None)
             })
 
     db.commit()
+    for n in new_notifs:
+        db.refresh(n)
+
     if progress_cb:
         progress_cb({"stage": "done", "total_new": total_new})
     logger.info("Notifications generated for user %d: %d new", user.id, total_new)
+
+    if total_new > 0:
+        _maybe_send_email(db, user, new_notifs)
+
     return total_new
+
+
+def _maybe_send_email(db: Session, user: User, notifications: list[Notification]) -> None:
+    """Send email digest if the user has email notifications enabled."""
+    from datetime import datetime as dt
+    from models.settings import NotificationSettings
+    from services import email_service
+
+    settings = (
+        db.query(NotificationSettings)
+        .filter(NotificationSettings.user_id == user.id)
+        .first()
+    )
+    if not settings or not settings.email_enabled:
+        return
+
+    sent = email_service.send_digest(notifications)
+    if sent:
+        now = dt.utcnow()
+        for n in notifications:
+            n.email_sent = True
+            n.email_sent_at = now
+        db.commit()
 
 
 def check_and_notify(db: Session) -> None:

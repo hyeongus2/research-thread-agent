@@ -33,7 +33,7 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
   const { t, lang, setLang } = useLanguage();
   const ts = t.settings;
 
-  const [digestOn, setDigestOn] = useState(true);
+  const [digestOn, setDigestOn] = useState(false);
   const [breakthroughOn, setBreakthroughOn] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetDone, setResetDone] = useState(false);
@@ -49,9 +49,10 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
   const [interestsSaving, setInterestsSaving] = useState(false);
   const kwRef = useRef(null);
 
-  // Load current preferences on mount
+  // Load current preferences and notification settings on mount
   useEffect(() => {
-    fetch(`${API}/me?user_id=${userId || 1}`)
+    const uid = userId || 1;
+    fetch(`${API}/me?user_id=${uid}`)
       .then(r => r.json())
       .then(d => {
         const prefs = d.preferences || {};
@@ -59,7 +60,23 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
         setSelKeywords(prefs.keywords || []);
       })
       .catch(() => {});
+    fetch(`${API}/notifications/settings?user_id=${uid}`)
+      .then(r => r.json())
+      .then(d => setDigestOn(d.email_enabled || false))
+      .catch(() => {});
   }, [userId]);
+
+  const handleDigestToggle = async () => {
+    const next = !digestOn;
+    setDigestOn(next);
+    try {
+      await fetch(`${API}/notifications/settings?user_id=${userId || 1}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email_enabled: next }),
+      });
+    } catch (_) {}
+  };
 
   const toggleCategory = (cat) => {
     setSelCategories(prev =>
@@ -225,7 +242,7 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
             title={ts.dailyDigest}
             description={ts.dailyDigestDesc}
             on={digestOn}
-            onToggle={() => setDigestOn(v => !v)}
+            onToggle={handleDigestToggle}
           />
           <SettingRow
             title={ts.breakthroughAlerts}

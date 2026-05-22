@@ -167,7 +167,7 @@ const ko = {
     language: '언어',
     notifications: '알림',
     dailyDigest: '매일 논문 브리핑',
-    dailyDigestDesc: '매일 오전 8시에 새 논문 요약 전달',
+    dailyDigestDesc: '피드 생성 시 새 논문을 이메일로 전달해드려요',
     breakthroughAlerts: '주요 논문 알림',
     breakthroughDesc: '추천수가 급증할 때만',
     forDev: '개발자용',

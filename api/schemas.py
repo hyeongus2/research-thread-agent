@@ -93,3 +93,7 @@ class NotificationResponse(BaseModel):
     source_url: Optional[str] = None
     is_read: bool
     created_at: str
+
+
+class NotificationSettingsUpdate(BaseModel):
+    email_enabled: bool

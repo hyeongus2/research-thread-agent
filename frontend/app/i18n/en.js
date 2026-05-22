@@ -167,7 +167,7 @@ const en = {
     language: 'LANGUAGE',
     notifications: 'NOTIFICATIONS',
     dailyDigest: 'Daily Digest',
-    dailyDigestDesc: 'Delivered at 8:00 AM every morning',
+    dailyDigestDesc: 'Email new papers to you when your daily feed is generated',
     breakthroughAlerts: 'Breakthrough Alerts',
     breakthroughDesc: 'Only when upvotes spike rapidly',
     forDev: 'FOR DEVELOPERS',

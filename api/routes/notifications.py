@@ -7,8 +7,9 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from api.schemas import NotificationResponse
+from api.schemas import NotificationResponse, NotificationSettingsUpdate
 from models.notification import Notification
+from models.settings import NotificationSettings
 from services.database_service import mark_notification_read
 from utils.database import SessionLocal, get_db
 
@@ -75,6 +76,27 @@ def read_all_notifications(user_id: int, db: Session = Depends(get_db)):
         n.read_at = now
     db.commit()
     return {"ok": True, "marked": len(updated)}
+
+
+@router.get("/notifications/settings")
+def get_notification_settings(user_id: int, db: Session = Depends(get_db)):
+    s = db.query(NotificationSettings).filter(NotificationSettings.user_id == user_id).first()
+    return {"email_enabled": s.email_enabled if s else False}
+
+
+@router.patch("/notifications/settings")
+def update_notification_settings(
+    user_id: int, body: NotificationSettingsUpdate, db: Session = Depends(get_db)
+):
+    s = db.query(NotificationSettings).filter(NotificationSettings.user_id == user_id).first()
+    if not s:
+        s = NotificationSettings(user_id=user_id, email_enabled=body.email_enabled)
+        db.add(s)
+    else:
+        s.email_enabled = body.email_enabled
+        s.updated_at = datetime.utcnow()
+    db.commit()
+    return {"ok": True, "email_enabled": s.email_enabled}
 
 
 def _run_check_sync():
