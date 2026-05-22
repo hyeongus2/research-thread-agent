@@ -110,3 +110,13 @@ def get_search_history(user_id: int, db: Session = Depends(get_db)):
         {"id": r.id, "keyword": r.keyword, "searched_at": str(r.searched_at)}
         for r in records
     ]
+
+
+@router.delete("/search/history/{item_id}")
+def delete_search_history(item_id: int, db: Session = Depends(get_db)):
+    from services.database_service import delete_search_history_item
+    ok = delete_search_history_item(db, item_id)
+    if not ok:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"deleted": True}

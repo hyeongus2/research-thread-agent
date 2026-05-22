@@ -2,12 +2,13 @@ import json
 import queue
 import threading
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from api.schemas import LearningPathRequest
 from services import historical_thread_service
+from services.database_service import delete_lp_history_item, get_lp_history
 from utils.database import get_db
 
 router = APIRouter()
@@ -55,3 +56,16 @@ def learning_path_stream(body: LearningPathRequest, db: Session = Depends(get_db
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/learning-path/history")
+def list_lp_history(db: Session = Depends(get_db)):
+    return get_lp_history(db)
+
+
+@router.delete("/learning-path/history/{topic}")
+def delete_lp_history(topic: str, db: Session = Depends(get_db)):
+    ok = delete_lp_history_item(db, topic)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"deleted": True}

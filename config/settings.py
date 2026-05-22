@@ -19,7 +19,7 @@ class Settings:
     ARXIV_RATE_LIMIT_DELAY: float = 0.34
 
     # Re-generate a Learning Path only if the cached version is older than this
-    LEARNING_PATH_CACHE_DAYS: int = 7
+    LEARNING_PATH_CACHE_DAYS: int = 90
 
 
 settings = Settings()

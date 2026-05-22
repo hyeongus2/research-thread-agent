@@ -141,6 +141,36 @@ def clear_search_history(db: Session) -> int:
     return deleted
 
 
+def delete_search_history_item(db: Session, item_id: int) -> bool:
+    record = db.query(SearchHistory).filter(SearchHistory.id == item_id).first()
+    if not record:
+        return False
+    db.delete(record)
+    db.commit()
+    return True
+
+
+def get_lp_history(db: Session) -> list[dict]:
+    records = (
+        db.query(HistoricalThread)
+        .order_by(HistoricalThread.updated_at.desc())
+        .all()
+    )
+    return [
+        {"topic": r.topic, "year_range": r.year_range, "updated_at": str(r.updated_at)}
+        for r in records
+    ]
+
+
+def delete_lp_history_item(db: Session, topic: str) -> bool:
+    record = db.query(HistoricalThread).filter(HistoricalThread.topic == topic).first()
+    if not record:
+        return False
+    db.delete(record)
+    db.commit()
+    return True
+
+
 def get_cached_historical_thread(db: Session, topic: str) -> Optional[dict]:
     record = db.query(HistoricalThread).filter(HistoricalThread.topic == topic).first()
     if not record:

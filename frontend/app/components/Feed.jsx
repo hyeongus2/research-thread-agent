@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Settings, Bell, ArrowUpRight, Search, X, BookOpen, ChevronUp, ChevronDown, Home } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import LearningPath from './LearningPath';
 
@@ -91,9 +91,7 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
     const year = item.published_date ? item.published_date.slice(0, 4) : '';
     meta = [authors, year].filter(Boolean).join(' · ');
     if (item.venue) meta = item.venue + (meta ? ' · ' + meta : '');
-    if (item.citation_count > 0) {
-      badge = ts.citations(item.citation_count);
-    }
+    if (item.citation_count > 0) badge = ts.citations(item.citation_count);
   } else if (type === 'model') {
     const dl = item.downloads ? `↓ ${(item.downloads / 1000).toFixed(0)}K` : '';
     meta = [item.pipeline_tag, dl].filter(Boolean).join(' · ');
@@ -106,131 +104,48 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
   const needsToggle = type === 'paper' && abstract.length > ABSTRACT_THRESHOLD;
 
   return (
-    <div style={{
-      background: '#FFFFFF',
-      border: '1px solid #E8E2D5',
-      marginBottom: 14,
-      borderRadius: 4,
-      overflow: 'hidden',
-    }}>
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        style={{ display: 'block', padding: '18px 20px 14px', textDecoration: 'none', color: '#1A1611' }}
-      >
+    <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', marginBottom: 14, borderRadius: 4, overflow: 'hidden' }}>
+      <a href={url} target="_blank" rel="noreferrer"
+        style={{ display: 'block', padding: '18px 20px 14px', textDecoration: 'none', color: '#1A1611' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              background: colors.bg, color: colors.fg,
-              padding: '3px 8px', borderRadius: 2,
-              fontSize: 10, fontWeight: 600, letterSpacing: '0.05em',
-              fontFamily: "'Geist', sans-serif",
-            }}>
+            <span style={{ background: colors.bg, color: colors.fg, padding: '3px 8px', borderRadius: 2, fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', fontFamily: "'Geist', sans-serif" }}>
               {typeLabel}
             </span>
-            {badge && (
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontWeight: 500 }}>
-                {badge}
-              </span>
-            )}
+            {badge && <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontWeight: 500 }}>{badge}</span>}
           </div>
           <ArrowUpRight size={14} style={{ color: '#6B6358', flexShrink: 0 }} />
         </div>
-
-        <h3 style={{
-          fontFamily: "'Fraunces', serif",
-          fontSize: 17, lineHeight: 1.25, fontWeight: 500,
-          color: '#1A1611', margin: '0 0 10px',
-        }}>
+        <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 17, lineHeight: 1.25, fontWeight: 500, color: '#1A1611', margin: '0 0 10px' }}>
           {title}
         </h3>
-
         {type === 'paper' && abstract && (
-          <p style={{
-            fontFamily: "'Geist', sans-serif",
-            fontSize: 12, lineHeight: 1.6, color: '#3A342B',
-            margin: '0 0 8px',
-            display: '-webkit-box',
-            WebkitLineClamp: expanded ? 'unset' : 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: expanded ? 'visible' : 'hidden',
-          }}>
+          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, lineHeight: 1.6, color: '#3A342B', margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: expanded ? 'unset' : 3, WebkitBoxOrient: 'vertical', overflow: expanded ? 'visible' : 'hidden' }}>
             {abstract}
           </p>
         )}
-
         {type !== 'paper' && item.description && (
-          <p style={{
-            fontFamily: "'Geist', sans-serif",
-            fontSize: 12, lineHeight: 1.5, color: '#3A342B',
-            margin: '0 0 8px',
-            overflow: 'hidden',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}>
+          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, lineHeight: 1.5, color: '#3A342B', margin: '0 0 8px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
             {item.description}
           </p>
         )}
-
-        {meta && (
-          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>
-            {meta}
-          </span>
-        )}
+        {meta && <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>{meta}</span>}
       </a>
 
       {(needsToggle || type === 'paper') && (
-        <div style={{
-          borderTop: '1px solid #F0EBE2',
-          padding: '8px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-        }}>
+        <div style={{ borderTop: '1px solid #F0EBE2', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           {needsToggle ? (
-            <button
-              onClick={() => setExpanded(v => !v)}
-              style={{
-                background: 'none', border: 'none', padding: 0,
-                fontFamily: "'Geist', sans-serif", fontSize: 11,
-                color: '#6B6358', cursor: 'pointer',
-              }}
-            >
+            <button onClick={() => setExpanded(v => !v)} style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}>
               {expanded ? ts.hideAbstract : ts.showAbstract}
             </button>
           ) : <span />}
-
           {type === 'paper' && abstract && (
             summary ? (
-              <p style={{
-                fontFamily: "'Geist', sans-serif", fontSize: 12,
-                color: '#1A1611', margin: 0, lineHeight: 1.5, flex: 1,
-                textAlign: 'right',
-              }}>
-                {summary}
-              </p>
+              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', margin: 0, lineHeight: 1.5, flex: 1, textAlign: 'right' }}>{summary}</p>
             ) : summaryLoading ? (
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>
-                {ts.aiLoading}
-              </span>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.aiLoading}</span>
             ) : (
-              <button
-                onClick={onSummarize}
-                style={{
-                  background: 'none',
-                  border: '1px solid #D8D0BE',
-                  borderRadius: 3,
-                  padding: '3px 10px',
-                  fontFamily: "'Geist', sans-serif",
-                  fontSize: 11,
-                  color: '#6B6358',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
+              <button onClick={onSummarize} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {ts.aiSummarizeBtn}
               </button>
             )
@@ -242,84 +157,32 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
 }
 
 // =============================================================================
-// Tab bar — each tab uses its own color when active
+// Tab bar
 // =============================================================================
 function TabBar({ activeTab, counts, onTab, perPage, onPerPage, ts }) {
   const tabs = ['paper', 'model', 'repo'];
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 14,
-      gap: 8,
-      flexWrap: 'wrap',
-    }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8, flexWrap: 'wrap' }}>
       <div style={{ display: 'flex', gap: 4 }}>
         {tabs.map(tab => {
           const active = activeTab === tab;
           const count = counts[tab] ?? 0;
           const colors = TYPE_COLORS[tab];
           return (
-            <button
-              key={tab}
-              onClick={() => onTab(tab)}
-              style={{
-                padding: '6px 12px',
-                background: active ? colors.fg : 'transparent',
-                color: active ? '#FAF7F2' : '#6B6358',
-                border: '1px solid ' + (active ? colors.fg : '#D8D0BE'),
-                borderRadius: 4,
-                fontFamily: "'Geist', sans-serif",
-                fontSize: 12,
-                fontWeight: active ? 600 : 400,
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                whiteSpace: 'nowrap',
-              }}
-            >
+            <button key={tab} onClick={() => onTab(tab)} style={{ padding: '6px 12px', background: active ? colors.fg : 'transparent', color: active ? '#FAF7F2' : '#6B6358', border: '1px solid ' + (active ? colors.fg : '#D8D0BE'), borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap' }}>
               {ts.tabs[tab]}
-              {count > 0 && (
-                <span style={{
-                  marginLeft: 5,
-                  background: active ? 'rgba(255,255,255,0.25)' : '#E8E2D5',
-                  color: active ? '#FAF7F2' : '#6B6358',
-                  borderRadius: 10,
-                  padding: '0 5px',
-                  fontSize: 10,
-                  fontWeight: 600,
-                }}>
-                  {count}
-                </span>
-              )}
+              {count > 0 && <span style={{ marginLeft: 5, background: active ? 'rgba(255,255,255,0.25)' : '#E8E2D5', color: active ? '#FAF7F2' : '#6B6358', borderRadius: 10, padding: '0 5px', fontSize: 10, fontWeight: 600 }}>{count}</span>}
             </button>
           );
         })}
       </div>
-
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         {[10, 25, 50].map(n => (
-          <button
-            key={n}
-            onClick={() => onPerPage(n)}
-            style={{
-              padding: '4px 8px',
-              background: perPage === n ? '#1A1611' : 'transparent',
-              color: perPage === n ? '#FAF7F2' : '#6B6358',
-              border: '1px solid ' + (perPage === n ? '#1A1611' : '#D8D0BE'),
-              borderRadius: 3,
-              fontFamily: "'Geist Mono', monospace",
-              fontSize: 11,
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-          >
+          <button key={n} onClick={() => onPerPage(n)} style={{ padding: '4px 8px', background: perPage === n ? '#1A1611' : 'transparent', color: perPage === n ? '#FAF7F2' : '#6B6358', border: '1px solid ' + (perPage === n ? '#1A1611' : '#D8D0BE'), borderRadius: 3, fontFamily: "'Geist Mono', monospace", fontSize: 11, cursor: 'pointer', transition: 'all 0.15s' }}>
             {n}
           </button>
         ))}
-        <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185' }}>
-          {ts.perPage}
-        </span>
+        <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185' }}>{ts.perPage}</span>
       </div>
     </div>
   );
@@ -332,17 +195,11 @@ function Pagination({ page, totalPages, onPage }) {
   if (totalPages <= 1) return null;
   const pages = getPageNumbers(page, totalPages);
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      gap: 4, padding: '16px 0 8px',
-    }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '16px 0 8px' }}>
       <button onClick={() => onPage(page - 1)} disabled={page === 1} style={pageBtn(false, page === 1)}>‹</button>
       {pages.map((p, i) =>
-        p === '…' ? (
-          <span key={`dot-${i}`} style={{ padding: '0 6px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185' }}>…</span>
-        ) : (
-          <button key={p} onClick={() => onPage(p)} style={pageBtn(p === page, false)}>{p}</button>
-        )
+        p === '…' ? <span key={`dot-${i}`} style={{ padding: '0 6px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185' }}>…</span>
+          : <button key={p} onClick={() => onPage(p)} style={pageBtn(p === page, false)}>{p}</button>
       )}
       <button onClick={() => onPage(page + 1)} disabled={page === totalPages} style={pageBtn(false, page === totalPages)}>›</button>
     </div>
@@ -350,33 +207,15 @@ function Pagination({ page, totalPages, onPage }) {
 }
 
 function pageBtn(active, disabled) {
-  return {
-    minWidth: 32, height: 32, padding: '0 8px',
-    background: active ? '#1A1611' : 'transparent',
-    color: disabled ? '#C8C0B0' : active ? '#FAF7F2' : '#6B6358',
-    border: '1px solid ' + (active ? '#1A1611' : disabled ? '#E8E2D5' : '#D8D0BE'),
-    borderRadius: 4,
-    fontFamily: "'Geist', sans-serif", fontSize: 12,
-    cursor: disabled ? 'default' : 'pointer', transition: 'all 0.15s',
-  };
+  return { minWidth: 32, height: 32, padding: '0 8px', background: active ? '#1A1611' : 'transparent', color: disabled ? '#C8C0B0' : active ? '#FAF7F2' : '#6B6358', border: '1px solid ' + (active ? '#1A1611' : disabled ? '#E8E2D5' : '#D8D0BE'), borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12, cursor: disabled ? 'default' : 'pointer', transition: 'all 0.15s' };
 }
 
 // =============================================================================
 // Source error banner
 // =============================================================================
 const ERROR_LABELS = {
-  en: {
-    rate_limit: (min) => min > 0 ? `Rate limited — retry in ${min}m` : 'Rate limited',
-    auth_error: () => 'Invalid token — check .env',
-    timeout:    () => 'Timed out',
-    error:      () => 'Failed',
-  },
-  ko: {
-    rate_limit: (min) => min > 0 ? `횟수 초과 — ${min}분 후 재시도` : '횟수 초과',
-    auth_error: () => '토큰 오류 — .env 확인',
-    timeout:    () => '시간 초과',
-    error:      () => '오류',
-  },
+  en: { rate_limit: (m) => m > 0 ? `Rate limited — retry in ${m}m` : 'Rate limited', auth_error: () => 'Invalid token — check .env', timeout: () => 'Timed out', error: () => 'Failed' },
+  ko: { rate_limit: (m) => m > 0 ? `횟수 초과 — ${m}분 후 재시도` : '횟수 초과', auth_error: () => '토큰 오류 — .env 확인', timeout: () => '시간 초과', error: () => '오류' },
 };
 
 function SourceErrorBanner({ sourceErrors, lang }) {
@@ -384,20 +223,12 @@ function SourceErrorBanner({ sourceErrors, lang }) {
   const entries = Object.entries(sourceErrors);
   if (entries.length === 0) return null;
   return (
-    <div style={{
-      margin: '4px 0 8px', padding: '10px 14px',
-      background: '#FFF8F5', border: '1px solid #F0C8B8',
-      borderRadius: 4, display: 'flex', flexWrap: 'wrap', gap: '6px 16px',
-    }}>
+    <div style={{ margin: '4px 0 8px', padding: '10px 14px', background: '#FFF8F5', border: '1px solid #F0C8B8', borderRadius: 4, display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
       {entries.map(([src, info]) => {
         const srcLabel = { papers: 'Semantic Scholar', models: 'Hugging Face', repos: 'GitHub' }[src] || src;
         const minLeft = info.retryAt ? Math.max(0, Math.ceil((info.retryAt - Date.now()) / 60000)) : 0;
         const msgFn = labels[info.kind] || labels.error;
-        return (
-          <span key={src} style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#8B3A1B' }}>
-            <span style={{ fontWeight: 600 }}>{srcLabel}</span>{' · '}{msgFn(minLeft)}
-          </span>
-        );
+        return <span key={src} style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#8B3A1B' }}><span style={{ fontWeight: 600 }}>{srcLabel}</span>{' · '}{msgFn(minLeft)}</span>;
       })}
     </div>
   );
@@ -414,11 +245,7 @@ function SearchProgress({ lang, elapsed, sourceStatus, papersSourceLabel }) {
   ];
   return (
     <div style={{ padding: '40px 8px 0' }}>
-      <div style={{
-        fontFamily: "'Fraunces', serif", fontSize: 20,
-        color: '#1A1611', fontStyle: 'italic',
-        textAlign: 'center', marginBottom: 28,
-      }}>
+      <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: '#1A1611', fontStyle: 'italic', textAlign: 'center', marginBottom: 28 }}>
         {lang === 'ko' ? '검색 중…' : 'Searching…'}
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginBottom: 24 }}>
@@ -429,187 +256,248 @@ function SearchProgress({ lang, elapsed, sourceStatus, papersSourceLabel }) {
           const isDone    = !isPending && !isFailed;
           return (
             <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%',
-                border: `2px solid ${isPending ? '#D8D0BE' : isFailed ? '#C84B31' : '#1B7A2E'}`,
-                background: isPending ? '#FAF7F2' : isFailed ? '#FDF0EE' : '#EEF7EE',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 14, transition: 'all 0.35s',
-              }}>
-                {isPending
-                  ? <span style={{ color: '#C8C0B0', fontSize: 20 }}>·</span>
-                  : isFailed
-                  ? <span style={{ color: '#C84B31' }}>✕</span>
-                  : <span style={{ color: '#1B7A2E' }}>✓</span>}
+              <div style={{ width: 32, height: 32, borderRadius: '50%', border: `2px solid ${isPending ? '#D8D0BE' : isFailed ? '#C84B31' : '#1B7A2E'}`, background: isPending ? '#FAF7F2' : isFailed ? '#FDF0EE' : '#EEF7EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, transition: 'all 0.35s' }}>
+                {isPending ? <span style={{ color: '#C8C0B0', fontSize: 20 }}>·</span> : isFailed ? <span style={{ color: '#C84B31' }}>✕</span> : <span style={{ color: '#1B7A2E' }}>✓</span>}
               </div>
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', textAlign: 'center', maxWidth: 80 }}>
-                {label}
-              </span>
-              {isDone && raw > 0 && (
-                <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 9, color: '#9B9185' }}>{raw}</span>
-              )}
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', textAlign: 'center', maxWidth: 80 }}>{label}</span>
+              {isDone && raw > 0 && <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 9, color: '#9B9185' }}>{raw}</span>}
             </div>
           );
         })}
       </div>
-      <div style={{ textAlign: 'center', fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#6B6358' }}>
-        {elapsed}s
-      </div>
+      <div style={{ textAlign: 'center', fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#6B6358' }}>{elapsed}s</div>
     </div>
   );
 }
 
 // =============================================================================
-// Empty search state (shown in search tab before any search)
+// Trending feed (HF Daily Papers)
 // =============================================================================
-function EmptySearch({ onSuggestionClick }) {
-  const { t } = useLanguage();
+function TrendingFeed({ onQuickSearch }) {
+  const { t, lang } = useLanguage();
   const tf = t.feed;
-  const suggestions = [
-    'reasoning', 'RAG', 'diffusion model', 'fine-tuning',
-    'multimodal', 'AI agent', 'LoRA', 'transformer',
-    'RLHF', 'MoE',
-  ];
-  return (
-    <div style={{ padding: '48px 8px 0', textAlign: 'center' }}>
-      <div style={{ fontSize: 36, marginBottom: 20 }}>🔍</div>
-      <h3 style={{
-        fontFamily: "'Fraunces', serif", fontSize: 22,
-        fontWeight: 500, fontStyle: 'italic', color: '#1A1611', margin: '0 0 12px',
-      }}>
-        {tf.emptyTitle}
-      </h3>
-      <p style={{
-        fontFamily: "'Geist', sans-serif", fontSize: 13,
-        lineHeight: 1.6, color: '#6B6358', margin: '0 0 28px',
-        maxWidth: 280, marginLeft: 'auto', marginRight: 'auto',
-      }}>
-        {tf.emptyDesc}
-      </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-        {suggestions.map(kw => (
-          <button
-            key={kw}
-            onClick={() => onSuggestionClick(kw)}
-            style={{
-              padding: '7px 14px', background: '#FFFFFF',
-              border: '1px solid #D8D0BE', borderRadius: 20,
-              fontFamily: "'Geist', sans-serif", fontSize: 12,
-              color: '#3A342B', cursor: 'pointer',
-            }}
-          >
-            {kw}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
+  const [papers, setPapers] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-// =============================================================================
-// Feed view (interest feed placeholder)
-// =============================================================================
-function FeedView({ onQuickSearch, t }) {
-  const tf = t.feed;
-  const trendingTopics = [
-    'reasoning', 'RAG', 'diffusion model', 'fine-tuning',
-    'multimodal', 'AI agent', 'LoRA', 'transformer',
-    'RLHF', 'MoE',
-  ];
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API}/feed/trending`);
+        if (!res.ok) throw new Error('failed');
+        const data = await res.json();
+        setPapers(data.papers || []);
+      } catch {
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const today = new Date().toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'long', day: 'numeric' });
+
   return (
     <div style={{ padding: '20px 0 16px' }}>
-      <div style={{
-        fontFamily: "'Geist', sans-serif", fontSize: 10,
-        color: '#6B6358', letterSpacing: '0.15em', marginBottom: 12,
-      }}>
-        {tf.trendingLabel}
+      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 4 }}>
+        {tf.trendingHeader}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 32 }}>
-        {trendingTopics.map(kw => (
-          <button
-            key={kw}
-            onClick={() => onQuickSearch(kw)}
-            style={{
-              padding: '7px 14px',
-              background: '#FFFFFF',
-              border: '1px solid #D8D0BE',
-              borderRadius: 20,
-              fontFamily: "'Geist', sans-serif",
-              fontSize: 12,
-              color: '#3A342B',
-              cursor: 'pointer',
-            }}
-          >
-            {kw}
-          </button>
-        ))}
+      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185', marginBottom: 20 }}>
+        {tf.trendingSubtitle} · {today}
       </div>
 
-      <div style={{
-        padding: '24px 20px',
-        background: '#FFFFFF',
-        border: '1px solid #E8E2D5',
-        borderRadius: 4,
-        textAlign: 'center',
-      }}>
-        <div style={{
-          fontFamily: "'Geist', sans-serif", fontSize: 10,
-          color: '#6B6358', letterSpacing: '0.15em', marginBottom: 12,
-        }}>
-          {tf.subscribeLabel}
+      {loading && (
+        <div style={{ padding: '40px 0', textAlign: 'center', fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', fontStyle: 'italic' }}>
+          {tf.trendingLoading}
         </div>
-        <p style={{
-          fontFamily: "'Geist', sans-serif", fontSize: 13,
-          color: '#6B6358', lineHeight: 1.6, margin: 0, fontStyle: 'italic',
-        }}>
-          {tf.comingSoon}
-        </p>
-      </div>
+      )}
+
+      {error && (
+        <div style={{ padding: '40px 0', textAlign: 'center', fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#C84B31' }}>
+          {tf.trendingError}
+        </div>
+      )}
+
+      {papers && papers.length === 0 && (
+        <div style={{ padding: '40px 0', textAlign: 'center', fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', fontStyle: 'italic' }}>
+          {tf.trendingEmpty}
+        </div>
+      )}
+
+      {papers && papers.map((p, i) => {
+        const authors = (p.authors || []).slice(0, 2).join(', ');
+        return (
+          <div key={i} style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, marginBottom: 14, overflow: 'hidden' }}>
+            <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '16px 20px 12px', textDecoration: 'none', color: '#1A1611' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#C84B31', fontWeight: 600 }}>
+                  {tf.upvotes(p.upvotes)}
+                </span>
+                <ArrowUpRight size={14} style={{ color: '#6B6358' }} />
+              </div>
+              <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 16, lineHeight: 1.3, fontWeight: 500, color: '#1A1611', margin: '0 0 8px' }}>
+                {p.title}
+              </h3>
+              {p.summary && (
+                <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, lineHeight: 1.6, color: '#3A342B', margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {p.summary}
+                </p>
+              )}
+              {authors && <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>{authors}</span>}
+            </a>
+            <div style={{ borderTop: '1px solid #F0EBE2', padding: '8px 20px' }}>
+              <button
+                onClick={() => onQuickSearch(p.title.split(':')[0].trim())}
+                style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}
+              >
+                {lang === 'ko' ? '관련 논문 검색 →' : 'Search related →'}
+              </button>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 // =============================================================================
-// Bottom navigation bar
+// My Feed stub
+// =============================================================================
+function MyFeedView() {
+  const { t } = useLanguage();
+  return (
+    <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+      <div style={{ fontSize: 32, marginBottom: 20 }}>📬</div>
+      <p style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontStyle: 'italic', color: '#1A1611', margin: '0 0 12px' }}>
+        {t.feed.navMyFeed}
+      </p>
+      <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', lineHeight: 1.6, margin: 0 }}>
+        {t.feed.myFeedComingSoon}
+      </p>
+    </div>
+  );
+}
+
+// =============================================================================
+// Search history dropdown
+// =============================================================================
+function SearchHistoryDropdown({ userId, onSelect, onClose }) {
+  const { t } = useLanguage();
+  const ts = t.search;
+  const [history, setHistory] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API}/search/history?user_id=${userId || 1}`);
+        const data = await res.json();
+        // Deduplicate by keyword, keep most recent
+        const seen = new Set();
+        const deduped = [];
+        for (const item of data) {
+          if (!seen.has(item.keyword)) {
+            seen.add(item.keyword);
+            deduped.push(item);
+          }
+        }
+        setHistory(deduped);
+      } catch { setHistory([]); }
+      setLoaded(true);
+    })();
+  }, [userId]);
+
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    await fetch(`${API}/search/history/${id}`, { method: 'DELETE' });
+    setHistory(prev => prev.filter(h => h.id !== id));
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <div style={{
+      position: 'absolute', top: '100%', left: 0, right: 0,
+      background: '#FFFFFF', border: '1px solid #D8D0BE',
+      borderRadius: '0 0 4px 4px', zIndex: 100,
+      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+      maxHeight: 280, overflowY: 'auto',
+    }}>
+      {history.length === 0 ? (
+        <div style={{ padding: '16px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185', fontStyle: 'italic' }}>
+          {ts.historyEmpty}
+        </div>
+      ) : (
+        <>
+          <div style={{ padding: '8px 12px 4px', fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.12em' }}>
+            {ts.historyLabel}
+          </div>
+          {history.map(item => (
+            <div key={item.id}
+              style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', borderTop: '1px solid #F0EAD9' }}
+              onClick={() => { onSelect(item.keyword); onClose(); }}
+              onMouseEnter={e => e.currentTarget.style.background = '#FAF7F2'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >
+              <Search size={12} style={{ color: '#9B9185', flexShrink: 0, marginRight: 8 }} />
+              <span style={{ flex: 1, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {item.keyword}
+              </span>
+              <button
+                onClick={(e) => handleDelete(e, item.id)}
+                style={{ background: 'none', border: 'none', padding: '2px 4px', color: '#9B9185', cursor: 'pointer', lineHeight: 0, flexShrink: 0 }}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// Bottom navigation bar (3 tabs)
 // =============================================================================
 function BottomNav({ view, onView, t }) {
   const tf = t.feed;
+  const tabs = [
+    { key: 'trending', label: tf.navTrending, IconEl: Newspaper },
+    { key: 'myFeed',   label: tf.navMyFeed,   IconEl: Home },
+    { key: 'search',   label: tf.navSearch,   IconEl: Search },
+  ];
   return (
-    <div style={{
-      borderTop: '1px solid #E8E2D5',
-      background: '#FAF7F2',
-      display: 'flex',
-      height: 56,
-      flexShrink: 0,
-    }}>
-      {[
-        { key: 'feed', label: tf.navFeed, IconEl: Home },
-        { key: 'search', label: tf.navSearch, IconEl: Search },
-      ].map(({ key, label, IconEl }) => {
+    <div style={{ borderTop: '1px solid #E8E2D5', background: '#FAF7F2', display: 'flex', height: 56, flexShrink: 0 }}>
+      {tabs.map(({ key, label, IconEl }) => {
         const active = view === key;
         return (
-          <button
-            key={key}
-            onClick={() => onView(key)}
-            style={{
-              flex: 1,
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: 4,
-              background: 'none', border: 'none',
-              cursor: 'pointer',
-              color: active ? '#1A1611' : '#9B9185',
-              transition: 'color 0.15s',
-            }}
-          >
+          <button key={key} onClick={() => onView(key)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', color: active ? '#1A1611' : '#9B9185', transition: 'color 0.15s' }}>
             <IconEl size={18} />
-            <span style={{
-              fontFamily: "'Geist', sans-serif",
-              fontSize: 10,
-              fontWeight: active ? 600 : 400,
-            }}>
-              {label}
-            </span>
+            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, fontWeight: active ? 600 : 400 }}>{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// =============================================================================
+// Search mode toggle (Quick Search | Learning Path)
+// =============================================================================
+function SearchModeToggle({ mode, onMode, t }) {
+  const ts = t.search;
+  return (
+    <div style={{ display: 'flex', gap: 0, background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: 3, marginBottom: 14 }}>
+      {[
+        { key: 'quick', label: ts.modeQuick, Icon: Search },
+        { key: 'learning', label: ts.modeLearning, Icon: BookOpen },
+      ].map(({ key, label, Icon }) => {
+        const active = mode === key;
+        return (
+          <button key={key} onClick={() => onMode(key)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 12px', background: active ? '#1A1611' : 'transparent', color: active ? '#FAF7F2' : '#6B6358', border: 'none', borderRadius: 2, fontFamily: "'Geist', sans-serif", fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s' }}>
+            <Icon size={13} />
+            {label}
           </button>
         );
       })}
@@ -624,10 +512,9 @@ export default function Feed({ onSettings, userId }) {
   const { t, lang } = useLanguage();
   const tf = t.feed;
   const ts = t.search;
-  const tl = t.learningPath;
 
-  const [mode, setMode] = useState('main'); // 'main' | 'learning'
-  const [view, setView] = useState('feed'); // 'feed' | 'search'
+  const [view, setView] = useState('trending');      // 'trending' | 'myFeed' | 'search'
+  const [searchMode, setSearchMode] = useState('quick'); // 'quick' | 'learning'
 
   const today = new Date();
   const dateLabel = today.toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' });
@@ -663,11 +550,26 @@ export default function Feed({ onSettings, userId }) {
   const [paperSummaries, setPaperSummaries] = useState({});
   const [summaryLoading, setSummaryLoading] = useState({});
 
-  // Papers source label (switches to "OpenAlex" if fallback happens)
+  // Papers source label
   const [papersSourceLabel, setPapersSourceLabel] = useState('Semantic Scholar');
+
+  // Search history dropdown
+  const [showHistory, setShowHistory] = useState(false);
+  const inputWrapperRef = useRef(null);
 
   // Scroll ref
   const scrollRef = useRef(null);
+
+  // Close history dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (inputWrapperRef.current && !inputWrapperRef.current.contains(e.target)) {
+        setShowHistory(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // ── Keyword chip helpers ───────────────────────────────────────────────────
   const commitKeyword = () => {
@@ -689,11 +591,13 @@ export default function Feed({ onSettings, userId }) {
   };
 
   // ── Search ────────────────────────────────────────────────────────────────
-  const runSearch = async (kws, singleKw) => {
+  const runSearch = useCallback(async (kws, singleKw) => {
     const allKws = singleKw ? [singleKw] : [...kws, ...(query.trim() ? [query.trim()] : [])];
     if (allKws.length === 0) return;
     const combined = allKws.join(' ');
 
+    setSearchMode('quick');
+    setView('search');
     setSearchState('loading');
     setElapsed(0);
     setSourceStatus({});
@@ -709,9 +613,7 @@ export default function Feed({ onSettings, userId }) {
     setSummaryLoading({});
     if (elapsedRef.current) clearInterval(elapsedRef.current);
     const startedAt = Date.now();
-    elapsedRef.current = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startedAt) / 1000));
-    }, 1000);
+    elapsedRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
 
     const { start, end } = getPeriodDates(period, nMonths, customFrom, customTo);
     const searchLimits = getSearchLimits();
@@ -722,15 +624,7 @@ export default function Feed({ onSettings, userId }) {
       const res = await fetch(`${API}/search/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          keyword: combined,
-          start_date: start,
-          end_date: end,
-          user_id: userId || 1,
-          paper_limit: searchLimits.papers,
-          model_limit: searchLimits.models,
-          repo_limit: searchLimits.repos,
-        }),
+        body: JSON.stringify({ keyword: combined, start_date: start, end_date: end, user_id: userId || 1, paper_limit: searchLimits.papers, model_limit: searchLimits.models, repo_limit: searchLimits.repos }),
         signal: controller.signal,
       });
 
@@ -749,16 +643,11 @@ export default function Feed({ onSettings, userId }) {
           let event;
           try { event = JSON.parse(line.slice(6)); } catch { continue; }
           if (event.stage === 'done') {
-            clearTimeout(timeout);
-            clearInterval(elapsedRef.current);
-            setSearchResults(event.result);
-            setSearchState('done');
-            return;
+            clearTimeout(timeout); clearInterval(elapsedRef.current);
+            setSearchResults(event.result); setSearchState('done'); return;
           } else if (event.stage === 'error') {
-            clearTimeout(timeout);
-            clearInterval(elapsedRef.current);
-            setSearchState('error');
-            return;
+            clearTimeout(timeout); clearInterval(elapsedRef.current);
+            setSearchState('error'); return;
           } else if (event.stage === 'papers_source') {
             setPapersSourceLabel(event.msg || 'Semantic Scholar');
           } else if (event.stage === 'source_done') {
@@ -776,15 +665,21 @@ export default function Feed({ onSettings, userId }) {
         }
       }
     } catch {
-      clearTimeout(timeout);
-      clearInterval(elapsedRef.current);
+      clearTimeout(timeout); clearInterval(elapsedRef.current);
       setSearchState('error');
     }
-  };
+  }, [query, period, nMonths, customFrom, customTo, userId]);
 
   const handleSearchClick = () => {
+    setShowHistory(false);
     if (query.trim()) commitKeyword();
     runSearch(keywords, query.trim() || undefined);
+  };
+
+  const handleHistorySelect = (keyword) => {
+    setKeywords([]);
+    setQuery('');
+    runSearch([], keyword);
   };
 
   const handleSuggestion = (kw) => {
@@ -799,6 +694,13 @@ export default function Feed({ onSettings, userId }) {
     setSearchState('idle');
     setSearchResults(null);
     if (elapsedRef.current) clearInterval(elapsedRef.current);
+  };
+
+  // Switching to search tab from trending
+  const handleQuickSearch = (kw) => {
+    setKeywords([]);
+    setQuery('');
+    runSearch([], kw);
   };
 
   // ── Tab / pagination ──────────────────────────────────────────────────────
@@ -823,22 +725,12 @@ export default function Feed({ onSettings, userId }) {
     setOverviewLoading(true);
     try {
       const titles = (searchResults?.papers || []).slice(0, 10).map(p => p.title);
-      const res = await fetch(`${API}/summarize/overview`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword: searchResults?.keyword || '', paper_titles: titles, lang }),
-      });
+      const res = await fetch(`${API}/summarize/overview`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keyword: searchResults?.keyword || '', paper_titles: titles, lang }) });
       const data = await res.json();
-      if (data.no_api_key) {
-        setOverviewNoKey(true);
-      } else if (data.overview) {
-        setOverviewText(data.overview);
-      } else {
-        setOverviewError(true);
-      }
-    } catch {
-      setOverviewError(true);
-    }
+      if (data.no_api_key) setOverviewNoKey(true);
+      else if (data.overview) setOverviewText(data.overview);
+      else setOverviewError(true);
+    } catch { setOverviewError(true); }
     setOverviewLoading(false);
   };
 
@@ -847,16 +739,9 @@ export default function Feed({ onSettings, userId }) {
     if (!abstract || paperSummaries[title] !== undefined || summaryLoading[title]) return;
     setSummaryLoading(prev => ({ ...prev, [title]: true }));
     try {
-      const res = await fetch(`${API}/summarize/paper`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ abstract, lang }),
-      });
+      const res = await fetch(`${API}/summarize/paper`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ abstract, lang }) });
       const data = await res.json();
-      setPaperSummaries(prev => ({
-        ...prev,
-        [title]: data.no_api_key ? ts.noApiKey : (data.summary || ''),
-      }));
+      setPaperSummaries(prev => ({ ...prev, [title]: data.no_api_key ? ts.noApiKey : (data.summary || '') }));
     } catch {}
     setSummaryLoading(prev => ({ ...prev, [title]: false }));
   };
@@ -865,27 +750,11 @@ export default function Feed({ onSettings, userId }) {
   const scrollToTop    = () => scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   const scrollToBottom = () => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
 
-  // ── Switch to search view and run suggestion ──────────────────────────────
-  const handleQuickSearch = (kw) => {
-    setView('search');
-    setKeywords([]);
-    setQuery('');
-    runSearch([], kw);
-  };
-
-  if (mode === 'learning') {
-    return <LearningPath userId={userId} onBack={() => setMode('main')} />;
-  }
-
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#FAF7F2' }}>
 
       {/* Header */}
-      <div style={{
-        padding: '52px 24px 16px', background: '#FAF7F2',
-        borderBottom: '1px solid #E8E2D5',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
-      }}>
+      <div style={{ padding: '52px 24px 16px', background: '#FAF7F2', borderBottom: '1px solid #E8E2D5', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 2 }}>
             {tf.todayLabel} · {dateLabel}
@@ -895,10 +764,6 @@ export default function Feed({ onSettings, userId }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setMode('learning')} title={tl.tabBtn}
-            style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611', cursor: 'pointer' }}>
-            <BookOpen size={18} />
-          </button>
           <button style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611' }}>
             <Bell size={18} />
           </button>
@@ -908,257 +773,191 @@ export default function Feed({ onSettings, userId }) {
         </div>
       </div>
 
-      {/* Search bar — only in search view */}
+      {/* Search controls — only in search view */}
       {view === 'search' && (
         <div style={{ padding: '14px 16px 0', background: '#FAF7F2' }}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            <div style={{
-              flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6,
-              background: '#FFFFFF', border: '1px solid #D8D0BE', borderRadius: 4,
-              padding: '6px 10px', minHeight: 40,
-            }}>
-              <Search size={14} style={{ color: '#6B6358', flexShrink: 0 }} />
-              {keywords.map(kw => (
-                <span key={kw} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: '#1A1611', color: '#FAF7F2',
-                  padding: '2px 8px', borderRadius: 12,
-                  fontFamily: "'Geist', sans-serif", fontSize: 11, fontWeight: 500,
-                }}>
-                  {kw}
-                  <button
-                    onClick={() => setKeywords(prev => prev.filter(k => k !== kw))}
-                    style={{ background: 'none', border: 'none', padding: 0, color: '#FAF7F2', cursor: 'pointer', lineHeight: 0 }}
-                  >
-                    <X size={10} />
-                  </button>
-                </span>
-              ))}
-              <input
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={keywords.length === 0 ? ts.placeholder : '+ add keyword...'}
-                style={{
-                  flex: 1, minWidth: 80, border: 'none', outline: 'none', background: 'transparent',
-                  fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', padding: '2px 0',
-                }}
-              />
-              {(query || keywords.length > 0) && (
-                <button onClick={handleClear} style={{ background: 'none', border: 'none', padding: 2, color: '#6B6358', lineHeight: 0 }}>
-                  <X size={14} />
+
+          {/* Mode toggle */}
+          <SearchModeToggle mode={searchMode} onMode={setSearchMode} t={t} />
+
+          {/* Quick search bar */}
+          {searchMode === 'quick' && (
+            <>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10, position: 'relative' }} ref={inputWrapperRef}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, background: '#FFFFFF', border: '1px solid #D8D0BE', borderRadius: showHistory ? '4px 4px 0 0' : 4, padding: '6px 10px', minHeight: 40, position: 'relative' }}>
+                  <Search size={14} style={{ color: '#6B6358', flexShrink: 0 }} />
+                  {keywords.map(kw => (
+                    <span key={kw} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#1A1611', color: '#FAF7F2', padding: '2px 8px', borderRadius: 12, fontFamily: "'Geist', sans-serif", fontSize: 11, fontWeight: 500 }}>
+                      {kw}
+                      <button onClick={() => setKeywords(prev => prev.filter(k => k !== kw))} style={{ background: 'none', border: 'none', padding: 0, color: '#FAF7F2', cursor: 'pointer', lineHeight: 0 }}><X size={10} /></button>
+                    </span>
+                  ))}
+                  <input
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => setShowHistory(true)}
+                    placeholder={keywords.length === 0 ? ts.placeholder : '+ add keyword...'}
+                    style={{ flex: 1, minWidth: 80, border: 'none', outline: 'none', background: 'transparent', fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', padding: '2px 0' }}
+                  />
+                  {(query || keywords.length > 0) && (
+                    <button onClick={handleClear} style={{ background: 'none', border: 'none', padding: 2, color: '#6B6358', lineHeight: 0 }}><X size={14} /></button>
+                  )}
+
+                  {showHistory && keywords.length === 0 && !query && (
+                    <SearchHistoryDropdown
+                      userId={userId}
+                      onSelect={handleHistorySelect}
+                      onClose={() => setShowHistory(false)}
+                    />
+                  )}
+                </div>
+                <button
+                  onClick={handleSearchClick}
+                  disabled={(!query.trim() && keywords.length === 0) || searchState === 'loading'}
+                  style={{ padding: '0 16px', background: (query.trim() || keywords.length > 0) ? '#1A1611' : '#D8D0BE', color: '#FAF7F2', border: 'none', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 13, fontWeight: 500, cursor: (query.trim() || keywords.length > 0) ? 'pointer' : 'default', transition: 'background 0.15s', whiteSpace: 'nowrap' }}>
+                  {ts.searchBtn}
                 </button>
+              </div>
+
+              {/* Period pills */}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2 }}>
+                {['week', 'month', 'threeMonths', 'lastNMonths', 'custom', 'all'].map(p => (
+                  <button key={p} onClick={() => setPeriod(p)} style={{ padding: '5px 10px', background: period === p ? '#1A1611' : 'transparent', color: period === p ? '#FAF7F2' : '#6B6358', border: '1px solid ' + (period === p ? '#1A1611' : '#D8D0BE'), borderRadius: 20, fontFamily: "'Geist', sans-serif", fontSize: 11, fontWeight: period === p ? 600 : 400, whiteSpace: 'nowrap', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    {ts.periods[p]}
+                  </button>
+                ))}
+              </div>
+
+              {period === 'lastNMonths' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.fromLabel.toLowerCase()}</span>
+                  <input type="number" min={1} max={60} value={nMonths} onChange={e => setNMonths(Math.max(1, Math.min(60, Number(e.target.value))))} style={nMonthsInputStyle} />
+                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.nMonthsLabel}</span>
+                </div>
               )}
-            </div>
-            <button
-              onClick={handleSearchClick}
-              disabled={(!query.trim() && keywords.length === 0) || searchState === 'loading'}
-              style={{
-                padding: '0 16px',
-                background: (query.trim() || keywords.length > 0) ? '#1A1611' : '#D8D0BE',
-                color: '#FAF7F2', border: 'none', borderRadius: 4,
-                fontFamily: "'Geist', sans-serif", fontSize: 13, fontWeight: 500,
-                cursor: (query.trim() || keywords.length > 0) ? 'pointer' : 'default',
-                transition: 'background 0.15s', whiteSpace: 'nowrap',
-              }}
-            >
-              {ts.searchBtn}
-            </button>
-          </div>
 
-          {/* Period pills */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2 }}>
-            {['week', 'month', 'threeMonths', 'lastNMonths', 'custom', 'all'].map(p => (
-              <button key={p} onClick={() => setPeriod(p)} style={{
-                padding: '5px 10px',
-                background: period === p ? '#1A1611' : 'transparent',
-                color: period === p ? '#FAF7F2' : '#6B6358',
-                border: '1px solid ' + (period === p ? '#1A1611' : '#D8D0BE'),
-                borderRadius: 20, fontFamily: "'Geist', sans-serif", fontSize: 11,
-                fontWeight: period === p ? 600 : 400, whiteSpace: 'nowrap',
-                cursor: 'pointer', transition: 'all 0.15s',
-              }}>
-                {ts.periods[p]}
-              </button>
-            ))}
-          </div>
-
-          {period === 'lastNMonths' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>
-                {ts.fromLabel.toLowerCase()}
-              </span>
-              <input
-                type="number" min={1} max={60} value={nMonths}
-                onChange={e => setNMonths(Math.max(1, Math.min(60, Number(e.target.value))))}
-                style={nMonthsInputStyle}
-              />
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>
-                {ts.nMonthsLabel}
-              </span>
-            </div>
-          )}
-
-          {period === 'custom' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.fromLabel}</span>
-              <input type="month" value={customFrom} max={customTo} onChange={e => setCustomFrom(e.target.value)} style={monthInputStyle} />
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>–</span>
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.toLabel}</span>
-              <input type="month" value={customTo} min={customFrom} onChange={e => setCustomTo(e.target.value)} style={monthInputStyle} />
-            </div>
+              {period === 'custom' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.fromLabel}</span>
+                  <input type="month" value={customFrom} max={customTo} onChange={e => setCustomFrom(e.target.value)} style={monthInputStyle} />
+                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>–</span>
+                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358' }}>{ts.toLabel}</span>
+                  <input type="month" value={customTo} min={customFrom} onChange={e => setCustomTo(e.target.value)} style={monthInputStyle} />
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
 
       {/* Content area */}
       <div style={{ position: 'relative', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div
-          ref={scrollRef}
-          style={{ flex: 1, overflowY: 'auto', padding: '0 16px 80px', background: '#FAF7F2' }}
-        >
-          {/* ── Feed view ── */}
-          {view === 'feed' && (
-            <FeedView onQuickSearch={handleQuickSearch} t={t} />
-          )}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '0 16px 80px', background: '#FAF7F2' }}>
 
-          {/* ── Search view ── */}
+          {/* Trending tab */}
+          {view === 'trending' && <TrendingFeed onQuickSearch={handleQuickSearch} />}
+
+          {/* My Feed tab */}
+          {view === 'myFeed' && <MyFeedView />}
+
+          {/* Search tab */}
           {view === 'search' && (
             <>
-              {searchState === 'idle' && <EmptySearch onSuggestionClick={handleSuggestion} />}
-
-              {searchState === 'loading' && (
-                <SearchProgress lang={lang} elapsed={elapsed} sourceStatus={sourceStatus} papersSourceLabel={papersSourceLabel} />
+              {searchMode === 'learning' && (
+                <div style={{ paddingTop: 8 }}>
+                  <LearningPath userId={userId} onBack={() => setSearchMode('quick')} embedded />
+                </div>
               )}
 
-              {searchState === 'done' && (
+              {searchMode === 'quick' && (
                 <>
-                  <button onClick={handleClear} style={{
-                    background: 'none', border: 'none', padding: '8px 4px 4px',
-                    fontFamily: "'Geist', sans-serif", fontSize: 12,
-                    color: '#6B6358', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                  }}>
-                    ← {ts.backToFeed}
-                  </button>
-
-                  <SourceErrorBanner sourceErrors={sourceErrors} lang={lang} />
-
-                  {/* AI Overview */}
-                  <div style={{
-                    margin: '4px 0 16px', padding: '12px 16px',
-                    background: '#FFFFFF', borderLeft: '3px solid #C84B31',
-                    borderRadius: '0 4px 4px 0',
-                  }}>
-                    <div style={{
-                      fontFamily: "'Geist', sans-serif", fontSize: 10,
-                      color: '#6B6358', letterSpacing: '0.15em', marginBottom: 8,
-                    }}>
-                      OVERVIEW
-                    </div>
-                    {overviewText ? (
-                      <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', lineHeight: 1.6, margin: 0 }}>
-                        {overviewText}
-                      </p>
-                    ) : overviewNoKey ? (
-                      <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
-                        {ts.noApiKeyOverview}
-                      </p>
-                    ) : overviewError ? (
-                      <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#C84B31', lineHeight: 1.6, margin: 0 }}>
-                        {ts.overviewError}
-                      </p>
-                    ) : overviewLoading ? (
-                      <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', fontStyle: 'italic', margin: 0 }}>
-                        {ts.aiLoading}
-                      </p>
-                    ) : (
-                      <button
-                        onClick={fetchOverview}
-                        style={{
-                          background: 'none', border: '1px solid #D8D0BE', borderRadius: 3,
-                          padding: '5px 12px', fontFamily: "'Geist', sans-serif",
-                          fontSize: 12, color: '#6B6358', cursor: 'pointer',
-                        }}
-                      >
-                        {ts.aiOverviewBtn}
-                      </button>
-                    )}
-                  </div>
-
-                  <TabBar
-                    activeTab={activeTab}
-                    counts={tabCounts}
-                    onTab={handleTab}
-                    perPage={perPage}
-                    onPerPage={handlePerPage}
-                    ts={ts}
-                  />
-
-                  <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', marginBottom: 10, padding: '0 2px' }}>
-                    {ts.resultsFor(tabItems.length, searchResults?.keyword || '')}
-                  </div>
-
-                  {pageItems.length === 0 ? (
-                    <div style={{ padding: '40px 24px', textAlign: 'center' }}>
-                      <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#1A1611', fontStyle: 'italic' }}>
-                        {ts.noResults(searchResults?.keyword || '')}
+                  {searchState === 'idle' && (
+                    <div style={{ padding: '32px 8px 0', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                        {['reasoning', 'RAG', 'diffusion model', 'fine-tuning', 'multimodal', 'AI agent', 'LoRA', 'transformer', 'RLHF', 'MoE'].map(kw => (
+                          <button key={kw} onClick={() => handleSuggestion(kw)} style={{ padding: '7px 14px', background: '#FFFFFF', border: '1px solid #D8D0BE', borderRadius: 20, fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#3A342B', cursor: 'pointer' }}>
+                            {kw}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                  ) : (
-                    pageItems.map((item, i) => {
-                      const title = item.title || item.name || '';
-                      return (
-                        <ResultCard
-                          key={`${activeTab}-${pageStart + i}`}
-                          item={item}
-                          type={activeTab}
-                          summary={paperSummaries[title]}
-                          summaryLoading={!!summaryLoading[title]}
-                          onSummarize={() => fetchPaperSummary(title, item.abstract)}
-                        />
-                      );
-                    })
                   )}
 
-                  <Pagination page={page} totalPages={totalPages} onPage={setPage} />
-                </>
-              )}
+                  {searchState === 'loading' && (
+                    <SearchProgress lang={lang} elapsed={elapsed} sourceStatus={sourceStatus} papersSourceLabel={papersSourceLabel} />
+                  )}
 
-              {searchState === 'error' && (
-                <div style={{ padding: '40px 24px', textAlign: 'center' }}>
-                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#C84B31', fontStyle: 'italic', marginBottom: 12 }}>
-                    {ts.searchError}
-                  </div>
-                  <button onClick={handleClear} style={{
-                    background: 'none', border: '1px solid #D8D0BE', padding: '8px 16px',
-                    fontFamily: "'Geist', sans-serif", fontSize: 12,
-                    color: '#6B6358', cursor: 'pointer', borderRadius: 4,
-                  }}>
-                    ← {ts.backToFeed}
-                  </button>
-                </div>
+                  {searchState === 'done' && (
+                    <>
+                      <button onClick={handleClear} style={{ background: 'none', border: 'none', padding: '8px 4px 4px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        ← {ts.backToFeed}
+                      </button>
+
+                      <SourceErrorBanner sourceErrors={sourceErrors} lang={lang} />
+
+                      {/* AI Overview */}
+                      <div style={{ margin: '4px 0 16px', padding: '12px 16px', background: '#FFFFFF', borderLeft: '3px solid #C84B31', borderRadius: '0 4px 4px 0' }}>
+                        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 8 }}>OVERVIEW</div>
+                        {overviewText ? (
+                          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', lineHeight: 1.6, margin: 0 }}>{overviewText}</p>
+                        ) : overviewNoKey ? (
+                          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>{ts.noApiKeyOverview}</p>
+                        ) : overviewError ? (
+                          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#C84B31', lineHeight: 1.6, margin: 0 }}>{ts.overviewError}</p>
+                        ) : overviewLoading ? (
+                          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', fontStyle: 'italic', margin: 0 }}>{ts.aiLoading}</p>
+                        ) : (
+                          <button onClick={fetchOverview} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '5px 12px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer' }}>
+                            {ts.aiOverviewBtn}
+                          </button>
+                        )}
+                      </div>
+
+                      <TabBar activeTab={activeTab} counts={tabCounts} onTab={handleTab} perPage={perPage} onPerPage={handlePerPage} ts={ts} />
+
+                      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', marginBottom: 10, padding: '0 2px' }}>
+                        {ts.resultsFor(tabItems.length, searchResults?.keyword || '')}
+                      </div>
+
+                      {pageItems.length === 0 ? (
+                        <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+                          <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#1A1611', fontStyle: 'italic' }}>
+                            {ts.noResults(searchResults?.keyword || '')}
+                          </div>
+                        </div>
+                      ) : (
+                        pageItems.map((item, i) => {
+                          const title = item.title || item.name || '';
+                          return (
+                            <ResultCard key={`${activeTab}-${pageStart + i}`} item={item} type={activeTab} summary={paperSummaries[title]} summaryLoading={!!summaryLoading[title]} onSummarize={() => fetchPaperSummary(title, item.abstract)} />
+                          );
+                        })
+                      )}
+
+                      <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+                    </>
+                  )}
+
+                  {searchState === 'error' && (
+                    <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+                      <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#C84B31', fontStyle: 'italic', marginBottom: 12 }}>{ts.searchError}</div>
+                      <button onClick={handleClear} style={{ background: 'none', border: '1px solid #D8D0BE', padding: '8px 16px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer', borderRadius: 4 }}>
+                        ← {ts.backToFeed}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}
         </div>
       </div>
 
-      {/* Scroll buttons — absolute inside the content wrapper */}
-      <div style={{
-        position: 'absolute',
-        bottom: 68,
-        right: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-        zIndex: 10,
-      }}>
-        <button onClick={scrollToTop} title={ts.scrollTop} style={scrollBtnStyle}>
-          <ChevronUp size={14} />
-        </button>
-        <button onClick={scrollToBottom} title={ts.scrollBottom} style={scrollBtnStyle}>
-          <ChevronDown size={14} />
-        </button>
+      {/* Scroll buttons */}
+      <div style={{ position: 'absolute', bottom: 68, right: 16, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 10 }}>
+        <button onClick={scrollToTop} title={ts.scrollTop} style={scrollBtnStyle}><ChevronUp size={14} /></button>
+        <button onClick={scrollToBottom} title={ts.scrollBottom} style={scrollBtnStyle}><ChevronDown size={14} /></button>
       </div>
 
       {/* Bottom navigation */}
@@ -1167,25 +966,6 @@ export default function Feed({ onSettings, userId }) {
   );
 }
 
-const monthInputStyle = {
-  padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4,
-  fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611',
-  background: '#FFFFFF', outline: 'none',
-};
-
-const nMonthsInputStyle = {
-  width: 56, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4,
-  fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611',
-  background: '#FFFFFF', outline: 'none', textAlign: 'center',
-};
-
-const scrollBtnStyle = {
-  width: 32, height: 32,
-  background: '#FFFFFF',
-  border: '1px solid #D8D0BE',
-  borderRadius: 4,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  cursor: 'pointer',
-  color: '#6B6358',
-  boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-};
+const monthInputStyle = { padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', background: '#FFFFFF', outline: 'none' };
+const nMonthsInputStyle = { width: 56, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', textAlign: 'center' };
+const scrollBtnStyle = { width: 32, height: 32, background: '#FFFFFF', border: '1px solid #D8D0BE', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6B6358', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' };
