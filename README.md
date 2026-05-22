@@ -178,7 +178,11 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.9.0 (current)
+### v0.9.1 (current)
+- [x] Fix: saving interests in Settings now always triggers the My Feed SSE check, even when the feed already has papers
+- [x] Fix: email digest now sends correctly for users without an explicit `notification_settings` row (treats missing row as enabled)
+
+### v0.9.0
 - [x] Daily Digest email toggle defaults to **on** for new users (and correctly reads `true` when no settings row exists)
 - [x] Breakthrough Alerts toggle now persists — stored in `notification_settings.breakthrough_enabled`; reopening Settings reflects the saved state
 - [x] Notification settings PATCH accepts either field independently so toggling one does not reset the other
