@@ -175,7 +175,14 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.7.0 (current)
+### v0.7.1 (current)
+- [x] Trending Feed: monthly period filter added (30-day parallel fetch, deduplicated)
+- [x] Trending Feed: each card now has inline expand/collapse for the summary text (same pattern as Quick Search)
+- [x] Quick Search: AI Summary no-key hint fix — empty-string guard removed so retries work; hint text now fills available space
+- [x] Learning Path: era tab horizontal scroll no longer leaks to page scroll at left/right edges (non-passive native wheel listener)
+- [x] Learning Path: paper card abstract toggle unified to Quick Search style — separated bottom bar with border-top, underline-button style removed
+
+### v0.7.0
 - [x] Trending Feed: daily / weekly period filter (fetches multiple days in parallel, deduplicated by arXiv ID)
 - [x] Learning Path: Papers / Models / Repos tabs per era — no more scrolling to the bottom to see repos
 - [x] Learning Path: era tab strip scrollable with mouse wheel
