@@ -187,18 +187,6 @@ function EraCard({ item, type, lang, tl, noApiKey }) {
   );
 }
 
-function SectionLabel({ text }) {
-  return (
-    <div style={{
-      fontFamily: "'Geist', sans-serif",
-      fontSize: 10, color: '#6B6358',
-      letterSpacing: '0.15em', marginBottom: 10,
-    }}>
-      {text}
-    </div>
-  );
-}
-
 function InlineNotice({ text, isError }) {
   return (
     <div style={{
@@ -345,6 +333,7 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
   const [state, setState] = useState('idle'); // 'idle' | 'loading' | 'done' | 'error'
   const [result, setResult] = useState(null);
   const [activeEra, setActiveEra] = useState(0);
+  const [activeContentTab, setActiveContentTab] = useState('papers'); // 'papers' | 'models' | 'repos'
   const [progress, setProgress] = useState(INIT_PROGRESS);
   const [lpHistory, setLpHistory] = useState([]);
 
@@ -410,6 +399,7 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
           if (event.type === 'done') {
             setResult(event.result);
             setActiveEra(0);
+            setActiveContentTab('papers');
             setState('done');
             return;
           } else if (event.type === 'error') {
@@ -600,15 +590,22 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
           )}
 
           {/* Era tab strip */}
-          <div style={{
-            display: 'flex', gap: 6,
-            padding: '14px 16px 0', overflowX: 'auto',
-            flexShrink: 0, paddingBottom: 2,
-          }}>
+          <div
+            style={{
+              display: 'flex', gap: 6,
+              padding: '14px 16px 0', overflowX: 'auto',
+              flexShrink: 0, paddingBottom: 2,
+            }}
+            onWheel={(e) => {
+              if (e.deltaY === 0) return;
+              e.preventDefault();
+              e.currentTarget.scrollLeft += e.deltaY;
+            }}
+          >
             {result.eras.map((e, i) => (
               <button
                 key={e.label}
-                onClick={() => setActiveEra(i)}
+                onClick={() => { setActiveEra(i); setActiveContentTab('papers'); }}
                 style={{
                   padding: '6px 14px',
                   background: activeEra === i ? '#1A1611' : 'transparent',
@@ -627,73 +624,94 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
 
           {/* Active era */}
           {era && (
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px 80px' }}>
-              {/* AI status */}
-              {era.ai_status === 'no_key' ? (
-                <InlineNotice text={tl.noApiKey} isError={false} />
-              ) : era.ai_status === 'error' ? (
-                <InlineNotice text={tl.aiError} isError={true} />
-              ) : era.summary ? (
-                <p style={{
-                  fontFamily: "'Geist', sans-serif", fontSize: 13,
-                  color: '#3A342B', lineHeight: 1.6, margin: '0 0 16px',
-                }}>
-                  {era.summary}
-                </p>
-              ) : null}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-              {/* Papers */}
-              {era.papers?.length > 0 && (
-                <>
-                  <SectionLabel text={tl.papers} />
-                  {era.papers.map((p, i) => (
-                    <EraCard
-                      key={i} item={p} type="paper" lang={lang} tl={tl}
-                      noApiKey={era.ai_status === 'no_key'}
-                    />
-                  ))}
-                </>
+              {/* AI summary */}
+              {(era.ai_status === 'no_key' || era.ai_status === 'error' || era.summary) && (
+                <div style={{ padding: '12px 16px 0', flexShrink: 0 }}>
+                  {era.ai_status === 'no_key' ? (
+                    <InlineNotice text={tl.noApiKey} isError={false} />
+                  ) : era.ai_status === 'error' ? (
+                    <InlineNotice text={tl.aiError} isError={true} />
+                  ) : era.summary ? (
+                    <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#3A342B', lineHeight: 1.6, margin: '0 0 4px' }}>
+                      {era.summary}
+                    </p>
+                  ) : null}
+                </div>
               )}
 
-              {/* Models */}
-              <div style={{ marginTop: era.papers?.length ? 16 : 0 }}>
-                <SectionLabel text={tl.models} />
-                {result.models_error ? (
-                  <InlineNotice text={tl.modelsError} isError={true} />
-                ) : era.models?.length > 0 ? (
-                  era.models.map((m, i) => (
-                    <EraCard key={i} item={m} type="model" lang={lang} tl={tl} />
-                  ))
-                ) : (
-                  <InlineNotice text={tl.noContent} isError={false} />
-                )}
+              {/* Content type tabs */}
+              <div style={{ display: 'flex', gap: 4, padding: '10px 16px 6px', flexShrink: 0 }}>
+                {[
+                  { key: 'papers', label: tl.papers, count: era.papers?.length ?? 0, colors: TYPE_COLORS.paper },
+                  { key: 'models', label: tl.models, count: era.models?.length ?? 0, colors: TYPE_COLORS.model },
+                  { key: 'repos',  label: tl.repos,  count: era.repos?.length  ?? 0, colors: TYPE_COLORS.repo },
+                ].map(({ key, label, count, colors }) => {
+                  const active = activeContentTab === key;
+                  return (
+                    <button key={key} onClick={() => setActiveContentTab(key)} style={{
+                      padding: '5px 10px',
+                      background: active ? colors.fg : 'transparent',
+                      color: active ? '#FAF7F2' : '#6B6358',
+                      border: '1px solid ' + (active ? colors.fg : '#D8D0BE'),
+                      borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 11,
+                      fontWeight: active ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap',
+                    }}>
+                      {label}
+                      {count > 0 && (
+                        <span style={{ marginLeft: 5, background: active ? 'rgba(255,255,255,0.25)' : '#E8E2D5', color: active ? '#FAF7F2' : '#6B6358', borderRadius: 10, padding: '0 4px', fontSize: 9, fontWeight: 600 }}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Repos */}
-              <div style={{ marginTop: 16 }}>
-                <SectionLabel text={tl.repos} />
-                {result.repos_error ? (
-                  <InlineNotice text={tl.reposError} isError={true} />
-                ) : era.repos?.length > 0 ? (
-                  era.repos.map((r, i) => (
-                    <EraCard key={i} item={r} type="repo" lang={lang} tl={tl} />
-                  ))
-                ) : (
-                  <InlineNotice text={tl.noContent} isError={false} />
+              {/* Tab content */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '4px 16px 80px' }}>
+                {activeContentTab === 'papers' && (
+                  era.papers?.length > 0 ? (
+                    era.papers.map((p, i) => (
+                      <EraCard key={i} item={p} type="paper" lang={lang} tl={tl} noApiKey={era.ai_status === 'no_key'} />
+                    ))
+                  ) : (
+                    <InlineNotice text={tl.noContent} isError={false} />
+                  )
                 )}
-              </div>
 
-              <button
-                onClick={() => { setState('idle'); setResult(null); setTopic(''); setProgress(INIT_PROGRESS); }}
-                style={{
-                  marginTop: 24, background: 'none',
-                  border: '1px solid #D8D0BE', padding: '8px 16px',
-                  borderRadius: 4, fontFamily: "'Geist', sans-serif",
-                  fontSize: 12, color: '#6B6358', cursor: 'pointer', width: '100%',
-                }}
-              >
-                ← {tl.searchAgain}
-              </button>
+                {activeContentTab === 'models' && (
+                  result.models_error ? (
+                    <InlineNotice text={tl.modelsError} isError={true} />
+                  ) : era.models?.length > 0 ? (
+                    era.models.map((m, i) => (
+                      <EraCard key={i} item={m} type="model" lang={lang} tl={tl} />
+                    ))
+                  ) : (
+                    <InlineNotice text={tl.noContent} isError={false} />
+                  )
+                )}
+
+                {activeContentTab === 'repos' && (
+                  result.repos_error ? (
+                    <InlineNotice text={tl.reposError} isError={true} />
+                  ) : era.repos?.length > 0 ? (
+                    era.repos.map((r, i) => (
+                      <EraCard key={i} item={r} type="repo" lang={lang} tl={tl} />
+                    ))
+                  ) : (
+                    <InlineNotice text={tl.noContent} isError={false} />
+                  )
+                )}
+
+                <button
+                  onClick={() => { setState('idle'); setResult(null); setTopic(''); setProgress(INIT_PROGRESS); }}
+                  style={{ marginTop: 24, background: 'none', border: '1px solid #D8D0BE', padding: '8px 16px', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer', width: '100%' }}
+                >
+                  ← {tl.searchAgain}
+                </button>
+              </div>
             </div>
           )}
         </>

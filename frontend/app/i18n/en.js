@@ -52,6 +52,8 @@ const en = {
     trendingError: 'Could not load trending papers.',
     upvotes: (n) => `▲ ${n}`,
     myFeedComingSoon: 'Personalized feed — subscription-based paper alerts — coming soon.',
+    trendingPeriodDaily: 'Today',
+    trendingPeriodWeekly: 'This week',
   },
   detail: {
     backToFeed: 'Back to Feed',

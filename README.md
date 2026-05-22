@@ -6,6 +6,7 @@ Automatically collects papers, models, and repositories from **Semantic Scholar*
 
 - **Quick Search** — Papers, models, and repos for a keyword, sorted by quality signal (citations / downloads / stars)
 - **Learning Path** — Historical development of a topic, organized chronologically by era
+- **Trending Feed** — Community-upvoted papers from Hugging Face (daily or weekly)
 
 All data is stored on your local machine (SQLite). No external server, no account required, no telemetry.
 
@@ -126,7 +127,7 @@ run.bat
 All data is stored in `data/research_thread.db` (SQLite, auto-created on first run, excluded from git).
 
 - **Search history** accumulates over time — this is intentional.
-- **Learning Path** results are cached for 7 days, then regenerated on next request.
+- **Learning Path** results are cached for 90 days, then regenerated on next request.
 - To start fresh: go to **Settings → Reset Database**, or run `python scripts/reset_db.py`.
 
 ---
@@ -174,7 +175,21 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.5.4 (current)
+### v0.7.0 (current)
+- [x] Trending Feed: daily / weekly period filter (fetches multiple days in parallel, deduplicated by arXiv ID)
+- [x] Learning Path: Papers / Models / Repos tabs per era — no more scrolling to the bottom to see repos
+- [x] Learning Path: era tab strip scrollable with mouse wheel
+- [x] Quick Search: AI Summary button correctly shows "add API key" hint when ANTHROPIC_API_KEY is absent
+
+### v0.6.0
+- [x] 3-tab navigation: Trending | My Feed | Search
+- [x] Learning Path integrated into Search tab as a Quick Search ↔ Learning Path toggle
+- [x] Quick Search: history dropdown on search bar focus, per-item delete
+- [x] Learning Path: history list in idle state, click to reload from cache, per-item delete
+- [x] HF Daily Papers trending feed on the Trending tab
+- [x] Learning Path cache TTL raised from 7 days → 90 days
+
+### v0.5.4
 - [x] Quick Search: search history auto-expires after 30 days (purged on each new search)
 - [x] Settings: "Clear search history" button — removes Quick Search records while keeping preferences and Learning Path cache
 
@@ -223,8 +238,7 @@ research-thread-agent/
 - [x] Settings → Reset Database
 
 ### Upcoming
-- [ ] Phase 4: Subscriptions, in-app notifications, email digest
-- [ ] Phase 4: HF Daily Papers trending feed on the main feed screen
+- [ ] Phase 4: Subscriptions, in-app notifications, email digest (bell icon → dropdown)
 - [ ] Phase 5: Electron desktop packaging (no terminal required)
 - [ ] Phase 6: MCP server for Claude.ai chat integration
 

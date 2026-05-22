@@ -70,7 +70,7 @@ function getPageNumbers(page, totalPages) {
 // =============================================================================
 // Result card (paper / model / repo)
 // =============================================================================
-function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
+function ResultCard({ item, type, onSummarize, summary, summaryLoading, summaryNoKey }) {
   const { t } = useLanguage();
   const ts = t.search;
   const colors = TYPE_COLORS[type];
@@ -140,7 +140,9 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading }) {
             </button>
           ) : <span />}
           {type === 'paper' && abstract && (
-            summary ? (
+            summaryNoKey ? (
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', fontStyle: 'italic' }}>{ts.noApiKey}</span>
+            ) : summary ? (
               <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', margin: 0, lineHeight: 1.5, flex: 1, textAlign: 'right' }}>{summary}</p>
             ) : summaryLoading ? (
               <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.aiLoading}</span>
@@ -276,14 +278,18 @@ function SearchProgress({ lang, elapsed, sourceStatus, papersSourceLabel }) {
 function TrendingFeed({ onQuickSearch }) {
   const { t, lang } = useLanguage();
   const tf = t.feed;
+  const [period, setPeriod] = useState('daily');
   const [papers, setPapers] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    setPapers(null);
+    setLoading(true);
+    setError(false);
     (async () => {
       try {
-        const res = await fetch(`${API}/feed/trending`);
+        const res = await fetch(`${API}/feed/trending?period=${period}`);
         if (!res.ok) throw new Error('failed');
         const data = await res.json();
         setPapers(data.papers || []);
@@ -293,7 +299,7 @@ function TrendingFeed({ onQuickSearch }) {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [period]);
 
   const today = new Date().toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'long', day: 'numeric' });
 
@@ -302,8 +308,27 @@ function TrendingFeed({ onQuickSearch }) {
       <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 4 }}>
         {tf.trendingHeader}
       </div>
-      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185', marginBottom: 20 }}>
-        {tf.trendingSubtitle} · {today}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185' }}>
+          {tf.trendingSubtitle} · {today}
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {[
+            { key: 'daily',  label: tf.trendingPeriodDaily },
+            { key: 'weekly', label: tf.trendingPeriodWeekly },
+          ].map(({ key, label }) => (
+            <button key={key} onClick={() => setPeriod(key)} style={{
+              padding: '4px 10px',
+              background: period === key ? '#1A1611' : 'transparent',
+              color: period === key ? '#FAF7F2' : '#6B6358',
+              border: '1px solid ' + (period === key ? '#1A1611' : '#D8D0BE'),
+              borderRadius: 20, fontFamily: "'Geist', sans-serif", fontSize: 11,
+              fontWeight: period === key ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s',
+            }}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading && (
@@ -549,6 +574,7 @@ export default function Feed({ onSettings, userId }) {
   // Per-paper AI summary
   const [paperSummaries, setPaperSummaries] = useState({});
   const [summaryLoading, setSummaryLoading] = useState({});
+  const [paperNoKey, setPaperNoKey] = useState({});
 
   // Papers source label
   const [papersSourceLabel, setPapersSourceLabel] = useState('Semantic Scholar');
@@ -611,6 +637,7 @@ export default function Feed({ onSettings, userId }) {
     setOverviewError(false);
     setPaperSummaries({});
     setSummaryLoading({});
+    setPaperNoKey({});
     if (elapsedRef.current) clearInterval(elapsedRef.current);
     const startedAt = Date.now();
     elapsedRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
@@ -736,12 +763,16 @@ export default function Feed({ onSettings, userId }) {
 
   // ── Per-paper summary ─────────────────────────────────────────────────────
   const fetchPaperSummary = async (title, abstract) => {
-    if (!abstract || paperSummaries[title] !== undefined || summaryLoading[title]) return;
+    if (!abstract || paperSummaries[title] !== undefined || paperNoKey[title] || summaryLoading[title]) return;
     setSummaryLoading(prev => ({ ...prev, [title]: true }));
     try {
       const res = await fetch(`${API}/summarize/paper`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ abstract, lang }) });
       const data = await res.json();
-      setPaperSummaries(prev => ({ ...prev, [title]: data.no_api_key ? ts.noApiKey : (data.summary || '') }));
+      if (data.no_api_key) {
+        setPaperNoKey(prev => ({ ...prev, [title]: true }));
+      } else {
+        setPaperSummaries(prev => ({ ...prev, [title]: data.summary || '' }));
+      }
     } catch {}
     setSummaryLoading(prev => ({ ...prev, [title]: false }));
   };
@@ -930,7 +961,7 @@ export default function Feed({ onSettings, userId }) {
                         pageItems.map((item, i) => {
                           const title = item.title || item.name || '';
                           return (
-                            <ResultCard key={`${activeTab}-${pageStart + i}`} item={item} type={activeTab} summary={paperSummaries[title]} summaryLoading={!!summaryLoading[title]} onSummarize={() => fetchPaperSummary(title, item.abstract)} />
+                            <ResultCard key={`${activeTab}-${pageStart + i}`} item={item} type={activeTab} summary={paperSummaries[title]} summaryLoading={!!summaryLoading[title]} summaryNoKey={!!paperNoKey[title]} onSummarize={() => fetchPaperSummary(title, item.abstract)} />
                           );
                         })
                       )}

@@ -52,6 +52,8 @@ const ko = {
     trendingError: '트렌딩 논문을 불러오지 못했어요.',
     upvotes: (n) => `▲ ${n}`,
     myFeedComingSoon: '구독 키워드 기반 맞춤 피드 — 곧 추가됩니다.',
+    trendingPeriodDaily: '오늘',
+    trendingPeriodWeekly: '이번 주',
   },
   detail: {
     backToFeed: '피드로 돌아가기',

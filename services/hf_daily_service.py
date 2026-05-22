@@ -1,5 +1,8 @@
 """Hugging Face Daily Papers fetcher."""
 
+import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import requests
 from datetime import date as _date
 from utils.logger import get_logger
@@ -46,3 +49,27 @@ def fetch_daily_papers(target_date: _date | None = None) -> list[dict]:
 
     papers.sort(key=lambda p: p["upvotes"], reverse=True)
     return papers
+
+
+def fetch_papers_range(days: int = 1) -> list[dict]:
+    """Fetch HF Daily Papers for the past N days, deduplicated by arxiv_id.
+
+    Papers with no arxiv_id are kept but deduplicated by title.
+    Returns all papers sorted by upvotes descending.
+    """
+    today = _date.today()
+    dates = [today - datetime.timedelta(days=i) for i in range(days)]
+
+    seen: dict[str, dict] = {}  # arxiv_id or title -> paper with max upvotes
+
+    with ThreadPoolExecutor(max_workers=min(days, 7)) as ex:
+        futures = [ex.submit(fetch_daily_papers, d) for d in dates]
+        for f in as_completed(futures):
+            for p in f.result():
+                key = p["arxiv_id"] or p["title"]
+                if not key:
+                    continue
+                if key not in seen or p["upvotes"] > seen[key]["upvotes"]:
+                    seen[key] = p
+
+    return sorted(seen.values(), key=lambda p: p["upvotes"], reverse=True)
