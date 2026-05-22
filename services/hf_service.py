@@ -14,12 +14,11 @@ def _get_api() -> HfApi:
 
 
 def _has_topic_signal(model_id: str, keyword: str, tags: list) -> bool:
-    """Return True if keyword appears in the model's repo name or tags (not just username)."""
-    kw = keyword.lower()
+    """Return True if any keyword term appears in the model's repo name or tags."""
+    terms = keyword.lower().split()
     repo_part = model_id.split("/")[-1].lower()
-    if kw in repo_part:
-        return True
-    return any(kw in (t or "").lower() for t in (tags or []))
+    tags_str = " ".join((t or "").lower() for t in (tags or []))
+    return any(term in repo_part or term in tags_str for term in terms)
 
 
 def search_models(

@@ -406,13 +406,12 @@ function SourceErrorBanner({ sourceErrors, lang }) {
 // =============================================================================
 // Loading progress
 // =============================================================================
-const SOURCE_META = [
-  { key: 'papers', label: 'Semantic Scholar' },
-  { key: 'models', label: 'Hugging Face' },
-  { key: 'repos',  label: 'GitHub' },
-];
-
-function SearchProgress({ lang, elapsed, sourceStatus }) {
+function SearchProgress({ lang, elapsed, sourceStatus, papersSourceLabel }) {
+  const SOURCE_META = [
+    { key: 'papers', label: papersSourceLabel || 'Semantic Scholar' },
+    { key: 'models', label: 'Hugging Face' },
+    { key: 'repos',  label: 'GitHub' },
+  ];
   return (
     <div style={{ padding: '40px 8px 0' }}>
       <div style={{
@@ -664,6 +663,9 @@ export default function Feed({ onSettings, userId }) {
   const [paperSummaries, setPaperSummaries] = useState({});
   const [summaryLoading, setSummaryLoading] = useState({});
 
+  // Papers source label (switches to "OpenAlex" if fallback happens)
+  const [papersSourceLabel, setPapersSourceLabel] = useState('Semantic Scholar');
+
   // Scroll ref
   const scrollRef = useRef(null);
 
@@ -690,12 +692,13 @@ export default function Feed({ onSettings, userId }) {
   const runSearch = async (kws, singleKw) => {
     const allKws = singleKw ? [singleKw] : [...kws, ...(query.trim() ? [query.trim()] : [])];
     if (allKws.length === 0) return;
-    const combined = allKws.join(' OR ');
+    const combined = allKws.join(' ');
 
     setSearchState('loading');
     setElapsed(0);
     setSourceStatus({});
     setSourceErrors({});
+    setPapersSourceLabel('Semantic Scholar');
     setActiveTab('paper');
     setPage(1);
     setOverviewText(null);
@@ -756,6 +759,8 @@ export default function Feed({ onSettings, userId }) {
             clearInterval(elapsedRef.current);
             setSearchState('error');
             return;
+          } else if (event.stage === 'papers_source') {
+            setPapersSourceLabel(event.msg || 'Semantic Scholar');
           } else if (event.stage === 'source_done') {
             const parts = (event.msg || '').split(':');
             const src = parts[0];
@@ -821,7 +826,7 @@ export default function Feed({ onSettings, userId }) {
       const res = await fetch(`${API}/summarize/overview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword: searchResults?.keyword || '', paper_titles: titles }),
+        body: JSON.stringify({ keyword: searchResults?.keyword || '', paper_titles: titles, lang }),
       });
       const data = await res.json();
       if (data.no_api_key) {
@@ -845,7 +850,7 @@ export default function Feed({ onSettings, userId }) {
       const res = await fetch(`${API}/summarize/paper`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ abstract }),
+        body: JSON.stringify({ abstract, lang }),
       });
       const data = await res.json();
       setPaperSummaries(prev => ({
@@ -1023,7 +1028,7 @@ export default function Feed({ onSettings, userId }) {
               {searchState === 'idle' && <EmptySearch onSuggestionClick={handleSuggestion} />}
 
               {searchState === 'loading' && (
-                <SearchProgress lang={lang} elapsed={elapsed} sourceStatus={sourceStatus} />
+                <SearchProgress lang={lang} elapsed={elapsed} sourceStatus={sourceStatus} papersSourceLabel={papersSourceLabel} />
               )}
 
               {searchState === 'done' && (

@@ -158,6 +158,7 @@ def search_papers(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     limit: int = 50,
+    _source_out: Optional[list] = None,
 ) -> list[dict]:
     """Search for papers relevant to keyword.
 
@@ -169,16 +170,24 @@ def search_papers(
         start_date: Filter to papers published on or after this date.
         end_date: Filter to papers published on or before this date.
         limit: Maximum papers to return.
+        _source_out: Optional single-element list; if provided, will be set to
+            the name of the source actually used ("Semantic Scholar" or "OpenAlex").
 
     Returns:
         List of paper dicts sorted by citation count desc.
     """
     try:
-        return _search_semantic_scholar(keyword, start_date, end_date, limit)
+        result = _search_semantic_scholar(keyword, start_date, end_date, limit)
+        if _source_out is not None:
+            _source_out.append("Semantic Scholar")
+        return result
     except requests.RequestException as ss_exc:
         logger.warning("Semantic Scholar unavailable (%s); falling back to OpenAlex", ss_exc)
         try:
-            return _search_openalex(keyword, start_date, end_date, limit)
+            result = _search_openalex(keyword, start_date, end_date, limit)
+            if _source_out is not None:
+                _source_out.append("OpenAlex")
+            return result
         except requests.RequestException as oa_exc:
             logger.error("OpenAlex fallback also failed: %s", oa_exc)
             raise ss_exc

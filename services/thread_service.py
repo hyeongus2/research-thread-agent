@@ -77,10 +77,12 @@ def create_research_thread(
 
     executor = ThreadPoolExecutor(max_workers=3)
     try:
+        papers_source_out: list = []
         futures = {}
         if paper_limit > 0:
             futures[executor.submit(
-                semantic_scholar_service.search_papers, keyword, start_date, end_date, paper_limit
+                semantic_scholar_service.search_papers,
+                keyword, start_date, end_date, paper_limit, papers_source_out,
             )] = "papers"
         else:
             _progress("source_done", "papers:0")
@@ -103,6 +105,8 @@ def create_research_thread(
                     result = future.result()
                     if key == "papers":
                         papers = result
+                        actual_src = papers_source_out[0] if papers_source_out else "Semantic Scholar"
+                        _progress("papers_source", actual_src)
                     elif key == "models":
                         models = result
                     elif key == "repos":

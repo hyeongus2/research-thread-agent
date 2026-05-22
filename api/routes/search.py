@@ -81,7 +81,7 @@ def summarize_paper(body: SummarizePaperRequest):
     """Return a one-sentence AI summary for a paper abstract."""
     if not settings.ANTHROPIC_API_KEY:
         return {"summary": None, "no_api_key": True}
-    summary = claude_service.summarize_paper(body.abstract)
+    summary = claude_service.summarize_paper(body.abstract, lang=body.lang)
     return {"summary": summary, "no_api_key": False}
 
 
@@ -91,7 +91,7 @@ def summarize_overview(body: SummarizeOverviewRequest):
     if not settings.ANTHROPIC_API_KEY:
         return {"overview": None, "no_api_key": True}
     papers_for_ctx = [{"title": t} for t in body.paper_titles]
-    overview = claude_service.generate_overview(body.keyword, papers_for_ctx)
+    overview = claude_service.generate_overview(body.keyword, papers_for_ctx, lang=body.lang)
     return {"overview": overview, "no_api_key": False}
 
 
