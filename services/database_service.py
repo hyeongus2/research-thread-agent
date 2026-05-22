@@ -117,6 +117,10 @@ def save_search_history(
     date_range_end: Optional[str] = None,
     info_types: Optional[list[str]] = None,
 ) -> SearchHistory:
+    cutoff = datetime.utcnow() - timedelta(days=30)
+    db.query(SearchHistory).filter(SearchHistory.searched_at < cutoff).delete()
+    db.commit()
+
     record = SearchHistory(
         user_id=user_id,
         keyword=keyword,
@@ -129,6 +133,12 @@ def save_search_history(
     db.commit()
     db.refresh(record)
     return record
+
+
+def clear_search_history(db: Session) -> int:
+    deleted = db.query(SearchHistory).delete()
+    db.commit()
+    return deleted
 
 
 def get_cached_historical_thread(db: Session, topic: str) -> Optional[dict]:

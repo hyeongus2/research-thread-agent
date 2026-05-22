@@ -174,7 +174,11 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.5.3 (current)
+### v0.5.4 (current)
+- [x] Quick Search: search history auto-expires after 30 days (purged on each new search)
+- [x] Settings: "Clear search history" button — removes Quick Search records while keeping preferences and Learning Path cache
+
+### v0.5.3
 - [x] Learning Path: topic title shown in results and loading screens
 - [x] Learning Path: abstract expand/collapse on paper cards (same as Quick Search)
 - [x] Learning Path: per-paper API key prompt when ANTHROPIC_API_KEY not set

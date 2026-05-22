@@ -31,6 +31,7 @@ export default function Settings({ onClose, userId }) {
   const [breakthroughOn, setBreakthroughOn] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  const [historyCleared, setHistoryCleared] = useState(false);
   const [limits, setLimits] = useState(readLimits);
   const [lpLimits, setLpLimits] = useState(readLpLimits);
 
@@ -59,6 +60,14 @@ export default function Settings({ onClose, userId }) {
   const resetLpLimits = () => {
     setLpLimits(DEFAULT_LP_LIMITS);
     localStorage.setItem('learning_path_limits', JSON.stringify(DEFAULT_LP_LIMITS));
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      await fetch(`${API}/admin/clear-search-history`, { method: 'POST' });
+    } catch { /* best-effort */ }
+    setHistoryCleared(true);
+    setTimeout(() => setHistoryCleared(false), 2500);
   };
 
   const handleReset = async () => {
@@ -300,6 +309,38 @@ export default function Settings({ onClose, userId }) {
 
         {/* Data management */}
         <div style={sectionLabel}>{ts.data}</div>
+
+        {/* Clear search history */}
+        <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: '16px', marginBottom: 12 }}>
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', fontWeight: 500, marginBottom: 4 }}>
+            {ts.clearHistoryTitle}
+          </div>
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.5, marginBottom: 14 }}>
+            {ts.clearHistoryDesc}
+          </div>
+          {historyCleared ? (
+            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611' }}>
+              {ts.clearHistoryDone}
+            </div>
+          ) : (
+            <button
+              onClick={handleClearHistory}
+              style={{
+                padding: '10px 18px',
+                background: 'transparent',
+                border: '1px solid #D8D0BE',
+                borderRadius: 4,
+                fontFamily: "'Geist', sans-serif",
+                fontSize: 13,
+                color: '#1A1611',
+                cursor: 'pointer',
+              }}
+            >
+              {ts.clearHistoryBtn}
+            </button>
+          )}
+        </div>
+
         <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: '16px' }}>
           <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', fontWeight: 500, marginBottom: 4 }}>
             {ts.resetTitle}

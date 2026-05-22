@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 
 from api.routes import auth, learning, notifications, search, subscriptions
-from utils.database import Base, engine, init_db
+from utils.database import Base, engine, get_db, init_db
 
 
 @asynccontextmanager
@@ -36,3 +37,10 @@ async def reset_db():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     return {"message": "Database reset successfully"}
+
+
+@app.post("/api/admin/clear-search-history")
+async def clear_search_history_endpoint(db: Session = Depends(get_db)):
+    from services.database_service import clear_search_history
+    deleted = clear_search_history(db)
+    return {"deleted": deleted}
