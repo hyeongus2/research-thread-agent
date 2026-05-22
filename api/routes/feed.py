@@ -3,7 +3,7 @@ from services.hf_daily_service import fetch_papers_range
 
 router = APIRouter()
 
-_PERIOD_DAYS = {"daily": 1, "weekly": 7}
+_PERIOD_DAYS = {"daily": 1, "weekly": 7, "monthly": 30}
 
 
 @router.get("/feed/trending")

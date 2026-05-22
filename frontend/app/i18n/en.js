@@ -54,6 +54,7 @@ const en = {
     myFeedComingSoon: 'Personalized feed — subscription-based paper alerts — coming soon.',
     trendingPeriodDaily: 'Today',
     trendingPeriodWeekly: 'This week',
+    trendingPeriodMonthly: 'This month',
   },
   detail: {
     backToFeed: 'Back to Feed',

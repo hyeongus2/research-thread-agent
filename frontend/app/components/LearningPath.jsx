@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ArrowUpRight, AlertCircle, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -67,120 +67,114 @@ function EraCard({ item, type, lang, tl, noApiKey }) {
   ];
   const hasAnalysis = type === 'paper' && analysisFields.some(f => item[f.key]);
   const hasAbstract = type === 'paper' && item.abstract;
+  const ABSTRACT_THRESHOLD = 200;
+  const needsToggle = hasAbstract && item.abstract.length > ABSTRACT_THRESHOLD;
 
   return (
-    <div style={{
-      background: '#FFFFFF',
-      border: '1px solid #E8E2D5',
-      marginBottom: 12,
-      padding: '14px 16px',
-      borderRadius: 4,
-    }}>
-      {/* Type badge + link icon */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{
-          background: colors.bg, color: colors.fg,
-          padding: '2px 7px', borderRadius: 2,
-          fontSize: 10, fontWeight: 600, letterSpacing: '0.05em',
-          fontFamily: "'Geist', sans-serif",
-        }}>
-          {typeLabel}
-        </span>
-        <a href={url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
-          <ArrowUpRight size={13} style={{ color: '#6B6358' }} />
-        </a>
-      </div>
-
-      {/* Title */}
-      <a
-        href={url}
-        target="_blank"
-        rel="noreferrer"
-        style={{ textDecoration: 'none', color: '#1A1611' }}
-      >
-        <div style={{
-          fontFamily: "'Fraunces', serif",
-          fontSize: 15, fontWeight: 500,
-          color: '#1A1611', lineHeight: 1.3,
-          marginBottom: meta ? 6 : 0,
-        }}>
-          {title}
+    <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', marginBottom: 12, borderRadius: 4, overflow: 'hidden' }}>
+      {/* Card body */}
+      <div style={{ padding: '14px 16px' }}>
+        {/* Type badge + link icon */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{
+            background: colors.bg, color: colors.fg,
+            padding: '2px 7px', borderRadius: 2,
+            fontSize: 10, fontWeight: 600, letterSpacing: '0.05em',
+            fontFamily: "'Geist', sans-serif",
+          }}>
+            {typeLabel}
+          </span>
+          <a href={url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
+            <ArrowUpRight size={13} style={{ color: '#6B6358' }} />
+          </a>
         </div>
-      </a>
 
-      {meta && (
-        <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>
-          {meta}
-        </span>
-      )}
+        {/* Title */}
+        <a href={url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', color: '#1A1611' }}>
+          <div style={{
+            fontFamily: "'Fraunces', serif",
+            fontSize: 15, fontWeight: 500,
+            color: '#1A1611', lineHeight: 1.3,
+            marginBottom: meta ? 6 : (hasAbstract ? 8 : 0),
+          }}>
+            {title}
+          </div>
+        </a>
 
-      {/* Abstract toggle (paper only) */}
-      {hasAbstract && (
-        <div style={{ marginTop: 8 }}>
+        {meta && (
+          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>
+            {meta}
+          </span>
+        )}
+
+        {/* Abstract (truncated, toggle in bottom bar) */}
+        {hasAbstract && (
           <p style={{
             fontFamily: "'Geist', sans-serif",
             fontSize: 12, color: '#3A342B',
-            lineHeight: 1.55, margin: 0,
+            lineHeight: 1.55, margin: `${meta ? 8 : 0}px 0 0`,
             display: '-webkit-box',
             WebkitBoxOrient: 'vertical',
-            WebkitLineClamp: abstractOpen ? undefined : 2,
+            WebkitLineClamp: abstractOpen ? 'unset' : 3,
             overflow: abstractOpen ? 'visible' : 'hidden',
           }}>
             {item.abstract}
           </p>
+        )}
+
+        {/* AI analysis */}
+        {hasAnalysis && (
+          <div style={{
+            marginTop: 12, paddingTop: 12,
+            borderTop: '1px solid #F0EAD9',
+            display: 'flex', flexDirection: 'column', gap: 8,
+          }}>
+            {analysisFields.map(({ key, label }) =>
+              item[key] ? (
+                <div key={key}>
+                  <span style={{
+                    fontFamily: "'Geist', sans-serif",
+                    fontSize: 9, fontWeight: 700,
+                    color: ANALYSIS_COLORS[key],
+                    letterSpacing: '0.1em',
+                  }}>
+                    {label}
+                  </span>
+                  <p style={{
+                    fontFamily: "'Geist', sans-serif",
+                    fontSize: 12, color: '#3A342B',
+                    margin: '3px 0 0', lineHeight: 1.55,
+                  }}>
+                    {item[key]}
+                  </p>
+                </div>
+              ) : null
+            )}
+          </div>
+        )}
+
+        {/* API key prompt (paper only, when no analysis) */}
+        {type === 'paper' && !hasAnalysis && noApiKey && (
+          <div style={{
+            marginTop: 10, paddingTop: 10,
+            borderTop: '1px solid #F0EAD9',
+            fontFamily: "'Geist', sans-serif", fontSize: 11,
+            color: '#A09880', lineHeight: 1.4,
+          }}>
+            {tl.noApiKeyCard}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom bar — abstract toggle (Quick Search style) */}
+      {needsToggle && (
+        <div style={{ borderTop: '1px solid #F0EBE2', padding: '8px 16px' }}>
           <button
             onClick={() => setAbstractOpen(v => !v)}
-            style={{
-              marginTop: 4, background: 'none', border: 'none', padding: 0,
-              fontFamily: "'Geist', sans-serif", fontSize: 11,
-              color: '#6B6358', cursor: 'pointer', textDecoration: 'underline',
-            }}
+            style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}
           >
             {abstractOpen ? tl.hideAbstract : tl.showAbstract}
           </button>
-        </div>
-      )}
-
-      {/* AI analysis */}
-      {hasAnalysis && (
-        <div style={{
-          marginTop: 12, paddingTop: 12,
-          borderTop: '1px solid #F0EAD9',
-          display: 'flex', flexDirection: 'column', gap: 8,
-        }}>
-          {analysisFields.map(({ key, label }) =>
-            item[key] ? (
-              <div key={key}>
-                <span style={{
-                  fontFamily: "'Geist', sans-serif",
-                  fontSize: 9, fontWeight: 700,
-                  color: ANALYSIS_COLORS[key],
-                  letterSpacing: '0.1em',
-                }}>
-                  {label}
-                </span>
-                <p style={{
-                  fontFamily: "'Geist', sans-serif",
-                  fontSize: 12, color: '#3A342B',
-                  margin: '3px 0 0', lineHeight: 1.55,
-                }}>
-                  {item[key]}
-                </p>
-              </div>
-            ) : null
-          )}
-        </div>
-      )}
-
-      {/* API key prompt (paper only, when no analysis) */}
-      {type === 'paper' && !hasAnalysis && noApiKey && (
-        <div style={{
-          marginTop: 10, paddingTop: 10,
-          borderTop: '1px solid #F0EAD9',
-          fontFamily: "'Geist', sans-serif", fontSize: 11,
-          color: '#A09880', lineHeight: 1.4,
-        }}>
-          {tl.noApiKeyCard}
         </div>
       )}
     </div>
@@ -336,6 +330,21 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
   const [activeContentTab, setActiveContentTab] = useState('papers'); // 'papers' | 'models' | 'repos'
   const [progress, setProgress] = useState(INIT_PROGRESS);
   const [lpHistory, setLpHistory] = useState([]);
+
+  const eraTabRef = useRef(null);
+
+  // Non-passive wheel listener so preventDefault() actually stops page scroll at edges
+  useEffect(() => {
+    const el = eraTabRef.current;
+    if (!el) return;
+    const handler = (e) => {
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [state]); // re-attach when state becomes 'done' (div mounts)
 
   useEffect(() => {
     (async () => {
@@ -591,15 +600,11 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
 
           {/* Era tab strip */}
           <div
+            ref={eraTabRef}
             style={{
               display: 'flex', gap: 6,
               padding: '14px 16px 0', overflowX: 'auto',
               flexShrink: 0, paddingBottom: 2,
-            }}
-            onWheel={(e) => {
-              if (e.deltaY === 0) return;
-              e.preventDefault();
-              e.currentTarget.scrollLeft += e.deltaY;
             }}
           >
             {result.eras.map((e, i) => (

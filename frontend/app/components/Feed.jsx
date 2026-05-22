@@ -141,7 +141,7 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading, summaryN
           ) : <span />}
           {type === 'paper' && abstract && (
             summaryNoKey ? (
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', fontStyle: 'italic' }}>{ts.noApiKey}</span>
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic', flex: 1, textAlign: 'right' }}>{ts.noApiKey}</span>
             ) : summary ? (
               <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', margin: 0, lineHeight: 1.5, flex: 1, textAlign: 'right' }}>{summary}</p>
             ) : summaryLoading ? (
@@ -273,6 +273,56 @@ function SearchProgress({ lang, elapsed, sourceStatus, papersSourceLabel }) {
 }
 
 // =============================================================================
+// Trending card (single paper in HF feed)
+// =============================================================================
+function TrendingCard({ p, onQuickSearch }) {
+  const { t, lang } = useLanguage();
+  const tf = t.feed;
+  const ts = t.search;
+  const [expanded, setExpanded] = useState(false);
+  const authors = (p.authors || []).slice(0, 2).join(', ');
+  const THRESHOLD = 200;
+  const needsToggle = p.summary && p.summary.length > THRESHOLD;
+
+  return (
+    <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, marginBottom: 14, overflow: 'hidden' }}>
+      <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '16px 20px 8px', textDecoration: 'none', color: '#1A1611' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#C84B31', fontWeight: 600 }}>
+            {tf.upvotes(p.upvotes)}
+          </span>
+          <ArrowUpRight size={14} style={{ color: '#6B6358' }} />
+        </div>
+        <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 16, lineHeight: 1.3, fontWeight: 500, color: '#1A1611', margin: '0 0 8px' }}>
+          {p.title}
+        </h3>
+        {authors && <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>{authors}</span>}
+      </a>
+      {p.summary && (
+        <div style={{ padding: '4px 20px 8px' }}>
+          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, lineHeight: 1.6, color: '#3A342B', margin: 0, display: '-webkit-box', WebkitLineClamp: expanded ? 'unset' : 3, WebkitBoxOrient: 'vertical', overflow: expanded ? 'visible' : 'hidden' }}>
+            {p.summary}
+          </p>
+        </div>
+      )}
+      <div style={{ borderTop: '1px solid #F0EBE2', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {needsToggle ? (
+          <button onClick={() => setExpanded(v => !v)} style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}>
+            {expanded ? ts.hideAbstract : ts.showAbstract}
+          </button>
+        ) : <span />}
+        <button
+          onClick={() => onQuickSearch(p.title.split(':')[0].trim())}
+          style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}
+        >
+          {lang === 'ko' ? '관련 논문 검색 →' : 'Search related →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
 // Trending feed (HF Daily Papers)
 // =============================================================================
 function TrendingFeed({ onQuickSearch }) {
@@ -314,8 +364,9 @@ function TrendingFeed({ onQuickSearch }) {
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
           {[
-            { key: 'daily',  label: tf.trendingPeriodDaily },
-            { key: 'weekly', label: tf.trendingPeriodWeekly },
+            { key: 'daily',   label: tf.trendingPeriodDaily },
+            { key: 'weekly',  label: tf.trendingPeriodWeekly },
+            { key: 'monthly', label: tf.trendingPeriodMonthly },
           ].map(({ key, label }) => (
             <button key={key} onClick={() => setPeriod(key)} style={{
               padding: '4px 10px',
@@ -349,38 +400,9 @@ function TrendingFeed({ onQuickSearch }) {
         </div>
       )}
 
-      {papers && papers.map((p, i) => {
-        const authors = (p.authors || []).slice(0, 2).join(', ');
-        return (
-          <div key={i} style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, marginBottom: 14, overflow: 'hidden' }}>
-            <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '16px 20px 12px', textDecoration: 'none', color: '#1A1611' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#C84B31', fontWeight: 600 }}>
-                  {tf.upvotes(p.upvotes)}
-                </span>
-                <ArrowUpRight size={14} style={{ color: '#6B6358' }} />
-              </div>
-              <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 16, lineHeight: 1.3, fontWeight: 500, color: '#1A1611', margin: '0 0 8px' }}>
-                {p.title}
-              </h3>
-              {p.summary && (
-                <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, lineHeight: 1.6, color: '#3A342B', margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {p.summary}
-                </p>
-              )}
-              {authors && <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>{authors}</span>}
-            </a>
-            <div style={{ borderTop: '1px solid #F0EBE2', padding: '8px 20px' }}>
-              <button
-                onClick={() => onQuickSearch(p.title.split(':')[0].trim())}
-                style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}
-              >
-                {lang === 'ko' ? '관련 논문 검색 →' : 'Search related →'}
-              </button>
-            </div>
-          </div>
-        );
-      })}
+      {papers && papers.map((p, i) => (
+        <TrendingCard key={i} p={p} onQuickSearch={onQuickSearch} />
+      ))}
     </div>
   );
 }
@@ -770,9 +792,10 @@ export default function Feed({ onSettings, userId }) {
       const data = await res.json();
       if (data.no_api_key) {
         setPaperNoKey(prev => ({ ...prev, [title]: true }));
-      } else {
-        setPaperSummaries(prev => ({ ...prev, [title]: data.summary || '' }));
+      } else if (data.summary) {
+        setPaperSummaries(prev => ({ ...prev, [title]: data.summary }));
       }
+      // If neither (unexpected response), allow retry by not setting anything
     } catch {}
     setSummaryLoading(prev => ({ ...prev, [title]: false }));
   };
