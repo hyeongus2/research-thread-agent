@@ -410,7 +410,10 @@ function TrendingFeed({ onQuickSearch }) {
 // =============================================================================
 // My Feed
 // =============================================================================
-function MyFeedView({ userId, refreshKey = 0 }) {
+// Persists across remounts so SSE doesn't re-run on every tab visit
+let _lastCheckedRefreshKey = -1;
+
+function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone }) {
   const { t } = useLanguage();
   const tf = t.feed;
   const ts = t.search;
@@ -440,10 +443,17 @@ function MyFeedView({ userId, refreshKey = 0 }) {
     loadPapers();
   }, [userId, refreshKey, loadPapers]);
 
-  // Auto-start SSE check: always when user explicitly refreshed (refreshKey > 0), or when no papers on initial load
+  // Reload papers (no SSE) when background scheduler adds new notifications
+  useEffect(() => {
+    if (papersRefreshKey > 0) loadPapers();
+  }, [papersRefreshKey, loadPapers]);
+
+  // Auto-start SSE check: only when papers are absent, or when refreshKey has newly increased
   useEffect(() => {
     if (!loading && !checking && userId && !checkStartedRef.current) {
-      if (papers.length === 0 || refreshKey > 0) {
+      const needsCheck = papers.length === 0 || refreshKey > _lastCheckedRefreshKey;
+      if (needsCheck) {
+        _lastCheckedRefreshKey = refreshKey;
         checkStartedRef.current = true;
         startCheck();
       }
@@ -473,6 +483,7 @@ function MyFeedView({ userId, refreshKey = 0 }) {
           es.close(); esRef.current = null;
           setChecking(false);
           loadPapers();
+          if (onCheckDone) onCheckDone();
         }
       } catch (_) {}
     };
@@ -891,20 +902,28 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
   // Notification dropdown
   const [showNotifs, setShowNotifs] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [myFeedPapersKey, setMyFeedPapersKey] = useState(0);
+  const prevUnreadRef = useRef(null);
   const bellRef = useRef(null);
 
-  useEffect(() => {
-    const fetchCount = async () => {
-      try {
-        const res = await fetch(`${API}/notifications/count?user_id=${userId || 1}`);
-        const d = await res.json();
-        setUnreadCount(d.unread || 0);
-      } catch (_) {}
-    };
-    fetchCount();
-    const id = setInterval(fetchCount, 60000);
-    return () => clearInterval(id);
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/notifications/count?user_id=${userId || 1}`);
+      const d = await res.json();
+      const newCount = d.unread || 0;
+      if (prevUnreadRef.current !== null && newCount > prevUnreadRef.current) {
+        setMyFeedPapersKey(k => k + 1);
+      }
+      prevUnreadRef.current = newCount;
+      setUnreadCount(newCount);
+    } catch (_) {}
   }, [userId]);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const id = setInterval(fetchUnreadCount, 60000);
+    return () => clearInterval(id);
+  }, [fetchUnreadCount]);
 
   // Search history dropdown
   const [showHistory, setShowHistory] = useState(false);
@@ -1232,7 +1251,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
           {view === 'trending' && <TrendingFeed onQuickSearch={handleQuickSearch} />}
 
           {/* My Feed tab */}
-          {view === 'myFeed' && <MyFeedView userId={userId} refreshKey={myFeedRefreshKey} />}
+          {view === 'myFeed' && <MyFeedView userId={userId} refreshKey={myFeedRefreshKey} papersRefreshKey={myFeedPapersKey} onCheckDone={fetchUnreadCount} />}
 
           {/* Search tab */}
           {view === 'search' && (

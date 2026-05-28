@@ -57,7 +57,9 @@ def fetch_papers_range(days: int = 1) -> list[dict]:
     Papers with no arxiv_id are kept but deduplicated by title.
     Returns all papers sorted by upvotes descending.
     """
-    today = _date.today()
+    # HF Daily Papers operates on UTC dates; using local date can return 0-1 papers
+    # in timezones ahead of UTC (e.g. KST = UTC+9).
+    today = datetime.datetime.now(datetime.timezone.utc).date()
     dates = [today - datetime.timedelta(days=i) for i in range(days)]
 
     seen: dict[str, dict] = {}  # arxiv_id or title -> paper with max upvotes

@@ -28,7 +28,8 @@ def trending_feed(period: str = "daily"):
 
     days = _PERIOD_DAYS.get(period, 1)
     papers = fetch_papers_range(days)
-    _cache[period] = (papers, now + _TTL)
+    if papers:
+        _cache[period] = (papers, now + _TTL)
     return {"papers": papers, "cached": False}
 
 
@@ -68,5 +69,6 @@ def my_feed(user_id: int, db: Session = Depends(get_db)):
     papers.sort(key=lambda x: x["citation_count"], reverse=True)
     papers = papers[:100]
 
-    _myfeed_cache[user_id] = (papers, now + _TTL)
+    if papers:
+        _myfeed_cache[user_id] = (papers, now + _TTL)
     return {"papers": papers, "cached": False}

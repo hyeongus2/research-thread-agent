@@ -178,7 +178,13 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.9.2 (current)
+### v0.9.3 (current)
+- [x] Fix: Trending "Today" tab now uses UTC date when querying HF Daily Papers — was returning 0–1 results for UTC+9 (KST) users before HF's daily update window
+- [x] Fix: Bell badge updates immediately after My Feed SSE check completes, instead of waiting up to 60 s for the next poll cycle
+- [x] Fix: My Feed SSE check no longer re-runs on every tab visit — only runs when papers are absent or interests were explicitly saved
+- [x] Improvement: My Feed auto-refreshes papers (without SSE) when the background scheduler adds new notifications, detected via the existing 60 s unread-count poll
+
+### v0.9.2
 - [x] Fix: "Mark all read" in notification dropdown now immediately clears the bell badge
 - [x] Fix: clicking an individual unread notification now immediately decrements the unread count badge
 
