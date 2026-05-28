@@ -47,7 +47,7 @@ class SummarizePaperRequest(BaseModel):
 
 class SummarizeOverviewRequest(BaseModel):
     keyword: str
-    paper_titles: list[str] = []
+    papers: list[dict] = []
     lang: str = "en"
 
 

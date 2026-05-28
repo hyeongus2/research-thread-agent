@@ -87,11 +87,10 @@ def summarize_paper(body: SummarizePaperRequest):
 
 @router.post("/summarize/overview")
 def summarize_overview(body: SummarizeOverviewRequest):
-    """Return a 2-sentence AI overview of the search topic."""
+    """Return an AI overview of the search topic."""
     if not settings.ANTHROPIC_API_KEY:
         return {"overview": None, "no_api_key": True}
-    papers_for_ctx = [{"title": t} for t in body.paper_titles]
-    overview = claude_service.generate_overview(body.keyword, papers_for_ctx, lang=body.lang)
+    overview = claude_service.generate_overview(body.keyword, body.papers, lang=body.lang)
     return {"overview": overview, "no_api_key": False}
 
 

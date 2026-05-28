@@ -25,14 +25,14 @@ def _lang_suffix(lang: str) -> str:
 
 
 def summarize_paper(abstract: str, lang: str = "en") -> Optional[str]:
-    """Generate a one-sentence summary of a paper from its abstract.
+    """Generate a short summary of a paper from its abstract.
 
     Args:
         abstract: Paper abstract text.
         lang: Response language code ("en" or "ko").
 
     Returns:
-        One-sentence summary string, or None if API unavailable or abstract empty.
+        2-3 sentence summary string, or None if API unavailable or abstract empty.
     """
     if not settings.ANTHROPIC_API_KEY or not abstract:
         return None
@@ -40,12 +40,13 @@ def summarize_paper(abstract: str, lang: str = "en") -> Optional[str]:
     try:
         response = _client().messages.create(
             model=settings.CLAUDE_MODEL,
-            max_tokens=150,
+            max_tokens=300,
             messages=[{
                 "role": "user",
                 "content": (
-                    f"Summarize this paper abstract in one concise sentence:\n\n"
-                    f"{abstract[:800]}\n\nNo preamble."
+                    f"Summarize this paper abstract in 2-3 sentences. "
+                    f"Cover: (1) the problem addressed, (2) the proposed approach, (3) key results or contributions.\n\n"
+                    f"{abstract}\n\nNo preamble."
                     + (f" {lang_note}" if lang_note else "")
                 ),
             }],
@@ -84,7 +85,7 @@ def generate_era_analysis(
     papers_block = ""
     for i, p in enumerate(papers[:10], 1):
         title = p.get("title", "")
-        abstract = (p.get("abstract") or "")[:400]
+        abstract = p.get("abstract") or ""
         papers_block += f"[{i}] {title}\n{abstract}\n\n"
 
     lang_note = _lang_suffix(lang)
@@ -92,7 +93,7 @@ def generate_era_analysis(
     try:
         response = _client().messages.create(
             model=settings.CLAUDE_MODEL,
-            max_tokens=2000,
+            max_tokens=4000,
             messages=[{
                 "role": "user",
                 "content": (
@@ -119,11 +120,11 @@ def generate_era_analysis(
 
 
 def generate_overview(keyword: str, papers: list[dict], lang: str = "en") -> str:
-    """Generate a 2-sentence plain-text overview of research on keyword.
+    """Generate a plain-text overview of research on keyword.
 
     Args:
         keyword: The research topic.
-        papers: List of paper dicts (uses 'title' field for context).
+        papers: List of paper dicts (uses 'title' and 'abstract' fields for context).
         lang: Response language code ("en" or "ko").
 
     Returns:
@@ -133,24 +134,30 @@ def generate_overview(keyword: str, papers: list[dict], lang: str = "en") -> str
         return None
 
     if papers:
-        titles_block = "Base it on these recent papers:\n" + "\n".join(
-            f"- {p.get('title', '')}" for p in papers[:8]
-        )
+        papers_block = "Based on these papers:\n"
+        for p in papers:
+            title = p.get("title", "")
+            abstract = p.get("abstract") or ""
+            papers_block += f"- {title}"
+            if abstract:
+                papers_block += f"\n  {abstract}"
+            papers_block += "\n"
     else:
-        titles_block = "No specific papers available — give a general landscape overview."
+        papers_block = "No specific papers available — give a general landscape overview."
 
     lang_note = _lang_suffix(lang)
 
     try:
         response = _client().messages.create(
             model=settings.CLAUDE_MODEL,
-            max_tokens=200,
+            max_tokens=600,
             messages=[
                 {
                     "role": "user",
                     "content": (
-                        f'Write 2 sentences summarizing the current research landscape on "{keyword}" '
-                        f"for an AI/ML researcher. {titles_block}\n\nBe specific and informative. No preamble."
+                        f'Write a concise overview of the current research landscape on "{keyword}" '
+                        f"for an AI/ML researcher. Cover the main themes, key approaches, and notable trends. "
+                        f"{papers_block}\n\nBe specific and informative. No preamble."
                         + (f" {lang_note}" if lang_note else "")
                     ),
                 }

@@ -29,6 +29,14 @@ const ALL_CATEGORIES = [
   'Robotics', 'ML Theory', 'Systems/Efficiency',
 ];
 
+const KEY_META = [
+  { key: 'ANTHROPIC_API_KEY',      label: 'Anthropic API Key',      hint: 'console.anthropic.com',        secret: true  },
+  { key: 'GITHUB_TOKEN',           label: 'GitHub Token',           hint: 'github.com/settings/tokens',  secret: true  },
+  { key: 'HF_API_TOKEN',           label: 'Hugging Face Token',     hint: 'huggingface.co/settings/tokens', secret: true },
+  { key: 'SEMANTIC_SCHOLAR_API_KEY', label: 'Semantic Scholar Key', hint: 'semanticscholar.org/product/api', secret: true },
+  { key: 'RESEND_API_KEY',         label: 'Resend API Key',         hint: 'resend.com',                   secret: true  },
+];
+
 export default function Settings({ onClose, userId, onInterestsSaved }) {
   const { t, lang, setLang } = useLanguage();
   const ts = t.settings;
@@ -41,6 +49,17 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
   const [limits, setLimits] = useState(readLimits);
   const [lpLimits, setLpLimits] = useState(readLpLimits);
 
+  // API keys state
+  const [envStatus, setEnvStatus] = useState({});
+  const [keyInputs, setKeyInputs] = useState({});
+  const [keySaved, setKeySaved] = useState({});
+  const [emailInput, setEmailInput] = useState('');
+
+  // AI model state
+  const [models, setModels] = useState([]);
+  const [currentModel, setCurrentModel] = useState('');
+  const [modelSaved, setModelSaved] = useState(false);
+
   // Interests state
   const [selCategories, setSelCategories] = useState([]);
   const [selKeywords, setSelKeywords] = useState([]);
@@ -49,7 +68,7 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
   const [interestsSaving, setInterestsSaving] = useState(false);
   const kwRef = useRef(null);
 
-  // Load current preferences and notification settings on mount
+  // Load current preferences, notification settings, env status, and models on mount
   useEffect(() => {
     const uid = userId || 1;
     fetch(`${API}/me?user_id=${uid}`)
@@ -67,7 +86,50 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
         setBreakthroughOn(d.breakthrough_enabled ?? false);
       })
       .catch(() => {});
+    fetch(`${API}/config/env-status`)
+      .then(r => r.json())
+      .then(d => {
+        setEnvStatus(d);
+        setEmailInput(d.USER_EMAIL || '');
+      })
+      .catch(() => {});
+    fetch(`${API}/config/models`)
+      .then(r => r.json())
+      .then(d => {
+        setModels(d.available || []);
+        setCurrentModel(d.current || '');
+      })
+      .catch(() => {});
   }, [userId]);
+
+  const handleSaveKey = async (key) => {
+    const value = key === 'USER_EMAIL' ? emailInput : (keyInputs[key] || '');
+    if (!value.trim()) return;
+    try {
+      await fetch(`${API}/config/env`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: { [key]: value.trim() } }),
+      });
+      setEnvStatus(prev => ({ ...prev, [key]: key === 'USER_EMAIL' ? value.trim() : true }));
+      setKeyInputs(prev => ({ ...prev, [key]: '' }));
+      setKeySaved(prev => ({ ...prev, [key]: true }));
+      setTimeout(() => setKeySaved(prev => ({ ...prev, [key]: false })), 2500);
+    } catch (_) {}
+  };
+
+  const handleSelectModel = async (modelId) => {
+    setCurrentModel(modelId);
+    try {
+      await fetch(`${API}/config/model`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: modelId }),
+      });
+      setModelSaved(true);
+      setTimeout(() => setModelSaved(false), 2000);
+    } catch (_) {}
+  };
 
   const handleDigestToggle = async () => {
     const next = !digestOn;
@@ -266,6 +328,139 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
             onToggle={handleBreakthroughToggle}
             noBorder
           />
+        </div>
+
+        {/* API Keys */}
+        <div style={sectionLabel}>{ts.apiKeys}</div>
+        <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: '16px', marginBottom: 28 }}>
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.5, marginBottom: 16 }}>
+            {ts.apiKeysDesc}
+          </div>
+          {KEY_META.map(({ key, label, hint }) => (
+            <div key={key} style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', flex: 1 }}>{label}</span>
+                <span style={{
+                  fontFamily: "'Geist Mono', monospace", fontSize: 10, fontWeight: 600,
+                  padding: '2px 7px', borderRadius: 10,
+                  background: envStatus[key] ? '#E0F5E0' : '#FFF0EE',
+                  color: envStatus[key] ? '#1B7A2E' : '#C84B31',
+                }}>
+                  {envStatus[key] ? ts.apiKeySet : ts.apiKeyNotSet}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="password"
+                  value={keyInputs[key] || ''}
+                  onChange={e => setKeyInputs(prev => ({ ...prev, [key]: e.target.value }))}
+                  placeholder={ts.apiKeySavePlaceholder}
+                  style={{
+                    flex: 1, padding: '7px 10px',
+                    border: '1px solid #D8D0BE', borderRadius: 4,
+                    fontFamily: "'Geist Mono', monospace", fontSize: 12,
+                    color: '#1A1611', background: '#FAF7F2', outline: 'none',
+                  }}
+                />
+                <button
+                  onClick={() => handleSaveKey(key)}
+                  disabled={!keyInputs[key]}
+                  style={{
+                    padding: '7px 14px',
+                    background: keySaved[key] ? '#1B7A2E' : keyInputs[key] ? '#1A1611' : '#E8E2D5',
+                    color: keyInputs[key] || keySaved[key] ? '#FAF7F2' : '#9B9185',
+                    border: 'none', borderRadius: 4,
+                    fontFamily: "'Geist', sans-serif", fontSize: 12,
+                    cursor: keyInputs[key] ? 'pointer' : 'default',
+                    transition: 'all 0.15s', whiteSpace: 'nowrap',
+                  }}
+                >
+                  {keySaved[key] ? ts.apiKeySaved : ts.apiKeySaveBtn}
+                </button>
+              </div>
+              <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', marginTop: 3 }}>{hint}</div>
+            </div>
+          ))}
+
+          {/* User email (not a secret — show current value) */}
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', marginBottom: 6 }}>{ts.userEmail}</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="email"
+                value={emailInput}
+                onChange={e => setEmailInput(e.target.value)}
+                placeholder={ts.userEmailPlaceholder}
+                style={{
+                  flex: 1, padding: '7px 10px',
+                  border: '1px solid #D8D0BE', borderRadius: 4,
+                  fontFamily: "'Geist', sans-serif", fontSize: 12,
+                  color: '#1A1611', background: '#FAF7F2', outline: 'none',
+                }}
+              />
+              <button
+                onClick={() => handleSaveKey('USER_EMAIL')}
+                disabled={!emailInput}
+                style={{
+                  padding: '7px 14px',
+                  background: keySaved['USER_EMAIL'] ? '#1B7A2E' : emailInput ? '#1A1611' : '#E8E2D5',
+                  color: emailInput || keySaved['USER_EMAIL'] ? '#FAF7F2' : '#9B9185',
+                  border: 'none', borderRadius: 4,
+                  fontFamily: "'Geist', sans-serif", fontSize: 12,
+                  cursor: emailInput ? 'pointer' : 'default',
+                  transition: 'all 0.15s', whiteSpace: 'nowrap',
+                }}
+              >
+                {keySaved['USER_EMAIL'] ? ts.apiKeySaved : ts.apiKeySaveBtn}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Model */}
+        <div style={sectionLabel}>{ts.aiModel}</div>
+        <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: '16px', marginBottom: 28 }}>
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.5, marginBottom: 14 }}>
+            {ts.aiModelDesc}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {models.map(m => {
+              const active = m.id === currentModel;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => handleSelectModel(m.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px',
+                    background: active ? '#1A1611' : 'transparent',
+                    border: '1px solid ' + (active ? '#1A1611' : '#D8D0BE'),
+                    borderRadius: 4, cursor: 'pointer', transition: 'all 0.15s',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{
+                    width: 14, height: 14, borderRadius: '50%', flexShrink: 0,
+                    border: '2px solid ' + (active ? '#FAF7F2' : '#9B9185'),
+                    background: active ? '#FAF7F2' : 'transparent',
+                  }} />
+                  <div>
+                    <div style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: active ? '#FAF7F2' : '#1A1611', fontWeight: active ? 600 : 400 }}>
+                      {m.id}
+                    </div>
+                    <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: active ? '#D8D0BE' : '#9B9185', marginTop: 2 }}>
+                      {m.label}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {modelSaved && (
+            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1B7A2E', marginTop: 10 }}>
+              ✓ {lang === 'ko' ? '저장됨' : 'Saved to .env'}
+            </div>
+          )}
         </div>
 
         {/* MCP */}

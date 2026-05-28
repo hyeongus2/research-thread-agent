@@ -178,7 +178,11 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.9.1 (current)
+### v0.9.2 (current)
+- [x] Fix: "Mark all read" in notification dropdown now immediately clears the bell badge
+- [x] Fix: clicking an individual unread notification now immediately decrements the unread count badge
+
+### v0.9.1
 - [x] Fix: saving interests in Settings now always triggers the My Feed SSE check, even when the feed already has papers
 - [x] Fix: email digest now sends correctly for users without an explicit `notification_settings` row (treats missing row as enabled)
 
@@ -199,18 +203,13 @@ research-thread-agent/
 - [x] Trending and My Feed results cached for 24 h (no redundant fetches within the same day)
 - [x] Category key unification — onboarding, Settings, and notification service now use identical keys
 
-### v0.7.1
-- [x] Trending Feed: monthly period filter added (30-day parallel fetch, deduplicated)
-- [x] Trending Feed: each card now has inline expand/collapse for the summary text (same pattern as Quick Search)
-- [x] Quick Search: AI Summary no-key hint fix — empty-string guard removed so retries work; hint text now fills available space
-- [x] Learning Path: era tab horizontal scroll no longer leaks to page scroll at left/right edges (non-passive native wheel listener)
-- [x] Learning Path: paper card abstract toggle unified to Quick Search style — separated bottom bar with border-top, underline-button style removed
-
-### v0.7.0
-- [x] Trending Feed: daily / weekly period filter (fetches multiple days in parallel, deduplicated by arXiv ID)
+### v0.7.x
+- [x] Trending Feed: daily / weekly / monthly period filter (fetches multiple days in parallel, deduplicated by arXiv ID)
+- [x] Trending Feed: each card has inline expand/collapse for the summary text
 - [x] Learning Path: Papers / Models / Repos tabs per era — no more scrolling to the bottom to see repos
-- [x] Learning Path: era tab strip scrollable with mouse wheel
-- [x] Quick Search: AI Summary button correctly shows "add API key" hint when ANTHROPIC_API_KEY is absent
+- [x] Learning Path: era tab strip scrollable with mouse wheel; horizontal scroll no longer leaks to page scroll at edges
+- [x] Learning Path: paper card abstract toggle unified to Quick Search style
+- [x] Quick Search: AI Summary no-key hint fix — retries work correctly; hint text fills available space
 
 ### v0.6.0
 - [x] 3-tab navigation: Trending | My Feed | Search

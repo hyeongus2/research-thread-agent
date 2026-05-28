@@ -602,7 +602,7 @@ function MyFeedView({ userId, refreshKey = 0 }) {
 // =============================================================================
 // Notification dropdown
 // =============================================================================
-function NotificationDropdown({ userId, onClose }) {
+function NotificationDropdown({ userId, onClose, onAllRead, onRead }) {
   const { t } = useLanguage();
   const tn = t.notifications;
   const [notifs, setNotifs] = useState([]);
@@ -626,11 +626,13 @@ function NotificationDropdown({ userId, onClose }) {
   const markRead = async (id) => {
     await fetch(`${API}/notifications/${id}/read?user_id=${userId || 1}`, { method: 'PATCH' });
     setNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    if (onRead) onRead();
   };
 
   const markAllRead = async () => {
     await fetch(`${API}/notifications/read-all?user_id=${userId || 1}`, { method: 'POST' });
     setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
+    if (onAllRead) onAllRead();
   };
 
   const handleClick = (n) => {
@@ -1076,8 +1078,8 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
     if (overviewLoading || overviewText || overviewError) return;
     setOverviewLoading(true);
     try {
-      const titles = (searchResults?.papers || []).slice(0, 10).map(p => p.title);
-      const res = await fetch(`${API}/summarize/overview`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keyword: searchResults?.keyword || '', paper_titles: titles, lang }) });
+      const papers = (searchResults?.papers || []).map(p => ({ title: p.title || '', abstract: p.abstract || '' }));
+      const res = await fetch(`${API}/summarize/overview`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keyword: searchResults?.keyword || '', papers, lang }) });
       const data = await res.json();
       if (data.no_api_key) setOverviewNoKey(true);
       else if (data.overview) setOverviewText(data.overview);
@@ -1135,7 +1137,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
               )}
             </button>
             {showNotifs && (
-              <NotificationDropdown userId={userId} onClose={() => setShowNotifs(false)} />
+              <NotificationDropdown userId={userId} onClose={() => setShowNotifs(false)} onAllRead={() => setUnreadCount(0)} onRead={() => setUnreadCount(prev => Math.max(0, prev - 1))} />
             )}
           </div>
           <button onClick={onSettings} style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611', cursor: 'pointer' }}>
