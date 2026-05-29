@@ -49,6 +49,18 @@ Enter any research topic (e.g., *Retrieval-Augmented Generation*) and get:
 - Hugging Face models and GitHub repos relevant to the topic
 - Results cached for 7 days so repeat lookups are instant
 
+### Research Lineage
+Enter a research topic and explore citation-based connections between papers:
+- Seed papers are fetched from Semantic Scholar by keyword
+- Each seed paper's reference list is expanded one level (depth = 1)
+- Connections displayed as **Foundational Paper → Citing Paper**
+- Papers ranked by an importance score (citation count, recency, seed status)
+- Influential citation edges marked with ★
+
+**Differs from Learning Path**: Learning Path groups papers into chronological eras with AI-generated summaries. Research Lineage shows citation-based relationships between individual papers based on metadata.
+
+> **Limitation**: Citation relationships are metadata-based approximations. A paper citing another may use it as background, comparison, method, dataset, or critique. Citation edges do not guarantee direct intellectual inheritance.
+
 ---
 
 ## Tech Stack
@@ -146,7 +158,7 @@ research-thread-agent/
 ├── api/                               # FastAPI backend (port 8000)
 │   ├── main.py                        # App entry point, CORS, lifespan
 │   ├── schemas.py                     # Pydantic request/response models
-│   └── routes/                        # auth, search, learning, subscriptions, notifications
+│   └── routes/                        # auth, search, learning, subscriptions, notifications, venues
 ├── services/                          # Pure Python business logic
 │   ├── semantic_scholar_service.py    # Semantic Scholar paper search (citation-sorted); OpenAlex fallback
 │   ├── hf_service.py                  # HF Hub model search (download-sorted)
@@ -157,8 +169,10 @@ research-thread-agent/
 │   ├── notification_service.py        # My Feed: check subscriptions, create notification records
 │   └── scheduler_service.py           # APScheduler daily background check
 ├── models/                            # SQLAlchemy ORM models
+│   └── paper_code.py                  # PaperCodeLink — PWC archive code links (arxiv_id → repo_url)
 ├── scripts/                           # Utility scripts
-│   └── reset_db.py                    # Wipe and reinitialize the database
+│   ├── reset_db.py                    # Wipe and reinitialize the database
+│   └── import_pwc_links.py            # One-time import of Papers with Code archive into SQLite
 └── utils/                             # DB connection, logging, validators
 ```
 
@@ -178,7 +192,17 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.9.3 (current)
+### v1.1.0 (current)
+- [x] **Research Lineage** — new Search mode: citation-based graph (SVG, year-based left→right layout) showing how seed papers connect to the foundational works they cite; depth-1 reference expansion via Semantic Scholar; importance score per paper; influential edges highlighted; side panel on node click; "All Results" fallback tab
+- [x] **Search speed fix** — global `threading.Semaphore(1)` prevents concurrent Semantic Scholar calls from cascading 429s; first retry reduced from 10 s → 2 s; second 429 falls back to OpenAlex immediately instead of waiting 30 s (worst-case latency: ~40 s → ~2 s per query)
+
+### v1.0.0
+- [x] **Venues tab** — 4th navigation tab for browsing papers by conference and year (NeurIPS, ICML, ICLR, CVPR, AAAI, ECCV, ACL, EMNLP · 2020–2025)
+- [x] **BibTeX copy button** — "Cite" button on every paper card; generates and copies a formatted BibTeX entry to the clipboard (`@inproceedings` for conference papers, `@article` for arXiv preprints)
+- [x] **Code link button** — "Code" button on paper cards when a GitHub implementation is available; powered by the Papers with Code archive (run `python scripts/import_pwc_links.py` once to populate)
+- [x] **arXiv ID extraction** — Semantic Scholar responses now include `arxiv_id` from `externalIds`, enabling PWC code-link matching and future integrations
+
+### v0.9.3
 - [x] Fix: Trending "Today" tab now uses UTC date when querying HF Daily Papers — was returning 0–1 results for UTC+9 (KST) users before HF's daily update window
 - [x] Fix: Bell badge updates immediately after My Feed SSE check completes, instead of waiting up to 60 s for the next poll cycle
 - [x] Fix: My Feed SSE check no longer re-runs on every tab visit — only runs when papers are absent or interests were explicitly saved
@@ -250,6 +274,7 @@ research-thread-agent/
 - [x] Settings → Reset Database
 
 ### Upcoming
+- [ ] My Feed rate-limit fix: global Semantic Scholar semaphore to prevent concurrent 429 cascades
 - [ ] Phase 5: Electron desktop packaging (no terminal required)
 - [ ] Phase 6: MCP server for Claude.ai chat integration
 

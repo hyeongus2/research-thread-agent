@@ -98,3 +98,10 @@ class NotificationResponse(BaseModel):
 class NotificationSettingsUpdate(BaseModel):
     email_enabled: Optional[bool] = None
     breakthrough_enabled: Optional[bool] = None
+
+
+class CitationGraphRequest(BaseModel):
+    query: str
+    max_seed_papers: int = 20
+    max_depth: int = 1
+    min_citations: int = 0
