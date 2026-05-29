@@ -9,7 +9,7 @@ else
 fi
 
 echo "Starting FastAPI backend on http://localhost:8000 ..."
-uvicorn api.main:app --reload --port 8000 &
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8000 &
 FASTAPI_PID=$!
 
 echo "Starting Next.js frontend on http://localhost:3000 ..."
