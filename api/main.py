@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -21,7 +21,7 @@ app = FastAPI(title="Research Thread Agent API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -38,7 +38,9 @@ app.include_router(citation_graph.router, prefix="/api")
 
 
 @app.post("/api/admin/reset-db")
-async def reset_db():
+async def reset_db(request: Request):
+    from utils.validators import require_localhost
+    require_localhost(request)
     # Import all models so Base.metadata knows every table before drop_all
     from models import user, subscription, notification, thread, settings  # noqa: F401
     Base.metadata.drop_all(bind=engine)
@@ -47,7 +49,9 @@ async def reset_db():
 
 
 @app.post("/api/admin/clear-search-history")
-async def clear_search_history_endpoint(db: Session = Depends(get_db)):
+async def clear_search_history_endpoint(request: Request, db: Session = Depends(get_db)):
+    from utils.validators import require_localhost
+    require_localhost(request)
     from services.database_service import clear_search_history
     deleted = clear_search_history(db)
     return {"deleted": deleted}

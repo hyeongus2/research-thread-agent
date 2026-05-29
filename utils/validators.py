@@ -1,6 +1,15 @@
 from datetime import date
 from typing import Optional
 
+from fastapi import HTTPException, Request
+
+
+def require_localhost(request: Request) -> None:
+    """Dependency: allow only requests originating from localhost."""
+    host = request.client.host if request.client else ""
+    if host not in ("127.0.0.1", "::1"):
+        raise HTTPException(status_code=403, detail="This endpoint is only accessible from localhost.")
+
 
 def validate_date_range(
     start: Optional[date], end: Optional[date]

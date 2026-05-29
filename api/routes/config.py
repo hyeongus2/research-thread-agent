@@ -4,7 +4,8 @@ import os
 from pathlib import Path
 
 from dotenv import set_key
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from utils.validators import require_localhost
 from pydantic import BaseModel
 
 from config.settings import AVAILABLE_CLAUDE_MODELS, settings
@@ -35,7 +36,7 @@ def get_env_status():
     return status
 
 
-@router.post("/config/env")
+@router.post("/config/env", dependencies=[Depends(require_localhost)])
 def update_env(body: EnvUpdateRequest):
     """Write one or more .env values. Only recognised keys are accepted."""
     if not _ENV_PATH.exists():

@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import LearningPath from './LearningPath';
 import CitationGraph from './CitationGraph';
 
-const API = 'http://localhost:8000/api';
+const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
 const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25 };
 

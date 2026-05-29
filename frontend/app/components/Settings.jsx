@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
-const API = 'http://localhost:8000/api';
+const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
 const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25 };
 const DEFAULT_LP_LIMITS = { papersPerEra: 10, models: 5, repos: 5 };
