@@ -206,6 +206,7 @@ const ko = {
     papersLimit: '논문 (Semantic Scholar)',
     modelsLimit: '모델 (Hugging Face)',
     reposLimit: '저장소 (GitHub)',
+    venuesLimit: '논문 (학회 탭)',
     resetLimits: '기본값으로 초기화',
     lpLimits: '학습 경로 한도',
     lpLimitsDesc: '시대별로 해당 기간 논문을 따로 조회하므로 최신 시대도 인용 수와 무관하게 균일하게 채워집니다.',

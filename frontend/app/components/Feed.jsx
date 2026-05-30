@@ -854,8 +854,15 @@ const VENUE_FIELDS = {
   NLP: { bg: '#F0E0FF', fg: '#5B1B8B' },
 };
 
+function readVenueLimit() {
+  try {
+    const stored = localStorage.getItem('search_limits');
+    return stored ? (JSON.parse(stored).venues ?? 50) : 50;
+  } catch { return 50; }
+}
+
 function VenuesView() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const tf = t.feed;
   const ts = t.search;
   const [selectedVenue, setSelectedVenue] = useState(null);
@@ -881,7 +888,8 @@ function VenuesView() {
     setVenueState('loading');
     setPapers([]);
     try {
-      const r = await fetch(`${API}/venues/papers?venue=${encodeURIComponent(venue)}&year=${year}&limit=50`);
+      const limit = readVenueLimit();
+      const r = await fetch(`${API}/venues/papers?venue=${encodeURIComponent(venue)}&year=${year}&limit=${limit}`);
       const d = await r.json();
       setPapers(d.papers || []);
       setVenueState('done');
@@ -897,7 +905,7 @@ function VenuesView() {
       const r = await fetch(`${API}/summarize/paper`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ abstract }),
+        body: JSON.stringify({ abstract, lang }),
       });
       const d = await r.json();
       if (d.no_api_key) setPaperNoKey(s => ({ ...s, [title]: true }));
