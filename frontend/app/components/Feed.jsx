@@ -935,7 +935,7 @@ function VenuesView() {
         {selectedVenue && (
           <>
             <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', letterSpacing: '0.1em', marginBottom: 10 }}>
-              SELECT YEAR
+              {ts.venuesSelectYear}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {years.map(y => (

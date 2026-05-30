@@ -1,5 +1,6 @@
 """Venue-based paper browsing: list major ML venues and fetch papers by venue/year."""
 
+import logging
 from datetime import date
 
 from fastapi import APIRouter, Depends
@@ -7,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from services.semantic_scholar_service import search_papers
 from utils.database import get_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -46,7 +49,7 @@ def venues_papers(
     try:
         from api.routes.search import _attach_code_links
         _attach_code_links(papers, db)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Code link attachment skipped: %s", exc)
 
     return {"venue": venue, "year": year, "papers": papers}

@@ -3,7 +3,7 @@ echo Starting Research Thread Agent...
 echo.
 
 echo [Terminal 1] FastAPI backend - http://localhost:8000
-start "FastAPI Backend" cmd /k "call .venv\Scripts\activate.bat && uvicorn api.main:app --reload --port 8000"
+start "FastAPI Backend" cmd /k "call .venv\Scripts\activate.bat && uvicorn api.main:app --reload --host 0.0.0.0 --port 8000"
 
 echo [Terminal 2] Next.js frontend - http://localhost:3000
 start "Next.js Frontend" cmd /k "cd frontend && npm run dev"

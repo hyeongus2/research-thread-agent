@@ -192,15 +192,14 @@ research-thread-agent/
 
 ## Roadmap
 
-### v1.1.0 (current)
+### v0.10.0 (current)
 - [x] **Research Lineage** — new Search mode: citation-based graph (SVG, year-based left→right layout) showing how seed papers connect to the foundational works they cite; depth-1 reference expansion via Semantic Scholar; importance score per paper; influential edges highlighted; side panel on node click; "All Results" fallback tab
-- [x] **Search speed fix** — global `threading.Semaphore(1)` prevents concurrent Semantic Scholar calls from cascading 429s; first retry reduced from 10 s → 2 s; second 429 falls back to OpenAlex immediately instead of waiting 30 s (worst-case latency: ~40 s → ~2 s per query)
-
-### v1.0.0
 - [x] **Venues tab** — 4th navigation tab for browsing papers by conference and year (NeurIPS, ICML, ICLR, CVPR, AAAI, ECCV, ACL, EMNLP · 2020–2025)
 - [x] **BibTeX copy button** — "Cite" button on every paper card; generates and copies a formatted BibTeX entry to the clipboard (`@inproceedings` for conference papers, `@article` for arXiv preprints)
 - [x] **Code link button** — "Code" button on paper cards when a GitHub implementation is available; powered by the Papers with Code archive (run `python scripts/import_pwc_links.py` once to populate)
 - [x] **arXiv ID extraction** — Semantic Scholar responses now include `arxiv_id` from `externalIds`, enabling PWC code-link matching and future integrations
+- [x] **Search speed fix** — global `threading.Semaphore(1)` + 1 s inter-request gap prevents concurrent Semantic Scholar calls from cascading 429s; minimises OpenAlex fallback (worst-case latency: ~40 s → ~2 s per query)
+- [x] **LAN support** — uvicorn binds to `0.0.0.0`; frontend API URL is hostname-dynamic; sensitive endpoints (API key save, DB reset) remain localhost-only
 
 ### v0.9.3
 - [x] Fix: Trending "Today" tab now uses UTC date when querying HF Daily Papers — was returning 0–1 results for UTC+9 (KST) users before HF's daily update window
@@ -274,7 +273,6 @@ research-thread-agent/
 - [x] Settings → Reset Database
 
 ### Upcoming
-- [ ] My Feed rate-limit fix: global Semantic Scholar semaphore to prevent concurrent 429 cascades
 - [ ] Phase 5: Electron desktop packaging (no terminal required)
 - [ ] Phase 6: MCP server for Claude.ai chat integration
 
