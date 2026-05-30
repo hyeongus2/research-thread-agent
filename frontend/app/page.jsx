@@ -8,7 +8,7 @@ import PaperDetail from './components/PaperDetail';
 import Settings from './components/Settings';
 import { useLanguage } from './context/LanguageContext';
 
-const API = 'http://localhost:8000/api';
+const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
 function LangToggle() {
   const { lang, setLang } = useLanguage();

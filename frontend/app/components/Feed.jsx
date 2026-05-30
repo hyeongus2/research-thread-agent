@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen } from 'lucide-react';
+import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen, Library, GitBranch } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import LearningPath from './LearningPath';
+import CitationGraph from './CitationGraph';
 
-const API = 'http://localhost:8000/api';
+const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
 const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25 };
 
@@ -70,12 +71,24 @@ function getPageNumbers(page, totalPages) {
 // =============================================================================
 // Result card (paper / model / repo)
 // =============================================================================
+function makeBibtex(item) {
+  const firstAuthor = (item.authors?.[0] || 'unknown').split(' ').pop().toLowerCase().replace(/[^a-z]/g, '');
+  const year = (item.published_date || '').slice(0, 4) || 'unknown';
+  const authors = (item.authors || []).join(' and ');
+  const type = item.venue ? 'inproceedings' : 'article';
+  const venueField = item.venue
+    ? `  booktitle = {${item.venue}},\n`
+    : `  journal   = {arXiv preprint},\n`;
+  return `@${type}{${firstAuthor}${year},\n  title     = {${item.title || ''}},\n  author    = {${authors}},\n  year      = {${year}},\n${venueField}}`;
+}
+
 function ResultCard({ item, type, onSummarize, summary, summaryLoading, summaryNoKey }) {
   const { t } = useLanguage();
   const ts = t.search;
   const colors = TYPE_COLORS[type];
   const typeLabel = { paper: 'PAPER', model: 'MODEL', repo: 'REPO' }[type];
   const [expanded, setExpanded] = useState(false);
+  const [citeCopied, setCiteCopied] = useState(false);
 
   const title = item.title || item.name || '';
   const url = item.url || item.pdf_url || '#';
@@ -139,18 +152,47 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading, summaryN
               {expanded ? ts.hideAbstract : ts.showAbstract}
             </button>
           ) : <span />}
-          {type === 'paper' && abstract && (
-            summaryNoKey ? (
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic', flex: 1, textAlign: 'right' }}>{ts.noApiKey}</span>
-            ) : summary ? (
-              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', margin: 0, lineHeight: 1.5, flex: 1, textAlign: 'right' }}>{summary}</p>
-            ) : summaryLoading ? (
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.aiLoading}</span>
-            ) : (
-              <button onClick={onSummarize} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                {ts.aiSummarizeBtn}
+          {type === 'paper' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}>
+              {item.code_links?.length > 0 && (() => {
+                const best = item.code_links.find(l => l.is_official) || item.code_links[0];
+                return (
+                  <a
+                    href={best.repo_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' }}
+                  >
+                    {ts.codeBtn}
+                  </a>
+                );
+              })()}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigator.clipboard.writeText(makeBibtex(item));
+                  setCiteCopied(true);
+                  setTimeout(() => setCiteCopied(false), 1500);
+                }}
+                style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: citeCopied ? '#4A7C59' : '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'color 0.15s' }}
+              >
+                {citeCopied ? ts.bibtexCopied : ts.bibtexBtn}
               </button>
-            )
+              {abstract && (
+                summaryNoKey ? (
+                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.noApiKey}</span>
+                ) : summary ? (
+                  <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', margin: 0, lineHeight: 1.5 }}>{summary}</p>
+                ) : summaryLoading ? (
+                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.aiLoading}</span>
+                ) : (
+                  <button onClick={onSummarize} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    {ts.aiSummarizeBtn}
+                  </button>
+                )
+              )}
+            </div>
           )}
         </div>
       )}
@@ -803,7 +845,158 @@ function SearchHistoryDropdown({ userId, onSelect, onClose }) {
 }
 
 // =============================================================================
-// Bottom navigation bar (3 tabs)
+// Venues view
+// =============================================================================
+const VENUE_FIELDS = {
+  ML: { bg: '#E0EEFF', fg: '#1B3E8B' },
+  Vision: { bg: '#E0F5E0', fg: '#1B7A2E' },
+  AI: { bg: '#FFF0E0', fg: '#8B4A1B' },
+  NLP: { bg: '#F0E0FF', fg: '#5B1B8B' },
+};
+
+function VenuesView() {
+  const { t } = useLanguage();
+  const tf = t.feed;
+  const ts = t.search;
+  const [selectedVenue, setSelectedVenue] = useState(null);
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [venueState, setVenueState] = useState('idle'); // idle | loading | done | error
+  const [papers, setPapers] = useState([]);
+  const [venues, setVenues] = useState([]);
+  const [years, setYears] = useState([]);
+  const [paperSummaries, setPaperSummaries] = useState({});
+  const [summaryLoading, setSummaryLoading] = useState({});
+  const [paperNoKey, setPaperNoKey] = useState({});
+
+  useEffect(() => {
+    fetch(`${API}/venues`)
+      .then(r => r.json())
+      .then(d => { setVenues(d.venues || []); setYears(d.years || []); })
+      .catch(() => {});
+  }, []);
+
+  const fetchVenuePapers = async (venue, year) => {
+    setSelectedVenue(venue);
+    setSelectedYear(year);
+    setVenueState('loading');
+    setPapers([]);
+    try {
+      const r = await fetch(`${API}/venues/papers?venue=${encodeURIComponent(venue)}&year=${year}&limit=50`);
+      const d = await r.json();
+      setPapers(d.papers || []);
+      setVenueState('done');
+    } catch {
+      setVenueState('error');
+    }
+  };
+
+  const fetchPaperSummary = async (title, abstract) => {
+    if (!abstract) return;
+    setSummaryLoading(s => ({ ...s, [title]: true }));
+    try {
+      const r = await fetch(`${API}/summarize/paper`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ abstract }),
+      });
+      const d = await r.json();
+      if (d.no_api_key) setPaperNoKey(s => ({ ...s, [title]: true }));
+      else if (d.summary) setPaperSummaries(s => ({ ...s, [title]: d.summary }));
+    } finally {
+      setSummaryLoading(s => ({ ...s, [title]: false }));
+    }
+  };
+
+  if (venueState === 'idle' || (!selectedYear && venueState !== 'loading')) {
+    return (
+      <div style={{ paddingTop: 24 }}>
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.15em', marginBottom: 4 }}>
+          {tf.venuesTitle}
+        </div>
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', marginBottom: 20 }}>
+          {tf.venuesSubtitle}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
+          {venues.map(v => {
+            const colors = VENUE_FIELDS[v.field] || VENUE_FIELDS.ML;
+            const active = selectedVenue === v.key;
+            return (
+              <button
+                key={v.key}
+                onClick={() => setSelectedVenue(active ? null : v.key)}
+                style={{ background: active ? colors.fg : '#FFFFFF', color: active ? '#FFFFFF' : colors.fg, border: `1px solid ${colors.fg}`, borderRadius: 6, padding: '14px 12px', fontFamily: "'Geist', sans-serif", fontSize: 15, fontWeight: 600, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}
+              >
+                {v.label}
+                <div style={{ fontSize: 10, fontWeight: 400, opacity: 0.7, marginTop: 2 }}>{v.field}</div>
+              </button>
+            );
+          })}
+        </div>
+        {selectedVenue && (
+          <>
+            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', letterSpacing: '0.1em', marginBottom: 10 }}>
+              SELECT YEAR
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {years.map(y => (
+                <button
+                  key={y}
+                  onClick={() => fetchVenuePapers(selectedVenue, y)}
+                  style={{ padding: '8px 16px', background: '#FFFFFF', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 13, fontWeight: 500, color: '#1A1611', cursor: 'pointer' }}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ paddingTop: 16 }}>
+      <button
+        onClick={() => { setVenueState('idle'); setSelectedYear(null); }}
+        style={{ background: 'none', border: 'none', padding: '0 0 12px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer' }}
+      >
+        {tf.venuesBack}
+      </button>
+      <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 500, color: '#1A1611', marginBottom: 16 }}>
+        {tf.venuesPapersHeader(selectedVenue, selectedYear)}
+      </div>
+      {venueState === 'loading' && (
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', padding: '32px 0', textAlign: 'center' }}>
+          {tf.venuesLoading}
+        </div>
+      )}
+      {venueState === 'error' && (
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#C84B31', padding: '32px 0', textAlign: 'center' }}>
+          {tf.venuesError}
+        </div>
+      )}
+      {venueState === 'done' && papers.length === 0 && (
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#9B9185', padding: '32px 0', textAlign: 'center' }}>
+          {tf.venuesEmpty}
+        </div>
+      )}
+      {venueState === 'done' && papers.map((paper, i) => (
+        <ResultCard
+          key={i}
+          item={paper}
+          type="paper"
+          summary={paperSummaries[paper.title]}
+          summaryLoading={!!summaryLoading[paper.title]}
+          summaryNoKey={!!paperNoKey[paper.title]}
+          onSummarize={() => fetchPaperSummary(paper.title, paper.abstract)}
+        />
+      ))}
+    </div>
+  );
+}
+
+// =============================================================================
+// Bottom navigation bar (4 tabs)
 // =============================================================================
 function BottomNav({ view, onView, t }) {
   const tf = t.feed;
@@ -811,6 +1004,7 @@ function BottomNav({ view, onView, t }) {
     { key: 'trending', label: tf.navTrending, IconEl: Newspaper },
     { key: 'myFeed',   label: tf.navMyFeed,   IconEl: Home },
     { key: 'search',   label: tf.navSearch,   IconEl: Search },
+    { key: 'venues',   label: tf.navVenues,   IconEl: Library },
   ];
   return (
     <div style={{ borderTop: '1px solid #E8E2D5', background: '#FAF7F2', display: 'flex', height: 56, flexShrink: 0 }}>
@@ -837,6 +1031,7 @@ function SearchModeToggle({ mode, onMode, t }) {
       {[
         { key: 'quick', label: ts.modeQuick, Icon: Search },
         { key: 'learning', label: ts.modeLearning, Icon: BookOpen },
+        { key: 'lineage', label: ts.modeLineage, Icon: GitBranch },
       ].map(({ key, label, Icon }) => {
         const active = mode === key;
         return (
@@ -1253,12 +1448,21 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
           {/* My Feed tab */}
           {view === 'myFeed' && <MyFeedView userId={userId} refreshKey={myFeedRefreshKey} papersRefreshKey={myFeedPapersKey} onCheckDone={fetchUnreadCount} />}
 
+          {/* Venues tab */}
+          {view === 'venues' && <VenuesView />}
+
           {/* Search tab */}
           {view === 'search' && (
             <>
               {searchMode === 'learning' && (
                 <div style={{ paddingTop: 8 }}>
                   <LearningPath userId={userId} onBack={() => setSearchMode('quick')} embedded />
+                </div>
+              )}
+
+              {searchMode === 'lineage' && (
+                <div style={{ paddingTop: 8 }}>
+                  <CitationGraph embedded />
                 </div>
               )}
 
