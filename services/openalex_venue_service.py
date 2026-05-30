@@ -59,9 +59,9 @@ def search_papers_by_venue(venue_key: str, year: int, limit: int = 50) -> list[d
         oa = p.get("openAccessPdf") or {}
 
         arxiv_id = ext.get("ArXiv")
-        paper_id = p.get("paperId", "")
-        url = f"https://www.semanticscholar.org/paper/{paper_id}" if paper_id else ""
-        pdf_url = oa.get("url") or (f"https://arxiv.org/pdf/{arxiv_id}" if arxiv_id else "")
+        pdf_url = oa.get("url") or (f"https://arxiv.org/abs/{arxiv_id}" if arxiv_id else "")
+        url = (f"https://arxiv.org/abs/{arxiv_id}" if arxiv_id
+               else f"https://www.semanticscholar.org/paper/{p.get('paperId', '')}")
 
         results.append({
             "title": p.get("title") or "",
