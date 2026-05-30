@@ -206,6 +206,7 @@ const en = {
     papersLimit: 'Papers (Semantic Scholar)',
     modelsLimit: 'Models (Hugging Face)',
     reposLimit: 'Repos (GitHub)',
+    venuesLimit: 'Papers (Venues tab)',
     resetLimits: 'Reset to defaults',
     lpLimits: 'LEARNING PATH LIMITS',
     lpLimitsDesc: 'Papers are fetched separately per era using date-filtered queries, so each era gets equal coverage regardless of citation count.',

@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
-const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25 };
+const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25, venues: 50 };
 const DEFAULT_LP_LIMITS = { papersPerEra: 10, models: 5, repos: 5 };
 
 function readLimits() {
@@ -508,6 +508,7 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
             { key: 'papers', label: ts.papersLimit },
             { key: 'models', label: ts.modelsLimit },
             { key: 'repos',  label: ts.reposLimit  },
+            { key: 'venues', label: ts.venuesLimit  },
           ].map(({ key, label }) => (
             <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611' }}>{label}</span>
