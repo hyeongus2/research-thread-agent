@@ -281,8 +281,8 @@ export default function CitationGraph({ embedded }) {
           {/* Tab bar: Graph / All Results */}
           <div style={{ display: 'flex', gap: 0, background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: 3, marginBottom: 14 }}>
             {[
-              { key: 'graph', label: 'Graph' },
-              { key: 'list', label: `All Results (${allNodes.length})` },
+              { key: 'graph', label: ts.lineageGraphTab },
+              { key: 'list', label: ts.lineageAllTab(allNodes.length) },
             ].map(({ key, label }) => (
               <button key={key} onClick={() => setActiveTab(key)}
                 style={{ flex: 1, padding: '7px 10px', background: activeTab === key ? '#1A1611' : 'transparent', color: activeTab === key ? '#FAF7F2' : '#6B6358', border: 'none', borderRadius: 2, fontFamily: "'Geist', sans-serif", fontSize: 12, fontWeight: activeTab === key ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s' }}
@@ -430,7 +430,7 @@ export default function CitationGraph({ embedded }) {
               {/* Subset note */}
               {(graphNodes.length < allNodes.length || graphEdges.length < allEdges.length) && (
                 <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '5px 0 0', textAlign: 'right' }}>
-                  Showing {graphNodes.length}/{allNodes.length} nodes · {graphEdges.length}/{allEdges.length} edges — see All Results tab for full data
+                  {ts.lineageSubsetNote(graphNodes.length, allNodes.length, graphEdges.length, allEdges.length)}
                 </p>
               )}
 
@@ -466,7 +466,7 @@ export default function CitationGraph({ embedded }) {
                     {selectedNode.url && (
                       <a href={selectedNode.url} target="_blank" rel="noreferrer"
                         style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', textDecoration: 'none', borderBottom: '1px solid #D8D0BE' }}>
-                        View on Semantic Scholar →
+                        {ts.lineageViewSource}
                       </a>
                     )}
                   </div>

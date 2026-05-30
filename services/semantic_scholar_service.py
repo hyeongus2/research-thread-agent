@@ -83,6 +83,8 @@ def _search_semantic_scholar(
             resp.raise_for_status()
 
         resp.raise_for_status()
+        # Enforce minimum inter-request gap to stay within SS rate limit (100 req/5 min).
+        time.sleep(1.0)
     data = resp.json()
 
     papers = []
@@ -232,6 +234,7 @@ def get_paper_references(paper_id: str, limit: int = 30) -> list[dict]:
             logger.warning("SS references 429 for %s; retrying after 2 s", paper_id)
             time.sleep(2)
             resp = requests.get(url, params=params, headers=headers, timeout=30)
+        time.sleep(1.0)
     if resp.status_code != 200:
         logger.warning("SS references fetch failed: %s → %d", paper_id, resp.status_code)
         return []
