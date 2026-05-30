@@ -27,10 +27,8 @@ VENUES = [
 
 @router.get("/venues")
 def list_venues():
-    # Cap at last year — conference papers from the current/most-recent year are
-    # rarely indexed in SS yet, so showing those years causes confusingly sparse results.
-    last_indexed_year = date.today().year - 1
-    years = list(range(last_indexed_year, 2009, -1))
+    current_year = date.today().year
+    years = list(range(current_year, 2009, -1))
     return {"venues": VENUES, "years": years}
 
 
