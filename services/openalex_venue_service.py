@@ -16,10 +16,6 @@ logger = logging.getLogger(__name__)
 _SS_BULK_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
 _SS_FIELDS = "title,authors,abstract,year,citationCount,venue,externalIds,openAccessPdf,publicationVenue"
 
-# Use a single universal word so the venue filter does all the work.
-# A topic-specific query would drop papers that don't match the query keywords,
-# causing undercounting and missing highly-cited papers.
-_UNIVERSAL_QUERY = "model"
 
 _lock = threading.Lock()
 _last_request_time: float = 0.0
@@ -44,11 +40,8 @@ def search_papers_by_venue(venue_key: str, year: int, limit: int = 50) -> list[d
     Uses SS bulk search `venue` filter — results are papers actually published
     at the specified conference, not papers that merely mention it.
     """
-    query = _UNIVERSAL_QUERY
-
     try:
         data = _ss_get({
-            "query": query,
             "venue": venue_key,
             "year": str(year),
             "fields": _SS_FIELDS,
