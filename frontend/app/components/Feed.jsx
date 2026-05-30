@@ -988,7 +988,12 @@ function VenuesView() {
           {tf.venuesEmpty}
         </div>
       )}
-      {venueState === 'done' && papers.length > 0 && papers.length < 10 && (
+      {selectedYear >= new Date().getFullYear() && (
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185', padding: '8px 0 4px', textAlign: 'center' }}>
+          {tf.venuesCurrentYearNote}
+        </div>
+      )}
+      {venueState === 'done' && papers.length > 0 && papers.length < 10 && selectedYear < new Date().getFullYear() && (
         <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185', padding: '8px 0 4px', textAlign: 'center' }}>
           {tf.venuesSparseNote}
         </div>
