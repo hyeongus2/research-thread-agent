@@ -1,8 +1,9 @@
 """OpenAlex venue search — used exclusively by the Venues tab.
 
-OpenAlex supports filtering by primary_location.source.display_name, which maps
-directly to the conference proceedings source. This gives accurate venue results
-that Semantic Scholar keyword search cannot provide.
+OpenAlex primary_location.source.id filtering returns only papers actually published
+in the conference proceedings, unlike Semantic Scholar keyword search.
+
+Source IDs are resolved once per process via the OpenAlex Sources API and cached in memory.
 """
 
 import logging
@@ -14,8 +15,7 @@ logger = logging.getLogger(__name__)
 
 _OA_BASE = "https://api.openalex.org"
 
-# OpenAlex source display names for each venue key.
-# These match the exact strings OpenAlex uses in primary_location.source.display_name.
+# Human-readable names used for source lookup queries.
 _VENUE_OA_NAMES: dict[str, str] = {
     "NeurIPS": "Neural Information Processing Systems",
     "ICML":    "International Conference on Machine Learning",
@@ -26,6 +26,47 @@ _VENUE_OA_NAMES: dict[str, str] = {
     "ACL":     "Annual Meeting of the Association for Computational Linguistics",
     "EMNLP":   "Empirical Methods in Natural Language Processing",
 }
+
+# In-process cache: venue_key -> OpenAlex source ID (or None if lookup failed)
+_source_id_cache: dict[str, Optional[str]] = {}
+
+
+def _resolve_source_id(venue_key: str) -> Optional[str]:
+    """Look up the OpenAlex source ID for a venue key.
+
+    Caches the result so only one HTTP request is made per venue per process.
+    """
+    if venue_key in _source_id_cache:
+        return _source_id_cache[venue_key]
+
+    oa_name = _VENUE_OA_NAMES.get(venue_key, venue_key)
+    try:
+        resp = requests.get(
+            f"{_OA_BASE}/sources",
+            params={
+                "search": venue_key,
+                "per-page": 10,
+                "mailto": "research-thread-agent@openalex",
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        sources = resp.json().get("results", [])
+
+        oa_lower = oa_name.lower()
+        key_lower = venue_key.lower()
+        for src in sources:
+            dn = (src.get("display_name") or "").lower()
+            if oa_lower in dn or key_lower == dn:
+                sid: str = src["id"]  # e.g. "https://openalex.org/S4306463500"
+                _source_id_cache[venue_key] = sid
+                logger.info("OpenAlex: resolved %s -> %s (%s)", venue_key, sid, src.get("display_name"))
+                return sid
+    except Exception as exc:
+        logger.warning("OpenAlex source ID lookup failed for %s: %s", venue_key, exc)
+
+    _source_id_cache[venue_key] = None
+    return None
 
 
 def _reconstruct_abstract(inverted_index: Optional[dict]) -> str:
@@ -44,14 +85,22 @@ def _reconstruct_abstract(inverted_index: Optional[dict]) -> str:
 def search_papers_by_venue(venue_key: str, year: int, limit: int = 50) -> list[dict]:
     """Return papers published at *venue_key* in *year*, sorted by citation count.
 
-    Uses OpenAlex primary_location.source filter for accurate venue matching —
-    returns only papers actually published in the conference proceedings.
+    Source ID is resolved first for precise venue matching, falling back to
+    display_name search if the source lookup fails.
     """
-    oa_name = _VENUE_OA_NAMES.get(venue_key, venue_key)
-    per_page = min(limit, 200)
+    source_id = _resolve_source_id(venue_key)
 
+    if source_id:
+        filter_str = f"primary_location.source.id:{source_id},publication_year:{year}"
+    else:
+        # Fallback: less precise but won't hard-fail
+        oa_name = _VENUE_OA_NAMES.get(venue_key, venue_key)
+        filter_str = f"primary_location.source.display_name.search:{oa_name},publication_year:{year}"
+        logger.warning("Using display_name fallback for %s (source ID not resolved)", venue_key)
+
+    per_page = min(limit, 200)
     params = {
-        "filter": f"primary_location.source.display_name.search:{oa_name},publication_year:{year}",
+        "filter": filter_str,
         "sort": "cited_by_count:desc",
         "per-page": per_page,
         "select": (
