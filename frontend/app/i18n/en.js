@@ -67,6 +67,7 @@ const en = {
     venuesEmpty: 'No papers found.',
     venuesError: 'Could not load papers.',
     venuesBack: '← Back to venues',
+    venuesSparseNote: 'Limited papers indexed for this year — try an earlier year for more results.',
     venuesPapersHeader: (venue, year) => `${venue} ${year}`,
   },
   detail: {
