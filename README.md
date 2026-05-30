@@ -192,7 +192,15 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.10.0 (current)
+### v0.10.1 (current)
+- [x] **Venues tab: accurate venue filtering** — switched from keyword search + post-filter to Semantic Scholar bulk search `venue` parameter, which filters by actual publication venue; NeurIPS 2024 results went from ~360 to 4,257 papers with correct top-cited papers (YOLOv10, VMamba, Depth Anything V2, etc.)
+- [x] **Venues tab: no search query bias** — `query` parameter removed entirely; `venue` + `year` filter alone is sufficient and avoids dropping papers that don't match a topic keyword
+- [x] **Venues tab: dynamic years** — year list generated from current year back to 2010; selecting the current year shows a note that SS may tag papers by arXiv update date rather than the actual conference year
+- [x] **Venues tab: Settings integration** — paper limit for Venues tab now configurable in Settings (same as Quick Search limits)
+- [x] **Research Lineage + Learning Path: i18n** — "Graph", "All Results", subset note, and "View on Semantic Scholar" strings now use i18n keys; fully translated in EN and KO
+- [x] **Search placeholders** — Learning Path and Research Lineage input placeholders simplified to "e.g. RAG" / "예: RAG"
+
+### v0.10.0
 - [x] **Research Lineage** — new Search mode: citation-based graph (SVG, year-based left→right layout) showing how seed papers connect to the foundational works they cite; depth-1 reference expansion via Semantic Scholar; importance score per paper; influential edges highlighted; side panel on node click; "All Results" fallback tab
 - [x] **Venues tab** — 4th navigation tab for browsing papers by conference and year (NeurIPS, ICML, ICLR, CVPR, AAAI, ECCV, ACL, EMNLP · 2020–2025)
 - [x] **BibTeX copy button** — "Cite" button on every paper card; generates and copies a formatted BibTeX entry to the clipboard (`@inproceedings` for conference papers, `@article` for arXiv preprints)
