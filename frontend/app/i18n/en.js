@@ -68,6 +68,7 @@ const en = {
     venuesError: 'Could not load papers.',
     venuesBack: '← Back to venues',
     venuesSparseNote: 'Limited papers indexed for this year — try an earlier year for more results.',
+    venuesCurrentYearNote: "Results may include papers tagged with this year's arXiv update date rather than their actual conference year.",
     venuesPapersHeader: (venue, year) => `${venue} ${year}`,
   },
   detail: {
