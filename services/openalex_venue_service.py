@@ -1,153 +1,93 @@
-"""OpenAlex venue search — used exclusively by the Venues tab.
+"""Venue-based paper search using Semantic Scholar bulk search API.
 
-OpenAlex primary_location.source.id filtering returns only papers actually published
-in the conference proceedings, unlike Semantic Scholar keyword search.
-
-Source IDs are resolved once per process via the OpenAlex Sources API and cached in memory.
+Uses /paper/search/bulk with the `venue` filter parameter, which directly filters
+by publication venue — no keyword-based workarounds or post-processing needed.
 """
 
 import logging
+import threading
+import time
 from typing import Optional
 
 import requests
 
 logger = logging.getLogger(__name__)
 
-_OA_BASE = "https://api.openalex.org"
+_SS_BULK_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
+_SS_FIELDS = "title,authors,abstract,year,citationCount,venue,externalIds,openAccessPdf,publicationVenue"
 
-# Human-readable names used for source lookup queries.
-_VENUE_OA_NAMES: dict[str, str] = {
-    "NeurIPS": "Neural Information Processing Systems",
-    "ICML":    "International Conference on Machine Learning",
-    "ICLR":    "International Conference on Learning Representations",
-    "CVPR":    "Computer Vision and Pattern Recognition",
-    "AAAI":    "AAAI Conference on Artificial Intelligence",
-    "ECCV":    "European Conference on Computer Vision",
-    "ACL":     "Annual Meeting of the Association for Computational Linguistics",
-    "EMNLP":   "Empirical Methods in Natural Language Processing",
+# Broad topical queries per venue to maximise result coverage.
+# The venue filter does the real work; the query just seeds the ranker.
+_VENUE_QUERIES: dict[str, str] = {
+    "NeurIPS": "machine learning neural networks",
+    "ICML":    "machine learning optimization",
+    "ICLR":    "representation learning deep learning",
+    "CVPR":    "computer vision image recognition",
+    "AAAI":    "artificial intelligence",
+    "ECCV":    "computer vision visual recognition",
+    "ACL":     "natural language processing",
+    "EMNLP":   "language model NLP text",
 }
 
-# In-process cache: venue_key -> OpenAlex source ID (or None if lookup failed)
-_source_id_cache: dict[str, Optional[str]] = {}
+_lock = threading.Lock()
+_last_request_time: float = 0.0
 
 
-def _resolve_source_id(venue_key: str) -> Optional[str]:
-    """Look up the OpenAlex source ID for a venue key.
-
-    Caches the result so only one HTTP request is made per venue per process.
-    """
-    if venue_key in _source_id_cache:
-        return _source_id_cache[venue_key]
-
-    oa_name = _VENUE_OA_NAMES.get(venue_key, venue_key)
-    try:
-        resp = requests.get(
-            f"{_OA_BASE}/sources",
-            params={
-                "search": venue_key,
-                "per-page": 10,
-                "mailto": "research-thread-agent@openalex",
-            },
-            timeout=10,
-        )
-        resp.raise_for_status()
-        sources = resp.json().get("results", [])
-
-        oa_lower = oa_name.lower()
-        key_lower = venue_key.lower()
-        for src in sources:
-            dn = (src.get("display_name") or "").lower()
-            if oa_lower in dn or key_lower == dn:
-                sid: str = src["id"]  # e.g. "https://openalex.org/S4306463500"
-                _source_id_cache[venue_key] = sid
-                logger.info("OpenAlex: resolved %s -> %s (%s)", venue_key, sid, src.get("display_name"))
-                return sid
-    except Exception as exc:
-        logger.warning("OpenAlex source ID lookup failed for %s: %s", venue_key, exc)
-
-    _source_id_cache[venue_key] = None
-    return None
-
-
-def _reconstruct_abstract(inverted_index: Optional[dict]) -> str:
-    """Convert OpenAlex inverted-index abstract to a plain string."""
-    if not inverted_index:
-        return ""
-    max_pos = max(pos for positions in inverted_index.values() for pos in positions)
-    words = [""] * (max_pos + 1)
-    for word, positions in inverted_index.items():
-        for pos in positions:
-            if pos <= max_pos:
-                words[pos] = word
-    return " ".join(w for w in words if w)
+def _ss_get(params: dict) -> dict:
+    """Rate-limited GET to Semantic Scholar bulk search."""
+    global _last_request_time
+    with _lock:
+        elapsed = time.time() - _last_request_time
+        if elapsed < 1.0:
+            time.sleep(1.0 - elapsed)
+        resp = requests.get(_SS_BULK_URL, params=params, timeout=20)
+        _last_request_time = time.time()
+    resp.raise_for_status()
+    return resp.json()
 
 
 def search_papers_by_venue(venue_key: str, year: int, limit: int = 50) -> list[dict]:
-    """Return papers published at *venue_key* in *year*, sorted by citation count.
+    """Return top papers from *venue_key* in *year*, sorted by citation count.
 
-    Source ID is resolved first for precise venue matching, falling back to
-    display_name search if the source lookup fails.
+    Uses SS bulk search `venue` filter — results are papers actually published
+    at the specified conference, not papers that merely mention it.
     """
-    source_id = _resolve_source_id(venue_key)
-
-    if source_id:
-        filter_str = f"primary_location.source.id:{source_id},publication_year:{year}"
-    else:
-        # Fallback: less precise but won't hard-fail
-        oa_name = _VENUE_OA_NAMES.get(venue_key, venue_key)
-        filter_str = f"primary_location.source.display_name.search:{oa_name},publication_year:{year}"
-        logger.warning("Using display_name fallback for %s (source ID not resolved)", venue_key)
-
-    per_page = min(limit, 200)
-    params = {
-        "filter": filter_str,
-        "sort": "cited_by_count:desc",
-        "per-page": per_page,
-        "select": (
-            "title,authorships,publication_year,cited_by_count,"
-            "primary_location,abstract_inverted_index,doi,open_access"
-        ),
-        "mailto": "research-thread-agent@openalex",
-    }
+    query = _VENUE_QUERIES.get(venue_key, "machine learning")
 
     try:
-        resp = requests.get(f"{_OA_BASE}/works", params=params, timeout=20)
-        resp.raise_for_status()
-        data = resp.json()
+        data = _ss_get({
+            "query": query,
+            "venue": venue_key,
+            "year": str(year),
+            "fields": _SS_FIELDS,
+            "sort": "citationCount:desc",
+            "limit": min(limit, 500),
+        })
     except Exception as exc:
-        logger.error("OpenAlex venue fetch failed for %s %d: %s", venue_key, year, exc)
+        logger.error("SS bulk venue fetch failed for %s %d: %s", venue_key, year, exc)
         return []
 
     results: list[dict] = []
-    for work in data.get("results", []):
-        authors = [
-            a["author"]["display_name"]
-            for a in work.get("authorships", [])[:6]
-            if a.get("author") and a["author"].get("display_name")
-        ]
+    for p in data.get("data", [])[:limit]:
+        authors = [a.get("name", "") for a in (p.get("authors") or [])[:6]]
+        ext = p.get("externalIds") or {}
+        oa = p.get("openAccessPdf") or {}
 
-        loc = work.get("primary_location") or {}
-        source = loc.get("source") or {}
-        oa_info = work.get("open_access") or {}
-
-        pdf_url: str = oa_info.get("oa_url") or ""
-        landing_url: str = loc.get("landing_page_url") or ""
-        doi: str = work.get("doi") or ""
-        doi_url = doi if doi.startswith("http") else (f"https://doi.org/{doi}" if doi else "")
-        url = landing_url or doi_url or pdf_url
-
-        abstract = _reconstruct_abstract(work.get("abstract_inverted_index"))
+        arxiv_id = ext.get("ArXiv")
+        pdf_url = oa.get("url") or (f"https://arxiv.org/abs/{arxiv_id}" if arxiv_id else "")
+        url = (f"https://arxiv.org/abs/{arxiv_id}" if arxiv_id
+               else f"https://www.semanticscholar.org/paper/{p.get('paperId', '')}")
 
         results.append({
-            "title": work.get("title") or "",
+            "title": p.get("title") or "",
             "authors": authors,
-            "abstract": abstract[:1200],
+            "abstract": (p.get("abstract") or "")[:1200],
             "url": url,
             "pdf_url": pdf_url,
-            "published_date": str(year),
-            "citation_count": work.get("cited_by_count") or 0,
-            "venue": source.get("display_name") or venue_key,
-            "source": "openalex",
+            "published_date": str(p.get("year") or year),
+            "citation_count": p.get("citationCount") or 0,
+            "venue": p.get("venue") or venue_key,
+            "source": "semantic_scholar",
         })
 
     return results
