@@ -67,6 +67,7 @@ const ko = {
     venuesEmpty: '논문이 없어요.',
     venuesError: '논문을 불러오지 못했어요.',
     venuesBack: '← 학회 목록으로',
+    venuesSparseNote: '이 연도의 인덱싱된 논문이 적어요 — 이전 연도를 선택하면 더 많은 결과를 볼 수 있어요.',
     venuesPapersHeader: (venue, year) => `${venue} ${year}`,
   },
   detail: {

@@ -988,6 +988,11 @@ function VenuesView() {
           {tf.venuesEmpty}
         </div>
       )}
+      {venueState === 'done' && papers.length > 0 && papers.length < 10 && (
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185', padding: '8px 0 4px', textAlign: 'center' }}>
+          {tf.venuesSparseNote}
+        </div>
+      )}
       {venueState === 'done' && papers.map((paper, i) => (
         <ResultCard
           key={i}
