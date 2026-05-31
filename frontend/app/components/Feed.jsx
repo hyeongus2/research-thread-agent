@@ -195,9 +195,14 @@ function TrendingCard({ p, onQuickSearch, onSummarize, aiSummary, summaryLoading
     <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, marginBottom: 14, overflow: 'hidden' }}>
       <a href={p.url} target="_blank" rel="noreferrer" style={{ display: 'block', padding: '16px 20px 8px', textDecoration: 'none', color: '#1A1611' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#C84B31', fontWeight: 600 }}>
-            {tf.upvotes(p.upvotes)}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ background: TYPE_COLORS.paper.bg, color: TYPE_COLORS.paper.fg, padding: '3px 8px', borderRadius: 2, fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', fontFamily: "'Geist', sans-serif" }}>
+              PAPER
+            </span>
+            <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 11, color: '#C84B31', fontWeight: 600 }}>
+              {tf.upvotes(p.upvotes)}
+            </span>
+          </div>
           <ArrowUpRight size={14} style={{ color: '#6B6358' }} />
         </div>
         <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 16, lineHeight: 1.3, fontWeight: 500, color: '#1A1611', margin: '0 0 8px' }}>
@@ -538,7 +543,6 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
           key={p.id}
           item={p}
           type="paper"
-          showTypeBadge={false}
           showCite
           showTopicBadge
           showReadDot
