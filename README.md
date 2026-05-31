@@ -31,7 +31,7 @@ Both interfaces run on the same backend. The desktop app bundles FastAPI + Next.
 
 ### Quick Search
 Search across three sources simultaneously with a single keyword:
-- **Papers** tab — Semantic Scholar: up to 100 papers sorted by citation count
+- **Papers** tab — Semantic Scholar: up to 1,000 papers sorted by citation count
 - **Models** tab — Hugging Face Hub: up to 50 models sorted by downloads
 - **Repos** tab — GitHub: up to 50 repositories sorted by stars
 - Filter by date range (past week / month / 3 months / all time)
@@ -182,7 +182,7 @@ research-thread-agent/
 
 | Source | Limit | Handling |
 |---|---|---|
-| Semantic Scholar | 100 req/5 min (no key) · 1 req/sec (with key) | Single request returns up to 100 papers |
+| Semantic Scholar | 100 req/5 min (no key) · 1 req/sec (with key) | Bulk endpoint returns up to 1,000 papers per request |
 | GitHub | 5,000 req/hour (authenticated) | Requires `GITHUB_TOKEN` |
 | Hugging Face | Higher with token | `HF_API_TOKEN` recommended |
 | OpenAlex | 10 req/sec | Automatic fallback when Semantic Scholar is rate-limited |
@@ -192,8 +192,13 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.10.3 (current)
-- [x] **Learning Path field coverage expanded** — Semantic Scholar `fieldsOfStudy` filter now includes Mathematics and Engineering in addition to Computer Science; captures optimization theory (Adam/SGD convergence proofs, LoRA geometry), audio/multimodal signal processing (EESS), and edge-efficiency papers that would otherwise be missing from era results
+### v0.10.4 (current)
+- [x] **Semantic Scholar bulk endpoint** — switched from standard search (max 100) to bulk search endpoint (max 1,000) across Quick Search, Learning Path, and Research Lineage; citation-count sort applied server-side
+- [x] **ML acronym query expansion** — single-token queries matching a known AI/ML acronym are automatically expanded before sending to Semantic Scholar (e.g. `RAG` → `RAG retrieval augmented generation`), so papers using the full phrase are also retrieved; 100 terms covering foundational architectures, transformers, LLMs, fine-tuning/alignment (GRPO, KTO, ORPO, …), diffusion, vision, NLP tasks, RL, and graph learning; multi-token queries are sent as-is to avoid distorting relevance ranking
+- [x] **Research Lineage quality improvements** — SVG edges redrawn as bezier curves; isolated nodes (no edges) hidden from graph view and counted in the subset note; reference edges that point to papers *newer* than the seed are filtered out as metadata anomalies; top-seed cap reduced from 5→3 API calls
+
+### v0.10.3
+- [x] **Learning Path field coverage expanded** — Semantic Scholar `fieldsOfStudy` filter now includes Mathematics, Statistics, and Engineering in addition to Computer Science; captures optimization theory (Adam/SGD convergence proofs, LoRA geometry), audio/multimodal signal processing (EESS), and edge-efficiency papers that would otherwise be missing from era results
 
 ### v0.10.2
 - [x] **Unified paper card component** — single `PaperCard` component replaces four separate card implementations across Quick Search, My Feed, Learning Path, and Citation Graph; all cards now share identical layout, abstract toggle, and action buttons
