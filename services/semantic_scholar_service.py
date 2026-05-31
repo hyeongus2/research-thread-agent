@@ -13,57 +13,135 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 # Known AI/ML acronyms and their full-form expansions.
-# Query is sent as "ABBREV full expansion" so SS finds both forms.
+# Only applied when the query is a single token (acronym alone).
+# Multi-token queries are sent as-is to avoid distorting SS relevance ranking.
 _ACRONYM_EXPANSIONS: dict[str, str] = {
-    "rag":   "retrieval augmented generation",
-    "llm":   "large language model",
-    "llms":  "large language models",
-    "rl":    "reinforcement learning",
-    "nlp":   "natural language processing",
-    "cv":    "computer vision",
-    "vae":   "variational autoencoder",
-    "gan":   "generative adversarial network",
-    "gans":  "generative adversarial networks",
-    "rnn":   "recurrent neural network",
-    "cnn":   "convolutional neural network",
-    "lstm":  "long short-term memory",
-    "bert":  "bidirectional encoder representations transformers",
-    "gpt":   "generative pre-trained transformer",
-    "vlm":   "vision language model",
-    "moe":   "mixture of experts",
-    "rlhf":  "reinforcement learning from human feedback",
-    "dpo":   "direct preference optimization",
-    "ppo":   "proximal policy optimization",
-    "sft":   "supervised fine-tuning",
-    "lora":  "low-rank adaptation",
-    "clip":  "contrastive language image pretraining",
-    "sam":   "segment anything model",
-    "t5":    "text-to-text transfer transformer",
-    "mamba": "state space model sequence modeling",
+    # --- Foundational architectures ---
+    "rnn":    "recurrent neural network",
+    "cnn":    "convolutional neural network",
+    "lstm":   "long short-term memory",
+    "gru":    "gated recurrent unit",
+    "mlp":    "multilayer perceptron",
+    "vae":    "variational autoencoder",
+    "gan":    "generative adversarial network",
+    "gans":   "generative adversarial networks",
+    "nf":     "normalizing flow",
+    "ssm":    "state space model",
+    "mamba":  "mamba state space model selective",
+    "rwkv":   "receptance weighted key value",
+    # --- Transformers & attention ---
+    "bert":   "bidirectional encoder representations transformers",
+    "gpt":    "generative pre-trained transformer",
+    "t5":     "text-to-text transfer transformer",
+    "vit":    "vision transformer",
+    "dit":    "diffusion transformer",
+    "mha":    "multi-head attention",
+    "mqa":    "multi-query attention",
+    "gqa":    "grouped query attention",
+    "rope":   "rotary position embedding",
+    "alibi":  "attention with linear biases",
+    # --- Large language models ---
+    "llm":    "large language model",
+    "llms":   "large language models",
+    "lvlm":   "large vision language model",
+    "mllm":   "multimodal large language model",
+    "lmm":    "large multimodal model",
+    "vlm":    "vision language model",
+    "slm":    "small language model",
+    "vla":    "vision language action model",
+    # --- Retrieval & RAG ---
+    "rag":    "retrieval augmented generation",
+    "dpr":    "dense passage retrieval",
+    "dr":     "dense retrieval",
+    "ir":     "information retrieval",
+    # --- Fine-tuning & alignment ---
+    "sft":    "supervised fine-tuning",
+    "rlhf":   "reinforcement learning from human feedback",
+    "rlaif":  "reinforcement learning from ai feedback",
+    "dpo":    "direct preference optimization",
+    "ppo":    "proximal policy optimization",
+    "grpo":   "group relative policy optimization",
+    "kto":    "kahneman-tversky optimization",
+    "orpo":   "odds ratio preference optimization",
+    "cpo":    "contrastive preference optimization",
+    "simpo":  "simple preference optimization",
+    "cai":    "constitutional ai",
+    "rm":     "reward model",
+    "prm":    "process reward model",
+    # --- Efficient fine-tuning / compression ---
+    "lora":   "low-rank adaptation",
+    "qlora":  "quantized low-rank adaptation",
+    "peft":   "parameter efficient fine-tuning",
+    "moe":    "mixture of experts",
+    "quant":  "model quantization",
+    # --- Reasoning & agents ---
+    "cot":    "chain of thought reasoning",
+    "tot":    "tree of thoughts reasoning",
+    "icl":    "in-context learning",
+    "react":  "reasoning acting language model agent",
+    # --- Diffusion & generation ---
+    "ddpm":   "denoising diffusion probabilistic model",
+    "ddim":   "denoising diffusion implicit model",
+    "cfg":    "classifier-free guidance diffusion",
+    "fm":     "flow matching generative model",
+    # --- Vision ---
+    "clip":   "contrastive language image pretraining",
+    "sam":    "segment anything model",
+    "nerf":   "neural radiance field",
+    "3dgs":   "3d gaussian splatting",
+    "slam":   "simultaneous localization and mapping",
+    "vqa":    "visual question answering",
+    # --- NLP tasks ---
+    "nlp":    "natural language processing",
+    "nlu":    "natural language understanding",
+    "nlg":    "natural language generation",
+    "nmt":    "neural machine translation",
+    "ner":    "named entity recognition",
+    "qa":     "question answering",
+    "mrc":    "machine reading comprehension",
+    "nli":    "natural language inference",
+    # --- Speech & audio ---
+    "asr":    "automatic speech recognition",
+    "tts":    "text-to-speech synthesis",
+    # --- Reinforcement learning ---
+    "rl":     "reinforcement learning",
+    "drl":    "deep reinforcement learning",
+    "mbrl":   "model-based reinforcement learning",
+    "marl":   "multi-agent reinforcement learning",
+    "irl":    "inverse reinforcement learning",
+    "mdp":    "markov decision process",
+    "mcts":   "monte carlo tree search",
+    # --- Graph & structured ---
+    "gnn":    "graph neural network",
+    "gcn":    "graph convolutional network",
+    "gat":    "graph attention network",
+    "kg":     "knowledge graph",
+    # --- General ML ---
+    "cv":     "computer vision",
+    "ml":     "machine learning",
+    "dl":     "deep learning",
+    "fl":     "federated learning",
+    "ssl":    "self-supervised learning",
+    "cl":     "contrastive learning",
+    "meta":   "meta-learning few-shot",
+    "nas":    "neural architecture search",
 }
 
 
 def _expand_query(query: str) -> str:
-    """Append full-form expansion for known AI/ML acronyms in the query.
+    """Expand query only when it is a single known AI/ML acronym.
 
-    Each token that matches a known acronym gets its expansion appended inline.
-    Unknown queries are returned unchanged.
+    Multi-token queries are returned unchanged to avoid distorting SS ranking.
     Examples:
-        "RAG" -> "RAG retrieval augmented generation"
-        "RAG evaluation" -> "RAG retrieval augmented generation evaluation"
-        "transformer" -> "transformer"  (not an acronym, no change)
+        "RAG"            -> "RAG retrieval augmented generation"
+        "RAG evaluation" -> "RAG evaluation"   (multi-token, no change)
+        "transformer"    -> "transformer"      (not in dict, no change)
     """
     tokens = query.strip().split()
-    result = []
-    changed = False
-    for tok in tokens:
-        expansion = _ACRONYM_EXPANSIONS.get(tok.lower())
-        if expansion:
-            result.append(f"{tok} {expansion}")
-            changed = True
-        else:
-            result.append(tok)
-    return " ".join(result) if changed else query.strip()
+    if len(tokens) != 1:
+        return query.strip()
+    expansion = _ACRONYM_EXPANSIONS.get(tokens[0].lower())
+    return f"{tokens[0]} {expansion}" if expansion else query.strip()
 
 
 # Global semaphore: limit concurrent Semantic Scholar API calls to 1.
