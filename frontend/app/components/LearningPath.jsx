@@ -515,7 +515,7 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
                 {activeContentTab === 'papers' && (
                   era.papers?.length > 0 ? (
                     era.papers.map((p, i) => (
-                      <PaperCard key={i} item={p} type="paper" analysisNoKey={era.ai_status === 'no_key'} />
+                      <PaperCard key={i} item={p} type="paper" showCite analysisNoKey={era.ai_status === 'no_key' || era.ai_status === 'error'} />
                     ))
                   ) : (
                     <InlineNotice text={tl.noContent} isError={false} />

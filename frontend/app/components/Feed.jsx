@@ -472,6 +472,7 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
           item={p}
           type="paper"
           showTypeBadge={false}
+          showCite
           showTopicBadge
           showReadDot
           showTimestamp
