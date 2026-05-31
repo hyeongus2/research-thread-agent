@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
-const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25, venues: 50 };
+const DEFAULT_LIMITS = { papers: 100, models: 25, repos: 25, venues: 100 };
 const DEFAULT_LP_LIMITS = { papersPerEra: 10, models: 5, repos: 5 };
 
 function readLimits() {
@@ -190,8 +190,10 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
     setInterestsSaving(false);
   };
 
+  const LIMIT_MAX = { papers: 1000, models: 200, repos: 200, venues: 500 };
   const updateLimit = (key, raw) => {
-    const val = Math.max(0, Math.min(100, parseInt(raw, 10) || 0));
+    const max = LIMIT_MAX[key] ?? 200;
+    const val = Math.max(0, Math.min(max, parseInt(raw, 10) || 0));
     const next = { ...limits, [key]: val };
     setLimits(next);
     localStorage.setItem('search_limits', JSON.stringify(next));

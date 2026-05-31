@@ -9,7 +9,7 @@ import PaperCard, { TYPE_COLORS } from './PaperCard';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
-const DEFAULT_LIMITS = { papers: 50, models: 25, repos: 25 };
+const DEFAULT_LIMITS = { papers: 100, models: 25, repos: 25 };
 
 function getSearchLimits() {
   try {
@@ -1228,7 +1228,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
     if (overviewLoading || overviewText || overviewError) return;
     setOverviewLoading(true);
     try {
-      const papers = (searchResults?.papers || []).map(p => ({ title: p.title || '', abstract: p.abstract || '' }));
+      const papers = (searchResults?.papers || []).slice(0, 30).map(p => ({ title: p.title || '', abstract: p.abstract || '' }));
       const res = await fetch(`${API}/summarize/overview`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keyword: searchResults?.keyword || '', papers, lang }) });
       const data = await res.json();
       if (data.no_api_key) setOverviewNoKey(true);
