@@ -197,7 +197,7 @@ research-thread-agent/
 - [x] **My Feed field coverage** — `fieldsOfStudy=CS,Mathematics,Statistics,Engineering` filter applied to My Feed paper fetches (was missing; Quick Search, Learning Path, Research Lineage already had it); papers per topic raised from 10 → 50
 - [x] **AI input capped** — Quick Search AI Overview sends top 30 papers (citation-sorted) instead of the full result set, preventing excessive token usage on large fetches
 - [x] **Learning Path overview no longer truncated** — `max_tokens` raised from 2,000 → 4,000; prompt reduced from 4–5 paragraphs to 3 focused paragraphs with explicit instruction to finish the final sentence completely
-- [x] **Learning Path build progress text** — era rows now show descriptive status text on the left (`"Before 2018 · 논문 수집 중…"` / `"Before 2018 · AI 분석 중…"` / `"작성 완료 ✓"`) instead of a bare circle or checkmark symbol
+- [x] **Learning Path build progress text** — era rows now show descriptive status text on the left (`"Before 2018 · fetching papers…"` / `"Before 2018 · AI analyzing…"` / `"Analysis written ✓"`) instead of a bare circle or checkmark symbol
 - [x] **Learning Path settings range labels** — limit input descriptions now show allowed ranges (papers per era: 3–20 · models/repos: 0–20)
 
 ### v0.10.4
