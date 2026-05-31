@@ -248,6 +248,7 @@ def _search_semantic_scholar(
 
     papers = [_parse_paper(p) for p in data.get("data", [])]
     papers.sort(key=lambda x: x.get("citation_count", 0), reverse=True)
+    papers = papers[:limit]
     logger.info("Semantic Scholar bulk '%s' → %d papers", keyword, len(papers))
     return papers
 
