@@ -16,6 +16,21 @@ logger = logging.getLogger(__name__)
 _SS_BULK_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
 _SS_FIELDS = "title,authors,abstract,year,citationCount,venue,externalIds,openAccessPdf,publicationVenue"
 
+# SS tags the same conference differently across years — try aliases in order until results found.
+_VENUE_ALIASES: dict[str, list[str]] = {
+    "NeurIPS": [
+        "NeurIPS",
+        "Neural Information Processing Systems",
+        "Advances in Neural Information Processing Systems",
+    ],
+    "ICML": ["ICML", "International Conference on Machine Learning"],
+    "ICLR": ["ICLR", "International Conference on Learning Representations"],
+    "CVPR": ["CVPR", "Computer Vision and Pattern Recognition", "IEEE/CVF Conference on Computer Vision and Pattern Recognition"],
+    "AAAI": ["AAAI", "AAAI Conference on Artificial Intelligence"],
+    "ECCV": ["ECCV", "European Conference on Computer Vision"],
+    "ACL": ["ACL", "Annual Meeting of the Association for Computational Linguistics"],
+    "EMNLP": ["EMNLP", "Empirical Methods in Natural Language Processing", "Conference on Empirical Methods in Natural Language Processing"],
+}
 
 _lock = threading.Lock()
 _last_request_time: float = 0.0
@@ -37,23 +52,28 @@ def _ss_get(params: dict) -> dict:
 def search_papers_by_venue(venue_key: str, year: int, limit: int = 50) -> list[dict]:
     """Return top papers from *venue_key* in *year*, sorted by citation count.
 
-    Uses SS bulk search `venue` filter — results are papers actually published
-    at the specified conference, not papers that merely mention it.
+    Tries each alias in _VENUE_ALIASES until results are found, to handle
+    SS tagging the same conference with different strings across years.
     """
-    try:
-        data = _ss_get({
-            "venue": venue_key,
-            "year": str(year),
-            "fields": _SS_FIELDS,
-            "sort": "citationCount:desc",
-            "limit": min(limit, 500),
-        })
-    except Exception as exc:
-        logger.error("SS bulk venue fetch failed for %s %d: %s", venue_key, year, exc)
-        return []
+    aliases = _VENUE_ALIASES.get(venue_key, [venue_key])
+    raw_data: list = []
+    for alias in aliases:
+        try:
+            data = _ss_get({
+                "venue": alias,
+                "year": str(year),
+                "fields": _SS_FIELDS,
+                "sort": "citationCount:desc",
+                "limit": min(limit, 500),
+            })
+            raw_data = data.get("data", [])
+            if raw_data:
+                break
+        except Exception as exc:
+            logger.error("SS bulk venue fetch failed for %s (%s) %d: %s", venue_key, alias, year, exc)
 
     results: list[dict] = []
-    for p in data.get("data", [])[:limit]:
+    for p in raw_data[:limit]:
         authors = [a.get("name", "") for a in (p.get("authors") or [])[:6]]
         ext = p.get("externalIds") or {}
         oa = p.get("openAccessPdf") or {}
