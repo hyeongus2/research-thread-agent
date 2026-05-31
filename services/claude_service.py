@@ -100,7 +100,8 @@ def generate_era_analysis(
                 "content": (
                     f'Analyze how "{topic}" evolved during {era_label}.\n\n'
                     f"Papers:\n{papers_block}\n"
-                    "Return valid JSON only, no markdown fences:\n"
+                    "Return valid JSON only, no markdown fences. All string values must be plain prose — "
+                    "no markdown, no bullet points, no bold, no headers:\n"
                     '{"summary":"2-3 sentences on key developments this era",'
                     '"papers":[{"index":1,"problem":"what prior limitation this addressed",'
                     '"solution":"how this paper solved it",'
@@ -137,12 +138,12 @@ def generate_overview(keyword: str, papers: list[dict], lang: str = "en") -> str
 
     if papers:
         papers_block = "Based on these papers:\n"
-        for p in papers[:20]:
+        for p in papers:
             title = p.get("title", "")
-            abstract = (p.get("abstract") or "")[:250]
+            abstract = p.get("abstract") or ""
             papers_block += f"- {title}"
             if abstract:
-                papers_block += f": {abstract}"
+                papers_block += f"\n  {abstract}"
             papers_block += "\n"
     else:
         papers_block = "No specific papers available — give a general landscape overview."

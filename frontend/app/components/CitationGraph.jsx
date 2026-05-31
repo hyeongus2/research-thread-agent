@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import PaperCard from './PaperCard';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
@@ -94,46 +95,6 @@ function computeLayout(nodes) {
 
 // ---------- Sub-components ----------
 
-function ListNodeCard({ node }) {
-  const { t } = useLanguage();
-  const ts = t.search;
-  const [expanded, setExpanded] = useState(false);
-  const authors = (node.authors || []).slice(0, 2).join(', ');
-  const meta = [node.venue, authors, node.year].filter(Boolean).join(' · ');
-  const abstract = node.abstract || '';
-
-  return (
-    <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, marginBottom: 8, overflow: 'hidden' }}>
-      <a href={node.url || '#'} target="_blank" rel="noreferrer"
-        style={{ display: 'block', padding: '12px 14px 8px', textDecoration: 'none', color: '#1A1611' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-          <h4 style={{ fontFamily: "'Fraunces', serif", fontSize: 14, fontWeight: 500, margin: 0, lineHeight: 1.3, flex: 1 }}>
-            {node.title}
-          </h4>
-          {node.citationCount > 0 && (
-            <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', whiteSpace: 'nowrap', marginTop: 2 }}>
-              {node.citationCount.toLocaleString()} cit.
-            </span>
-          )}
-        </div>
-        {meta && <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>{meta}</div>}
-        {abstract && (
-          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#3A342B', lineHeight: 1.5, margin: '6px 0 0', display: '-webkit-box', WebkitLineClamp: expanded ? 'unset' : 2, WebkitBoxOrient: 'vertical', overflow: expanded ? 'visible' : 'hidden' }}>
-            {abstract}
-          </p>
-        )}
-      </a>
-      {abstract.length > 150 && (
-        <div style={{ borderTop: '1px solid #F0EBE2', padding: '5px 14px' }}>
-          <button onClick={() => setExpanded(v => !v)}
-            style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}>
-            {expanded ? ts.hideAbstract : ts.showAbstract}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function AllResultsList({ nodes, edges, nodeById }) {
   const { t } = useLanguage();
@@ -148,7 +109,7 @@ function AllResultsList({ nodes, edges, nodeById }) {
           <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.15em', marginBottom: 8 }}>
             {ts.lineageSeedHeader} ({seeds.length})
           </div>
-          {seeds.map(n => <ListNodeCard key={n.id} node={n} />)}
+          {seeds.map(n => <PaperCard key={n.id} item={n} type="paper" />)}
         </section>
       )}
       {refs.length > 0 && (
@@ -156,7 +117,7 @@ function AllResultsList({ nodes, edges, nodeById }) {
           <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.15em', marginBottom: 8 }}>
             {ts.lineageRefHeader} ({refs.length})
           </div>
-          {refs.map(n => <ListNodeCard key={n.id} node={n} />)}
+          {refs.map(n => <PaperCard key={n.id} item={n} type="paper" />)}
         </section>
       )}
       {edges.length > 0 && (

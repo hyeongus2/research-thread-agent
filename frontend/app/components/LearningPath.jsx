@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ArrowUpRight, AlertCircle, X } from 'lucide-react';
+import { AlertCircle, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import PaperCard from './PaperCard';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
@@ -15,171 +16,6 @@ function readLpLimits() {
   } catch { return DEFAULT_LP_LIMITS; }
 }
 
-const TYPE_COLORS = {
-  paper: { bg: '#FFE8E0', fg: '#8B2E1B' },
-  model: { bg: '#E0EEFF', fg: '#1B3E8B' },
-  repo:  { bg: '#E0F5E0', fg: '#1B7A2E' },
-};
-
-const ANALYSIS_COLORS = {
-  problem:      '#C84B31',
-  solution:     '#1B7A2E',
-  significance: '#1B3E8B',
-  limitations:  '#7A5C1B',
-};
-
-// =============================================================================
-// Paper / Model / Repo card
-// =============================================================================
-function EraCard({ item, type, lang, tl, noApiKey }) {
-  const [abstractOpen, setAbstractOpen] = useState(false);
-  const colors = TYPE_COLORS[type];
-  const typeLabel = { paper: 'PAPER', model: 'MODEL', repo: 'REPO' }[type];
-  const title = item.title || item.name || '';
-  const url = item.url || '#';
-
-  let meta = '';
-  if (type === 'paper') {
-    const authors = Array.isArray(item.authors)
-      ? item.authors.slice(0, 2).join(', ')
-      : item.authors || '';
-    const d = item.published_date
-      ? new Date(item.published_date).toLocaleDateString(
-          lang === 'ko' ? 'ko-KR' : 'en-US',
-          { month: 'short', year: 'numeric' }
-        )
-      : '';
-    const cites = item.citation_count > 0 ? `${item.citation_count.toLocaleString()} citations` : '';
-    meta = [authors, d, cites].filter(Boolean).join(' · ');
-  } else if (type === 'model') {
-    const dl = item.downloads ? `↓ ${(item.downloads / 1000).toFixed(0)}K` : '';
-    meta = [item.pipeline_tag, dl].filter(Boolean).join(' · ');
-  } else {
-    const stars = item.stars ? `★ ${item.stars}` : '';
-    meta = [item.language, stars].filter(Boolean).join(' · ');
-  }
-
-  const analysisFields = [
-    { key: 'problem',      label: tl.problem },
-    { key: 'solution',     label: tl.solution },
-    { key: 'significance', label: tl.significance },
-    { key: 'limitations',  label: tl.limitations },
-  ];
-  const hasAnalysis = type === 'paper' && analysisFields.some(f => item[f.key]);
-  const hasAbstract = type === 'paper' && item.abstract;
-  const ABSTRACT_THRESHOLD = 200;
-  const needsToggle = hasAbstract && item.abstract.length > ABSTRACT_THRESHOLD;
-
-  return (
-    <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', marginBottom: 12, borderRadius: 4, overflow: 'hidden' }}>
-      {/* Card body */}
-      <div style={{ padding: '14px 16px' }}>
-        {/* Type badge + link icon */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{
-            background: colors.bg, color: colors.fg,
-            padding: '2px 7px', borderRadius: 2,
-            fontSize: 10, fontWeight: 600, letterSpacing: '0.05em',
-            fontFamily: "'Geist', sans-serif",
-          }}>
-            {typeLabel}
-          </span>
-          <a href={url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
-            <ArrowUpRight size={13} style={{ color: '#6B6358' }} />
-          </a>
-        </div>
-
-        {/* Title */}
-        <a href={url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', color: '#1A1611' }}>
-          <div style={{
-            fontFamily: "'Fraunces', serif",
-            fontSize: 15, fontWeight: 500,
-            color: '#1A1611', lineHeight: 1.3,
-            marginBottom: meta ? 6 : (hasAbstract ? 8 : 0),
-          }}>
-            {title}
-          </div>
-        </a>
-
-        {meta && (
-          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>
-            {meta}
-          </span>
-        )}
-
-        {/* Abstract (truncated, toggle in bottom bar) */}
-        {hasAbstract && (
-          <p style={{
-            fontFamily: "'Geist', sans-serif",
-            fontSize: 12, color: '#3A342B',
-            lineHeight: 1.55, margin: `${meta ? 8 : 0}px 0 0`,
-            display: '-webkit-box',
-            WebkitBoxOrient: 'vertical',
-            WebkitLineClamp: abstractOpen ? 'unset' : 3,
-            overflow: abstractOpen ? 'visible' : 'hidden',
-          }}>
-            {item.abstract}
-          </p>
-        )}
-
-        {/* AI analysis */}
-        {hasAnalysis && (
-          <div style={{
-            marginTop: 12, paddingTop: 12,
-            borderTop: '1px solid #F0EAD9',
-            display: 'flex', flexDirection: 'column', gap: 8,
-          }}>
-            {analysisFields.map(({ key, label }) =>
-              item[key] ? (
-                <div key={key}>
-                  <span style={{
-                    fontFamily: "'Geist', sans-serif",
-                    fontSize: 9, fontWeight: 700,
-                    color: ANALYSIS_COLORS[key],
-                    letterSpacing: '0.1em',
-                  }}>
-                    {label}
-                  </span>
-                  <p style={{
-                    fontFamily: "'Geist', sans-serif",
-                    fontSize: 12, color: '#3A342B',
-                    margin: '3px 0 0', lineHeight: 1.55,
-                  }}>
-                    {item[key]}
-                  </p>
-                </div>
-              ) : null
-            )}
-          </div>
-        )}
-
-        {/* API key prompt (paper only, when no analysis) */}
-        {type === 'paper' && !hasAnalysis && noApiKey && (
-          <div style={{
-            marginTop: 10, paddingTop: 10,
-            borderTop: '1px solid #F0EAD9',
-            fontFamily: "'Geist', sans-serif", fontSize: 11,
-            color: '#A09880', lineHeight: 1.4,
-          }}>
-            {tl.noApiKeyCard}
-          </div>
-        )}
-      </div>
-
-      {/* Bottom bar — abstract toggle (Quick Search style) */}
-      {needsToggle && (
-        <div style={{ borderTop: '1px solid #F0EBE2', padding: '8px 16px' }}>
-          <button
-            onClick={() => setAbstractOpen(v => !v)}
-            style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}
-          >
-            {abstractOpen ? tl.hideAbstract : tl.showAbstract}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function InlineNotice({ text, isError }) {
   return (
@@ -679,7 +515,7 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
                 {activeContentTab === 'papers' && (
                   era.papers?.length > 0 ? (
                     era.papers.map((p, i) => (
-                      <EraCard key={i} item={p} type="paper" lang={lang} tl={tl} noApiKey={era.ai_status === 'no_key'} />
+                      <PaperCard key={i} item={p} type="paper" analysisNoKey={era.ai_status === 'no_key'} />
                     ))
                   ) : (
                     <InlineNotice text={tl.noContent} isError={false} />
@@ -691,7 +527,7 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
                     <InlineNotice text={tl.modelsError} isError={true} />
                   ) : era.models?.length > 0 ? (
                     era.models.map((m, i) => (
-                      <EraCard key={i} item={m} type="model" lang={lang} tl={tl} />
+                      <PaperCard key={i} item={m} type="model" />
                     ))
                   ) : (
                     <InlineNotice text={tl.noContent} isError={false} />
@@ -703,7 +539,7 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
                     <InlineNotice text={tl.reposError} isError={true} />
                   ) : era.repos?.length > 0 ? (
                     era.repos.map((r, i) => (
-                      <EraCard key={i} item={r} type="repo" lang={lang} tl={tl} />
+                      <PaperCard key={i} item={r} type="repo" />
                     ))
                   ) : (
                     <InlineNotice text={tl.noContent} isError={false} />
