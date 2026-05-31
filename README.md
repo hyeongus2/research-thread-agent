@@ -192,7 +192,7 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.11.0 (current)
+### v0.10.2 (current)
 - [x] **Unified paper card component** — single `PaperCard` component replaces four separate card implementations across Quick Search, My Feed, Learning Path, and Citation Graph; all cards now share identical layout, abstract toggle, and action buttons
 - [x] **Weekend / holiday fallback for Trending** — when HF Daily Papers has no papers for today (weekends, holidays), automatically scans back up to 7 days and shows the most recent available batch with an explanatory note below the period selector
 - [x] **My Feed auto-mark-as-read** — red dots on My Feed cards clear automatically as soon as the tab loads, without requiring a manual click
