@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 _FETCH_WINDOW_DAYS = 30
 _DELAY_BETWEEN_QUERIES = 2.0  # seconds — avoids Semantic Scholar 429
-_PAPERS_PER_QUERY = 10
+_PAPERS_PER_QUERY = 50
+_FIELDS_OF_STUDY = "Computer Science,Mathematics,Statistics,Engineering"
 
 CATEGORY_QUERIES = {
     "NLP/LLM":                "large language model NLP",
@@ -75,7 +76,8 @@ def _check_user(db: Session, user: User, progress_cb: Optional[Callable] = None)
 
         try:
             papers = semantic_scholar_service.search_papers(
-                query, start_date=since, limit=_PAPERS_PER_QUERY
+                query, start_date=since, limit=_PAPERS_PER_QUERY,
+                fields_of_study=_FIELDS_OF_STUDY,
             )
         except Exception as exc:
             logger.warning("notification fetch failed for '%s': %s", query, exc)
