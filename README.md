@@ -192,7 +192,15 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.10.4 (current)
+### v0.10.5 (current)
+- [x] **Search result limit now user-controlled up to 1,000** — Settings paper limit cap raised from 100 to 1,000 (models/repos: 0–200); bulk endpoint `limit` parameter was being ignored server-side and now correctly slices results after fetch; default raised from 50 → 100 papers
+- [x] **My Feed field coverage** — `fieldsOfStudy=CS,Mathematics,Statistics,Engineering` filter applied to My Feed paper fetches (was missing; Quick Search, Learning Path, Research Lineage already had it); papers per topic raised from 10 → 50
+- [x] **AI input capped** — Quick Search AI Overview sends top 30 papers (citation-sorted) instead of the full result set, preventing excessive token usage on large fetches
+- [x] **Learning Path overview no longer truncated** — `max_tokens` raised from 2,000 → 4,000; prompt reduced from 4–5 paragraphs to 3 focused paragraphs with explicit instruction to finish the final sentence completely
+- [x] **Learning Path build progress text** — era rows now show descriptive status text on the left (`"Before 2018 · 논문 수집 중…"` / `"Before 2018 · AI 분석 중…"` / `"작성 완료 ✓"`) instead of a bare circle or checkmark symbol
+- [x] **Learning Path settings range labels** — limit input descriptions now show allowed ranges (papers per era: 3–20 · models/repos: 0–20)
+
+### v0.10.4
 - [x] **Semantic Scholar bulk endpoint** — switched from standard search (max 100) to bulk search endpoint (max 1,000) across Quick Search, Learning Path, and Research Lineage; citation-count sort applied server-side
 - [x] **ML acronym query expansion** — single-token queries matching a known AI/ML acronym are automatically expanded before sending to Semantic Scholar (e.g. `RAG` → `RAG retrieval augmented generation`), so papers using the full phrase are also retrieved; 100 terms covering foundational architectures, transformers, LLMs, fine-tuning/alignment (GRPO, KTO, ORPO, …), diffusion, vision, NLP tasks, RL, and graph learning; multi-token queries are sent as-is to avoid distorting relevance ranking
 - [x] **Research Lineage quality improvements** — SVG edges redrawn as bezier curves; isolated nodes (no edges) hidden from graph view and counted in the subset note; reference edges that point to papers *newer* than the seed are filtered out as metadata anomalies; top-seed cap reduced from 5→3 API calls
