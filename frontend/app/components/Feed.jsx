@@ -374,17 +374,20 @@ function TrendingFeed({ onQuickSearch }) {
   const [papers, setPapers] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [fallbackDays, setFallbackDays] = useState(0);
 
   useEffect(() => {
     setPapers(null);
     setLoading(true);
     setError(false);
+    setFallbackDays(0);
     (async () => {
       try {
         const res = await fetch(`${API}/feed/trending?period=${period}`);
         if (!res.ok) throw new Error('failed');
         const data = await res.json();
         setPapers(data.papers || []);
+        setFallbackDays(data.fallback_days || 0);
       } catch {
         setError(true);
       } finally {
@@ -442,6 +445,12 @@ function TrendingFeed({ onQuickSearch }) {
         </div>
       )}
 
+      {papers && papers.length > 0 && period === 'daily' && fallbackDays > 0 && (
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185', padding: '0 0 12px', textAlign: 'center', fontStyle: 'italic' }}>
+          {tf.trendingWeekendNote(fallbackDays)}
+        </div>
+      )}
+
       {papers && papers.map((p, i) => (
         <TrendingCard key={i} p={p} onQuickSearch={onQuickSearch} />
       ))}
@@ -471,10 +480,22 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
     setLoading(true);
     fetch(`${API}/feed/my-feed?user_id=${userId || 1}`)
       .then(r => r.json())
-      .then(d => setPapers(d.papers || []))
+      .then(d => {
+        const items = d.papers || [];
+        setPapers(items);
+        // Auto-mark all as read when My Feed is viewed
+        if (items.some(p => !p.is_read)) {
+          fetch(`${API}/notifications/read-all?user_id=${userId || 1}`, { method: 'POST' })
+            .then(() => {
+              setPapers(prev => prev.map(p => ({ ...p, is_read: true })));
+              if (onCheckDone) onCheckDone();
+            })
+            .catch(() => {});
+        }
+      })
       .catch(() => setPapers([]))
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, [userId, onCheckDone]);
 
   // Reset and reload when refreshKey or userId changes
   useEffect(() => {
