@@ -5,6 +5,7 @@ import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, 
 import { useLanguage } from '../context/LanguageContext';
 import LearningPath from './LearningPath';
 import CitationGraph from './CitationGraph';
+import PaperCard from './PaperCard';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
@@ -16,12 +17,6 @@ function getSearchLimits() {
     return stored ? { ...DEFAULT_LIMITS, ...JSON.parse(stored) } : DEFAULT_LIMITS;
   } catch { return DEFAULT_LIMITS; }
 }
-
-const TYPE_COLORS = {
-  paper: { bg: '#FFE8E0', fg: '#8B2E1B' },
-  model: { bg: '#E0EEFF', fg: '#1B3E8B' },
-  repo:  { bg: '#E0F5E0', fg: '#1B7A2E' },
-};
 
 const TAB_KEYS = { paper: 'papers', model: 'models', repo: 'repos' };
 
@@ -70,139 +65,6 @@ function getPageNumbers(page, totalPages) {
 
 // =============================================================================
 // Result card (paper / model / repo)
-// =============================================================================
-function makeBibtex(item) {
-  const firstAuthor = (item.authors?.[0] || 'unknown').split(' ').pop().toLowerCase().replace(/[^a-z]/g, '');
-  const year = (item.published_date || '').slice(0, 4) || 'unknown';
-  const authors = (item.authors || []).join(' and ');
-  const type = item.venue ? 'inproceedings' : 'article';
-  const venueField = item.venue
-    ? `  booktitle = {${item.venue}},\n`
-    : `  journal   = {arXiv preprint},\n`;
-  return `@${type}{${firstAuthor}${year},\n  title     = {${item.title || ''}},\n  author    = {${authors}},\n  year      = {${year}},\n${venueField}}`;
-}
-
-function ResultCard({ item, type, onSummarize, summary, summaryLoading, summaryNoKey }) {
-  const { t } = useLanguage();
-  const ts = t.search;
-  const colors = TYPE_COLORS[type];
-  const typeLabel = { paper: 'PAPER', model: 'MODEL', repo: 'REPO' }[type];
-  const [expanded, setExpanded] = useState(false);
-  const [citeCopied, setCiteCopied] = useState(false);
-
-  const title = item.title || item.name || '';
-  const url = item.url || item.pdf_url || '#';
-  const abstract = item.abstract || '';
-
-  let meta = '';
-  let badge = null;
-
-  if (type === 'paper') {
-    const authors = Array.isArray(item.authors)
-      ? item.authors.slice(0, 2).join(', ')
-      : item.authors || '';
-    const year = item.published_date ? item.published_date.slice(0, 4) : '';
-    meta = [authors, year].filter(Boolean).join(' · ');
-    if (item.venue) meta = item.venue + (meta ? ' · ' + meta : '');
-    if (item.citation_count > 0) badge = ts.citations(item.citation_count);
-  } else if (type === 'model') {
-    const dl = item.downloads ? `↓ ${(item.downloads / 1000).toFixed(0)}K` : '';
-    meta = [item.pipeline_tag, dl].filter(Boolean).join(' · ');
-  } else {
-    const stars = item.stars ? `★ ${item.stars.toLocaleString()}` : '';
-    meta = [item.language, stars].filter(Boolean).join(' · ');
-  }
-
-  const ABSTRACT_THRESHOLD = 200;
-  const needsToggle = type === 'paper' && abstract.length > ABSTRACT_THRESHOLD;
-
-  return (
-    <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', marginBottom: 14, borderRadius: 4, overflow: 'hidden' }}>
-      <a href={url} target="_blank" rel="noreferrer"
-        style={{ display: 'block', padding: '18px 20px 14px', textDecoration: 'none', color: '#1A1611' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ background: colors.bg, color: colors.fg, padding: '3px 8px', borderRadius: 2, fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', fontFamily: "'Geist', sans-serif" }}>
-              {typeLabel}
-            </span>
-            {badge && <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontWeight: 500 }}>{badge}</span>}
-          </div>
-          <ArrowUpRight size={14} style={{ color: '#6B6358', flexShrink: 0 }} />
-        </div>
-        <h3 style={{ fontFamily: "'Fraunces', serif", fontSize: 17, lineHeight: 1.25, fontWeight: 500, color: '#1A1611', margin: '0 0 10px' }}>
-          {title}
-        </h3>
-        {type === 'paper' && abstract && (
-          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, lineHeight: 1.6, color: '#3A342B', margin: '0 0 8px', display: '-webkit-box', WebkitLineClamp: expanded ? 'unset' : 3, WebkitBoxOrient: 'vertical', overflow: expanded ? 'visible' : 'hidden' }}>
-            {abstract}
-          </p>
-        )}
-        {type !== 'paper' && item.description && (
-          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, lineHeight: 1.5, color: '#3A342B', margin: '0 0 8px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-            {item.description}
-          </p>
-        )}
-        {meta && <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>{meta}</span>}
-      </a>
-
-      {(needsToggle || type === 'paper') && (
-        <div style={{ borderTop: '1px solid #F0EBE2' }}>
-          <div style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            {needsToggle ? (
-              <button onClick={() => setExpanded(v => !v)} style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}>
-                {expanded ? ts.hideAbstract : ts.showAbstract}
-              </button>
-            ) : <span />}
-            {type === 'paper' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                {item.code_links?.length > 0 && (() => {
-                  const best = item.code_links.find(l => l.is_official) || item.code_links[0];
-                  return (
-                    <a
-                      href={best.repo_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' }}
-                    >
-                      {ts.codeBtn}
-                    </a>
-                  );
-                })()}
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigator.clipboard.writeText(makeBibtex(item));
-                    setCiteCopied(true);
-                    setTimeout(() => setCiteCopied(false), 1500);
-                  }}
-                  style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: citeCopied ? '#4A7C59' : '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'color 0.15s' }}
-                >
-                  {citeCopied ? ts.bibtexCopied : ts.bibtexBtn}
-                </button>
-                {abstract && !summary && (
-                  summaryNoKey ? (
-                    <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.noApiKey}</span>
-                  ) : summaryLoading ? (
-                    <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.aiLoading}</span>
-                  ) : (
-                    <button onClick={onSummarize} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                      {ts.aiSummarizeBtn}
-                    </button>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-          {summary && (
-            <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#3A342B', margin: 0, lineHeight: 1.6, padding: '0 20px 12px' }}>{summary}</p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // =============================================================================
 // Tab bar
 // =============================================================================
@@ -475,7 +337,6 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [checkProgress, setCheckProgress] = useState([]); // [{label, status, newCount}]
-  const [expandedAbstracts, setExpandedAbstracts] = useState({});
   const checkStartedRef = useRef(false);
   const esRef = useRef(null);
 
@@ -560,18 +421,6 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
     };
   };
 
-  const toggleAbstract = (id) =>
-    setExpandedAbstracts(prev => ({ ...prev, [id]: !prev[id] }));
-
-  const relTime = (isoTs) => {
-    if (!isoTs) return '';
-    const diff = Date.now() - new Date(isoTs).getTime();
-    const h = Math.floor(diff / 3600000);
-    if (h < 1) return '< 1h ago';
-    if (h < 24) return `${h}h ago`;
-    return `${Math.floor(h / 24)}d ago`;
-  };
-
   // Progress view while SSE check is running
   if (checking) {
     return (
@@ -618,59 +467,15 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
   return (
     <div style={{ padding: '16px 16px 80px' }}>
       {papers.map(p => (
-        <div key={p.id} style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 8, marginBottom: 12, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 14px 0' }}>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-              {p.topic && (
-                <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#C84B31', background: '#FFF0EC', padding: '2px 7px', borderRadius: 10, letterSpacing: '0.05em' }}>
-                  {p.topic}
-                </span>
-              )}
-              {p.citation_count > 0 && (
-                <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9E9485' }}>
-                  {ts.citations(p.citation_count)}
-                </span>
-              )}
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9E9485' }}>
-                {relTime(p.created_at)}
-              </span>
-              {!p.is_read && (
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#C84B31', display: 'inline-block' }} />
-              )}
-            </div>
-            <a href={p.url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 500, color: '#1A1611', textDecoration: 'none', lineHeight: 1.4, display: 'block', marginBottom: 10 }}>
-              {p.title}
-              <ArrowUpRight size={12} style={{ color: '#9E9485', marginLeft: 4, verticalAlign: 'middle', flexShrink: 0 }} />
-            </a>
-          </div>
-          {p.abstract && (
-            <>
-              <div style={{
-                padding: '0 14px',
-                fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#4A4035', lineHeight: 1.6,
-                ...(expandedAbstracts[p.id]
-                  ? { marginBottom: 12 }
-                  : { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 0 }
-                ),
-              }}>
-                {p.abstract}
-              </div>
-              <button
-                onClick={() => toggleAbstract(p.id)}
-                style={{
-                  width: '100%', padding: '8px 14px', marginTop: 8,
-                  background: 'none', border: 'none', borderTop: '1px solid #F0EBE0',
-                  textAlign: 'left', cursor: 'pointer',
-                  fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358',
-                  display: 'flex', alignItems: 'center', gap: 4,
-                }}
-              >
-                {expandedAbstracts[p.id] ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                {expandedAbstracts[p.id] ? tf.myFeedHideAbstract : tf.myFeedShowAbstract}
-              </button>
-            </>
-          )}
-        </div>
+        <PaperCard
+          key={p.id}
+          item={p}
+          type="paper"
+          showTypeBadge={false}
+          showTopicBadge
+          showReadDot
+          showTimestamp
+        />
       ))}
     </div>
   );
@@ -1023,10 +828,12 @@ function VenuesView() {
         </div>
       )}
       {venueState === 'done' && papers.map((paper, i) => (
-        <ResultCard
+        <PaperCard
           key={i}
           item={paper}
           type="paper"
+          showCite
+          showCode
           summary={paperSummaries[paper.title]}
           summaryLoading={!!summaryLoading[paper.title]}
           summaryNoKey={!!paperNoKey[paper.title]}
@@ -1568,7 +1375,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
                         pageItems.map((item, i) => {
                           const title = item.title || item.name || '';
                           return (
-                            <ResultCard key={`${activeTab}-${pageStart + i}`} item={item} type={activeTab} summary={paperSummaries[title]} summaryLoading={!!summaryLoading[title]} summaryNoKey={!!paperNoKey[title]} onSummarize={() => fetchPaperSummary(title, item.abstract)} />
+                            <PaperCard key={`${activeTab}-${pageStart + i}`} item={item} type={activeTab} showCite showCode summary={paperSummaries[title]} summaryLoading={!!summaryLoading[title]} summaryNoKey={!!paperNoKey[title]} onSummarize={() => fetchPaperSummary(title, item.abstract)} />
                           );
                         })
                       )}
