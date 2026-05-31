@@ -12,12 +12,66 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Known AI/ML acronyms and their full-form expansions.
+# Query is sent as "ABBREV full expansion" so SS finds both forms.
+_ACRONYM_EXPANSIONS: dict[str, str] = {
+    "rag":   "retrieval augmented generation",
+    "llm":   "large language model",
+    "llms":  "large language models",
+    "rl":    "reinforcement learning",
+    "nlp":   "natural language processing",
+    "cv":    "computer vision",
+    "vae":   "variational autoencoder",
+    "gan":   "generative adversarial network",
+    "gans":  "generative adversarial networks",
+    "rnn":   "recurrent neural network",
+    "cnn":   "convolutional neural network",
+    "lstm":  "long short-term memory",
+    "bert":  "bidirectional encoder representations transformers",
+    "gpt":   "generative pre-trained transformer",
+    "vlm":   "vision language model",
+    "moe":   "mixture of experts",
+    "rlhf":  "reinforcement learning from human feedback",
+    "dpo":   "direct preference optimization",
+    "ppo":   "proximal policy optimization",
+    "sft":   "supervised fine-tuning",
+    "lora":  "low-rank adaptation",
+    "clip":  "contrastive language image pretraining",
+    "sam":   "segment anything model",
+    "t5":    "text-to-text transfer transformer",
+    "mamba": "state space model sequence modeling",
+}
+
+
+def _expand_query(query: str) -> str:
+    """Append full-form expansion for known AI/ML acronyms in the query.
+
+    Each token that matches a known acronym gets its expansion appended inline.
+    Unknown queries are returned unchanged.
+    Examples:
+        "RAG" -> "RAG retrieval augmented generation"
+        "RAG evaluation" -> "RAG retrieval augmented generation evaluation"
+        "transformer" -> "transformer"  (not an acronym, no change)
+    """
+    tokens = query.strip().split()
+    result = []
+    changed = False
+    for tok in tokens:
+        expansion = _ACRONYM_EXPANSIONS.get(tok.lower())
+        if expansion:
+            result.append(f"{tok} {expansion}")
+            changed = True
+        else:
+            result.append(tok)
+    return " ".join(result) if changed else query.strip()
+
+
 # Global semaphore: limit concurrent Semantic Scholar API calls to 1.
 # Prevents My Feed, Quick Search, and Learning Path from competing for
 # the same rate limit window and triggering cascading 429s.
 _ss_lock = threading.Semaphore(1)
 
-_SS_URL = "https://api.semanticscholar.org/graph/v1/paper/search"
+_SS_BULK_URL = "https://api.semanticscholar.org/graph/v1/paper/search/bulk"
 _SS_FIELDS = (
     "title,authors,year,citationCount,publicationVenue,"
     "externalIds,abstract,openAccessPdf,publicationDate"
@@ -40,6 +94,29 @@ def _reconstruct_abstract(inv_index: Optional[dict]) -> str:
         return ""
 
 
+def _parse_paper(p: dict) -> dict:
+    paper_id = p.get("paperId") or ""
+    url = f"https://www.semanticscholar.org/paper/{paper_id}" if paper_id else ""
+    pdf_url = (p.get("openAccessPdf") or {}).get("url") or ""
+    venue_obj = p.get("publicationVenue") or {}
+    venue = venue_obj.get("name") or ""
+    pub_date = p.get("publicationDate") or (str(p["year"]) if p.get("year") else "")
+    authors = [a.get("name", "") for a in (p.get("authors") or [])[:5]]
+    arxiv_id = (p.get("externalIds") or {}).get("ArXiv") or ""
+    return {
+        "paper_id": paper_id,
+        "title": p.get("title") or "",
+        "authors": authors,
+        "abstract": p.get("abstract") or "",
+        "url": url,
+        "pdf_url": pdf_url,
+        "published_date": pub_date,
+        "citation_count": p.get("citationCount") or 0,
+        "venue": venue,
+        "arxiv_id": arxiv_id,
+    }
+
+
 def _search_semantic_scholar(
     keyword: str,
     start_date: Optional[date],
@@ -47,75 +124,53 @@ def _search_semantic_scholar(
     limit: int,
     fields_of_study: Optional[str] = None,
 ) -> list[dict]:
-    current_params: dict = {
+    params: dict = {
         "query": keyword,
-        "limit": min(limit, 100),
+        "limit": min(limit, 1000),
         "fields": _SS_FIELDS,
+        "sort": "citationCount:desc",
     }
     if fields_of_study:
-        current_params["fieldsOfStudy"] = fields_of_study
+        params["fieldsOfStudy"] = fields_of_study
     if start_date or end_date:
         year_from = str(start_date.year) if start_date else ""
         year_to = str(end_date.year) if end_date else ""
-        current_params["year"] = f"{year_from}-{year_to}"
+        params["year"] = f"{year_from}-{year_to}"
 
     headers = {}
     if settings.SEMANTIC_SCHOLAR_API_KEY:
         headers["x-api-key"] = settings.SEMANTIC_SCHOLAR_API_KEY
 
+    def _do_request(p: dict):
+        return requests.get(_SS_BULK_URL, params=p, headers=headers, timeout=30)
+
     with _ss_lock:
-        resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
+        resp = _do_request(params)
 
         if resp.status_code == 429:
-            logger.warning("Semantic Scholar 429; retrying after 2 s")
+            logger.warning("Semantic Scholar bulk 429; retrying after 2 s")
             time.sleep(2)
-            resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
+            resp = _do_request(params)
         if resp.status_code == 429:
-            # Still rate-limited — raise immediately to trigger OpenAlex fallback
-            logger.warning("Semantic Scholar 429 again; falling back to OpenAlex")
+            logger.warning("Semantic Scholar bulk 429 again; falling back to OpenAlex")
             resp.raise_for_status()
 
-        if resp.status_code == 403 and "year" in current_params:
-            logger.warning("Semantic Scholar 403 with year filter; retrying without date")
-            current_params = {k: v for k, v in current_params.items() if k != "year"}
-            resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
+        if resp.status_code == 403 and "year" in params:
+            logger.warning("Semantic Scholar bulk 403 with year filter; retrying without date")
+            params = {k: v for k, v in params.items() if k != "year"}
+            resp = _do_request(params)
 
         if resp.status_code == 403:
-            # IP rate-limited — raise immediately to trigger OpenAlex fallback
-            logger.warning("Semantic Scholar 403 (IP rate limit); raising for fallback")
+            logger.warning("Semantic Scholar bulk 403 (IP rate limit); raising for fallback")
             resp.raise_for_status()
 
         resp.raise_for_status()
-        # Enforce minimum inter-request gap to stay within SS rate limit (100 req/5 min).
         time.sleep(1.0)
     data = resp.json()
 
-    papers = []
-    for p in data.get("data", []):
-        paper_id = p.get("paperId") or ""
-        url = f"https://www.semanticscholar.org/paper/{paper_id}" if paper_id else ""
-        pdf_url = (p.get("openAccessPdf") or {}).get("url") or ""
-        venue_obj = p.get("publicationVenue") or {}
-        venue = venue_obj.get("name") or ""
-        pub_date = p.get("publicationDate") or (str(p["year"]) if p.get("year") else "")
-        authors = [a.get("name", "") for a in (p.get("authors") or [])[:5]]
-        arxiv_id = (p.get("externalIds") or {}).get("ArXiv") or ""
-
-        papers.append({
-            "paper_id": paper_id,
-            "title": p.get("title") or "",
-            "authors": authors,
-            "abstract": p.get("abstract") or "",
-            "url": url,
-            "pdf_url": pdf_url,
-            "published_date": pub_date,
-            "citation_count": p.get("citationCount") or 0,
-            "venue": venue,
-            "arxiv_id": arxiv_id,
-        })
-
+    papers = [_parse_paper(p) for p in data.get("data", [])]
     papers.sort(key=lambda x: x.get("citation_count", 0), reverse=True)
-    logger.info("Semantic Scholar '%s' → %d papers", keyword, len(papers))
+    logger.info("Semantic Scholar bulk '%s' → %d papers", keyword, len(papers))
     return papers
 
 
@@ -198,8 +253,9 @@ def search_papers(
     Returns:
         List of paper dicts sorted by citation count desc.
     """
+    ss_query = _expand_query(keyword)
     try:
-        result = _search_semantic_scholar(keyword, start_date, end_date, limit, fields_of_study)
+        result = _search_semantic_scholar(ss_query, start_date, end_date, limit, fields_of_study)
         if _source_out is not None:
             _source_out.append("Semantic Scholar")
         return result
