@@ -152,6 +152,7 @@ const en = {
     historyDelete: 'Delete',
     placeholder: 'e.g. RAG',
     buildBtn: 'Build',
+    cancelBtn: 'Cancel',
     building: 'Building…',
     buildHint: 'Fetching papers from Semantic Scholar and generating era analysis — may take 30–60 s',
     backBtn: 'Back to Search',

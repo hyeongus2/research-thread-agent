@@ -76,7 +76,7 @@ def _fetch_papers_per_era(
         end = _date(end_year, 12, 31)
         src: list = []
         try:
-            papers = semantic_scholar_service.search_papers(topic, start, end, papers_per_era, src)
+            papers = semantic_scholar_service.search_papers(topic, start, end, papers_per_era, src, fields_of_study="Computer Science")
         except Exception as exc:
             logger.warning("Era '%s' fetch failed: %s", label, exc)
             papers = []
@@ -302,7 +302,7 @@ def build_learning_path_stream(
             end = _date(end_year, 12, 31)
             src: list = []
             try:
-                papers = semantic_scholar_service.search_papers(topic, start, end, papers_per_era, src)
+                papers = semantic_scholar_service.search_papers(topic, start, end, papers_per_era, src, fields_of_study="Computer Science")
             except Exception as exc:
                 logger.warning("Era '%s' fetch failed: %s", label, exc)
                 papers = []

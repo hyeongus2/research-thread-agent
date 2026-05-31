@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import PaperCard from './PaperCard';
 
@@ -164,10 +164,19 @@ export default function CitationGraph({ embedded }) {
   const [activeTab, setActiveTab] = useState('graph');
   const [selectedId, setSelectedId] = useState(null);
   const [hoveredEdgeIdx, setHoveredEdgeIdx] = useState(null);
+  const abortRef = useRef(null);
+
+  const handleCancel = () => {
+    if (abortRef.current) { abortRef.current.abort(); abortRef.current = null; }
+    setBuildState('idle');
+  };
 
   const handleBuild = async () => {
     const q = query.trim();
     if (!q) return;
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setBuildState('loading');
     setResult(null);
     setSelectedId(null);
@@ -177,12 +186,15 @@ export default function CitationGraph({ embedded }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q, max_seed_papers: 20, max_depth: 1, min_citations: 0 }),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setResult(await res.json());
       setBuildState('done');
-    } catch {
-      setBuildState('error');
+    } catch (err) {
+      if (err?.name !== 'AbortError') setBuildState('error');
+    } finally {
+      abortRef.current = null;
     }
   };
 
@@ -220,8 +232,13 @@ export default function CitationGraph({ embedded }) {
       </p>
 
       {buildState === 'loading' && (
-        <div style={{ padding: '40px 0', textAlign: 'center', fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', fontStyle: 'italic' }}>
-          {ts.lineageLoading}
+        <div style={{ padding: '40px 0', textAlign: 'center' }}>
+          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', fontStyle: 'italic', marginBottom: 16 }}>
+            {ts.lineageLoading}
+          </div>
+          <button onClick={handleCancel} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 4, padding: '7px 18px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer' }}>
+            Cancel
+          </button>
         </div>
       )}
 
