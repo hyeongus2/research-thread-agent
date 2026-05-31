@@ -162,14 +162,17 @@ def generate_overview(keyword: str, papers: list[dict], lang: str = "en") -> str
     try:
         response = _client().messages.create(
             model=settings.CLAUDE_MODEL,
-            max_tokens=500,
+            max_tokens=2000,
             messages=[
                 {
                     "role": "user",
                     "content": (
-                        f'Write a 2-3 paragraph overview of the current research landscape on "{keyword}" '
-                        f"for an AI/ML researcher. Cover the main themes, key approaches, and notable trends. "
+                        f'Write a 4-5 paragraph overview of the current research landscape on "{keyword}" '
+                        f"for an AI/ML researcher. Cover: (1) the core problem and why it matters, "
+                        f"(2) dominant approaches and key techniques, (3) major milestones and influential work, "
+                        f"(4) current trends and open challenges, (5) practical applications and outlook. "
                         f"Write as plain prose — no markdown, no bullet points, no bold, no headers. "
+                        f"Each paragraph should be 3-5 complete sentences. Do not cut off mid-sentence.\n\n"
                         f"{papers_block}\n\nBe specific and informative. No preamble."
                         + (f" {lang_note}" if lang_note else "")
                     ),
