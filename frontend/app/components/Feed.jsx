@@ -146,53 +146,56 @@ function ResultCard({ item, type, onSummarize, summary, summaryLoading, summaryN
       </a>
 
       {(needsToggle || type === 'paper') && (
-        <div style={{ borderTop: '1px solid #F0EBE2', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          {needsToggle ? (
-            <button onClick={() => setExpanded(v => !v)} style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}>
-              {expanded ? ts.hideAbstract : ts.showAbstract}
-            </button>
-          ) : <span />}
-          {type === 'paper' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}>
-              {item.code_links?.length > 0 && (() => {
-                const best = item.code_links.find(l => l.is_official) || item.code_links[0];
-                return (
-                  <a
-                    href={best.repo_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' }}
-                  >
-                    {ts.codeBtn}
-                  </a>
-                );
-              })()}
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigator.clipboard.writeText(makeBibtex(item));
-                  setCiteCopied(true);
-                  setTimeout(() => setCiteCopied(false), 1500);
-                }}
-                style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: citeCopied ? '#4A7C59' : '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'color 0.15s' }}
-              >
-                {citeCopied ? ts.bibtexCopied : ts.bibtexBtn}
+        <div style={{ borderTop: '1px solid #F0EBE2' }}>
+          <div style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            {needsToggle ? (
+              <button onClick={() => setExpanded(v => !v)} style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}>
+                {expanded ? ts.hideAbstract : ts.showAbstract}
               </button>
-              {abstract && (
-                summaryNoKey ? (
-                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.noApiKey}</span>
-                ) : summary ? (
-                  <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', margin: 0, lineHeight: 1.5 }}>{summary}</p>
-                ) : summaryLoading ? (
-                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.aiLoading}</span>
-                ) : (
-                  <button onClick={onSummarize} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    {ts.aiSummarizeBtn}
-                  </button>
-                )
-              )}
-            </div>
+            ) : <span />}
+            {type === 'paper' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                {item.code_links?.length > 0 && (() => {
+                  const best = item.code_links.find(l => l.is_official) || item.code_links[0];
+                  return (
+                    <a
+                      href={best.repo_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' }}
+                    >
+                      {ts.codeBtn}
+                    </a>
+                  );
+                })()}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigator.clipboard.writeText(makeBibtex(item));
+                    setCiteCopied(true);
+                    setTimeout(() => setCiteCopied(false), 1500);
+                  }}
+                  style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: citeCopied ? '#4A7C59' : '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'color 0.15s' }}
+                >
+                  {citeCopied ? ts.bibtexCopied : ts.bibtexBtn}
+                </button>
+                {abstract && !summary && (
+                  summaryNoKey ? (
+                    <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.noApiKey}</span>
+                  ) : summaryLoading ? (
+                    <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.aiLoading}</span>
+                  ) : (
+                    <button onClick={onSummarize} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      {ts.aiSummarizeBtn}
+                    </button>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+          {summary && (
+            <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#3A342B', margin: 0, lineHeight: 1.6, padding: '0 20px 12px' }}>{summary}</p>
           )}
         </div>
       )}
