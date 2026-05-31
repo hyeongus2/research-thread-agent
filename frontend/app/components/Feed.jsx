@@ -5,7 +5,7 @@ import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, 
 import { useLanguage } from '../context/LanguageContext';
 import LearningPath from './LearningPath';
 import CitationGraph from './CitationGraph';
-import PaperCard from './PaperCard';
+import PaperCard, { TYPE_COLORS } from './PaperCard';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
@@ -182,7 +182,7 @@ function SearchProgress({ lang, elapsed, sourceStatus, papersSourceLabel }) {
 // =============================================================================
 // Trending card (single paper in HF feed)
 // =============================================================================
-function TrendingCard({ p, onQuickSearch }) {
+function TrendingCard({ p, onQuickSearch, onSummarize, aiSummary, summaryLoading, summaryNoKey }) {
   const { t, lang } = useLanguage();
   const tf = t.feed;
   const ts = t.search;
@@ -212,19 +212,37 @@ function TrendingCard({ p, onQuickSearch }) {
           </p>
         </div>
       )}
-      <div style={{ borderTop: '1px solid #F0EBE2', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ borderTop: '1px solid #F0EBE2', padding: '8px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         {needsToggle ? (
           <button onClick={() => setExpanded(v => !v)} style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}>
             {expanded ? ts.hideAbstract : ts.showAbstract}
           </button>
         ) : <span />}
-        <button
-          onClick={() => onQuickSearch(p.title.split(':')[0].trim())}
-          style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer' }}
-        >
-          {lang === 'ko' ? '관련 논문 검색 →' : 'Search related →'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {onSummarize && !aiSummary && (
+            summaryNoKey ? (
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.noApiKey}</span>
+            ) : summaryLoading ? (
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', fontStyle: 'italic' }}>{ts.aiLoading}</span>
+            ) : (
+              <button onClick={onSummarize} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '3px 10px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {ts.aiSummarizeBtn}
+              </button>
+            )
+          )}
+          <button
+            onClick={() => onQuickSearch(p.title.split(':')[0].trim())}
+            style={{ background: 'none', border: 'none', padding: 0, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            {lang === 'ko' ? '관련 논문 검색 →' : 'Search related →'}
+          </button>
+        </div>
       </div>
+      {aiSummary && (
+        <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#3A342B', margin: 0, lineHeight: 1.6, padding: '0 20px 12px' }}>
+          {aiSummary}
+        </p>
+      )}
     </div>
   );
 }
@@ -235,11 +253,32 @@ function TrendingCard({ p, onQuickSearch }) {
 function TrendingFeed({ onQuickSearch }) {
   const { t, lang } = useLanguage();
   const tf = t.feed;
+  const ts = t.search;
   const [period, setPeriod] = useState('daily');
   const [papers, setPapers] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [fallbackDays, setFallbackDays] = useState(0);
+  const [paperSummaries, setPaperSummaries] = useState({});
+  const [summaryLoading, setSummaryLoading] = useState({});
+  const [paperNoKey, setPaperNoKey] = useState({});
+
+  const fetchPaperSummary = async (title, abstract) => {
+    if (!abstract || paperSummaries[title] !== undefined || paperNoKey[title] || summaryLoading[title]) return;
+    setSummaryLoading(s => ({ ...s, [title]: true }));
+    try {
+      const r = await fetch(`${API}/summarize/paper`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ abstract, lang }),
+      });
+      const d = await r.json();
+      if (d.no_api_key) setPaperNoKey(s => ({ ...s, [title]: true }));
+      else if (d.summary) setPaperSummaries(s => ({ ...s, [title]: d.summary }));
+    } finally {
+      setSummaryLoading(s => ({ ...s, [title]: false }));
+    }
+  };
 
   useEffect(() => {
     setPapers(null);
@@ -317,7 +356,15 @@ function TrendingFeed({ onQuickSearch }) {
       )}
 
       {papers && papers.map((p, i) => (
-        <TrendingCard key={i} p={p} onQuickSearch={onQuickSearch} />
+        <TrendingCard
+          key={i}
+          p={p}
+          onQuickSearch={onQuickSearch}
+          onSummarize={() => fetchPaperSummary(p.title, p.summary)}
+          aiSummary={paperSummaries[p.title]}
+          summaryLoading={!!summaryLoading[p.title]}
+          summaryNoKey={!!paperNoKey[p.title]}
+        />
       ))}
     </div>
   );
@@ -330,7 +377,7 @@ function TrendingFeed({ onQuickSearch }) {
 let _lastCheckedRefreshKey = -1;
 
 function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const tf = t.feed;
   const ts = t.search;
   const [papers, setPapers] = useState([]);
@@ -339,6 +386,26 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
   const [checkProgress, setCheckProgress] = useState([]); // [{label, status, newCount}]
   const checkStartedRef = useRef(false);
   const esRef = useRef(null);
+  const [paperSummaries, setPaperSummaries] = useState({});
+  const [summaryLoading, setSummaryLoading] = useState({});
+  const [paperNoKey, setPaperNoKey] = useState({});
+
+  const fetchPaperSummary = async (title, abstract) => {
+    if (!abstract || paperSummaries[title] !== undefined || paperNoKey[title] || summaryLoading[title]) return;
+    setSummaryLoading(s => ({ ...s, [title]: true }));
+    try {
+      const r = await fetch(`${API}/summarize/paper`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ abstract, lang }),
+      });
+      const d = await r.json();
+      if (d.no_api_key) setPaperNoKey(s => ({ ...s, [title]: true }));
+      else if (d.summary) setPaperSummaries(s => ({ ...s, [title]: d.summary }));
+    } finally {
+      setSummaryLoading(s => ({ ...s, [title]: false }));
+    }
+  };
 
   const loadPapers = useCallback(() => {
     setLoading(true);
@@ -476,6 +543,10 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
           showTopicBadge
           showReadDot
           showTimestamp
+          onSummarize={() => fetchPaperSummary(p.title, p.abstract)}
+          summary={paperSummaries[p.title]}
+          summaryLoading={!!summaryLoading[p.title]}
+          summaryNoKey={!!paperNoKey[p.title]}
         />
       ))}
     </div>
