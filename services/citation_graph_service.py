@@ -44,7 +44,7 @@ def build_citation_graph(
     _ = max_depth
 
     # 1. Search seed papers
-    seed_raw = search_papers(query, limit=max_seed_papers, fields_of_study="Computer Science,Mathematics,Engineering")
+    seed_raw = search_papers(query, limit=max_seed_papers, fields_of_study="Computer Science,Mathematics,Statistics,Engineering")
 
     if not seed_raw:
         return {

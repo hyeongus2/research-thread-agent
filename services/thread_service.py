@@ -83,7 +83,7 @@ def create_research_thread(
             futures[executor.submit(
                 semantic_scholar_service.search_papers,
                 keyword, start_date, end_date, paper_limit, papers_source_out,
-                "Computer Science,Mathematics,Engineering",
+                "Computer Science,Mathematics,Statistics,Engineering",
             )] = "papers"
         else:
             _progress("source_done", "papers:0")
