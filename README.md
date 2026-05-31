@@ -192,7 +192,15 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.10.1 (current)
+### v0.11.0 (current)
+- [x] **Unified paper card component** — single `PaperCard` component replaces four separate card implementations across Quick Search, My Feed, Learning Path, and Citation Graph; all cards now share identical layout, abstract toggle, and action buttons
+- [x] **Weekend / holiday fallback for Trending** — when HF Daily Papers has no papers for today (weekends, holidays), automatically scans back up to 7 days and shows the most recent available batch with an explanatory note below the period selector
+- [x] **My Feed auto-mark-as-read** — red dots on My Feed cards clear automatically as soon as the tab loads, without requiring a manual click
+- [x] **AI output plain prose** — fixed raw markdown symbols (`##`, `**`, bullet points) appearing verbatim in AI Overview, per-paper summaries, and Learning Path era summaries; all three AI functions now instruct Claude to write plain prose
+- [x] **Deeper Learning Path era analysis** — per-paper analysis now requests 2–4 substantive sentences per field (Problem / Solution / Significance / Limitations) with explicit guidance on what each field should cover; `max_tokens` raised from 4,000 to 8,000 to accommodate longer output; era summary raised to 3–4 sentences
+- [x] **BibTeX on all paper cards** — "Cite" copy button now available in My Feed, Learning Path, and Citation Graph cards (was Quick Search and Venues only)
+
+### v0.10.1
 - [x] **Venues tab: accurate venue filtering** — switched from keyword search + post-filter to Semantic Scholar bulk search `venue` parameter, which filters by actual publication venue; NeurIPS 2024 results went from ~360 to 4,257 papers with correct top-cited papers (YOLOv10, VMamba, Depth Anything V2, etc.)
 - [x] **Venues tab: no search query bias** — `query` parameter removed entirely; `venue` + `year` filter alone is sufficient and avoids dropping papers that don't match a topic keyword
 - [x] **Venues tab: dynamic years** — year list generated from current year back to 2010; selecting the current year shows a note that SS may tag papers by arXiv update date rather than the actual conference year
@@ -203,30 +211,19 @@ research-thread-agent/
 ### v0.10.0
 - [x] **Research Lineage** — new Search mode: citation-based graph (SVG, year-based left→right layout) showing how seed papers connect to the foundational works they cite; depth-1 reference expansion via Semantic Scholar; importance score per paper; influential edges highlighted; side panel on node click; "All Results" fallback tab
 - [x] **Venues tab** — 4th navigation tab for browsing papers by conference and year (NeurIPS, ICML, ICLR, CVPR, AAAI, ECCV, ACL, EMNLP · 2020–2025)
-- [x] **BibTeX copy button** — "Cite" button on every paper card; generates and copies a formatted BibTeX entry to the clipboard (`@inproceedings` for conference papers, `@article` for arXiv preprints)
+- [x] **BibTeX copy button** — "Cite" button on Quick Search and Venues paper cards; generates and copies a formatted BibTeX entry to the clipboard (`@inproceedings` for conference papers, `@article` for arXiv preprints)
 - [x] **Code link button** — "Code" button on paper cards when a GitHub implementation is available; powered by the Papers with Code archive (run `python scripts/import_pwc_links.py` once to populate)
 - [x] **arXiv ID extraction** — Semantic Scholar responses now include `arxiv_id` from `externalIds`, enabling PWC code-link matching and future integrations
 - [x] **Search speed fix** — global `threading.Semaphore(1)` + 1 s inter-request gap prevents concurrent Semantic Scholar calls from cascading 429s; minimises OpenAlex fallback (worst-case latency: ~40 s → ~2 s per query)
 - [x] **LAN support** — uvicorn binds to `0.0.0.0`; frontend API URL is hostname-dynamic; sensitive endpoints (API key save, DB reset) remain localhost-only
 
-### v0.9.3
-- [x] Fix: Trending "Today" tab now uses UTC date when querying HF Daily Papers — was returning 0–1 results for UTC+9 (KST) users before HF's daily update window
-- [x] Fix: Bell badge updates immediately after My Feed SSE check completes, instead of waiting up to 60 s for the next poll cycle
-- [x] Fix: My Feed SSE check no longer re-runs on every tab visit — only runs when papers are absent or interests were explicitly saved
-- [x] Improvement: My Feed auto-refreshes papers (without SSE) when the background scheduler adds new notifications, detected via the existing 60 s unread-count poll
-
-### v0.9.2
-- [x] Fix: "Mark all read" in notification dropdown now immediately clears the bell badge
-- [x] Fix: clicking an individual unread notification now immediately decrements the unread count badge
-
-### v0.9.1
-- [x] Fix: saving interests in Settings now always triggers the My Feed SSE check, even when the feed already has papers
-- [x] Fix: email digest now sends correctly for users without an explicit `notification_settings` row (treats missing row as enabled)
-
-### v0.9.0
-- [x] Daily Digest email toggle defaults to **on** for new users (and correctly reads `true` when no settings row exists)
-- [x] Breakthrough Alerts toggle now persists — stored in `notification_settings.breakthrough_enabled`; reopening Settings reflects the saved state
-- [x] Notification settings PATCH accepts either field independently so toggling one does not reset the other
+### v0.9.x
+- [x] Fix: Trending "Today" tab uses UTC date — avoids empty results for UTC+9 (KST) users before HF's daily update window
+- [x] Fix: Bell badge updates immediately after My Feed SSE check completes; bell unread count decrements immediately on individual notification read
+- [x] Fix: My Feed SSE check no longer re-runs on every tab visit — only when papers are absent or interests were explicitly saved; auto-refreshes when background scheduler adds new papers
+- [x] Fix: saving interests in Settings always triggers a My Feed re-check; email digest sends correctly for users without an explicit `notification_settings` row
+- [x] Fix: notification settings PATCH accepts fields independently; Breakthrough Alerts toggle persists across Settings reopens
+- [x] Settings: API key and Claude model selectable in-app (saved to `.env`); Daily Digest toggle defaults on for new users
 
 ### v0.8.0
 - [x] My Feed: personalized paper alerts from subscribed categories and keywords
