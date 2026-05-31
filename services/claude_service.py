@@ -44,8 +44,9 @@ def summarize_paper(abstract: str, lang: str = "en") -> Optional[str]:
             messages=[{
                 "role": "user",
                 "content": (
-                    f"Summarize this paper abstract in 2-3 sentences. "
-                    f"Cover: (1) the problem addressed, (2) the proposed approach, (3) key results or contributions.\n\n"
+                    f"Summarize this paper abstract in 2-3 plain sentences. "
+                    f"Cover: (1) the problem addressed, (2) the proposed approach, (3) key results or contributions. "
+                    f"Write as plain prose — no markdown, no bullet points, no bold, no headers.\n\n"
                     f"{abstract}\n\nNo preamble."
                     + (f" {lang_note}" if lang_note else "")
                 ),
@@ -125,22 +126,23 @@ def generate_overview(keyword: str, papers: list[dict], lang: str = "en") -> str
     Args:
         keyword: The research topic.
         papers: List of paper dicts (uses 'title' and 'abstract' fields for context).
+            Capped to top 20 papers with first 250 chars of abstract to keep input concise.
         lang: Response language code ("en" or "ko").
 
     Returns:
-        Plain-text overview string.
+        Plain-text overview string (2-3 paragraphs, no markdown).
     """
     if not settings.ANTHROPIC_API_KEY:
         return None
 
     if papers:
         papers_block = "Based on these papers:\n"
-        for p in papers:
+        for p in papers[:20]:
             title = p.get("title", "")
-            abstract = p.get("abstract") or ""
+            abstract = (p.get("abstract") or "")[:250]
             papers_block += f"- {title}"
             if abstract:
-                papers_block += f"\n  {abstract}"
+                papers_block += f": {abstract}"
             papers_block += "\n"
     else:
         papers_block = "No specific papers available — give a general landscape overview."
@@ -150,13 +152,14 @@ def generate_overview(keyword: str, papers: list[dict], lang: str = "en") -> str
     try:
         response = _client().messages.create(
             model=settings.CLAUDE_MODEL,
-            max_tokens=600,
+            max_tokens=500,
             messages=[
                 {
                     "role": "user",
                     "content": (
-                        f'Write a concise overview of the current research landscape on "{keyword}" '
+                        f'Write a 2-3 paragraph overview of the current research landscape on "{keyword}" '
                         f"for an AI/ML researcher. Cover the main themes, key approaches, and notable trends. "
+                        f"Write as plain prose — no markdown, no bullet points, no bold, no headers. "
                         f"{papers_block}\n\nBe specific and informative. No preamble."
                         + (f" {lang_note}" if lang_note else "")
                     ),
