@@ -112,26 +112,34 @@ function BuildProgress({ topic, progress, tl }) {
             <div key={era.label} style={{
               display: 'flex', alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '5px 0',
+              padding: '6px 0',
               borderBottom: '1px solid #F5F0E8',
               fontFamily: "'Geist', sans-serif", fontSize: 12,
             }}>
-              <span style={{ color: era.status === 'fetching' ? '#C84B31' : '#1A1611' }}>
+              <span style={{
+                color: era.status === 'done' ? '#1B7A2E'
+                  : (era.status === 'analyzing' || era.status === 'fetching') ? '#C84B31'
+                  : '#9B9185',
+                fontWeight: (era.status === 'analyzing' || era.status === 'fetching') ? 600 : 400,
+              }}>
                 {era.status === 'fetching'
                   ? tl.fetchingEra(era.label)
-                  : tl.eraFound(era.label, era.count)}
+                  : era.status === 'analyzing'
+                  ? tl.analyzingEra(era.label)
+                  : era.status === 'done'
+                  ? tl.eraAnalyzed
+                  : era.count !== null
+                  ? tl.eraFound(era.label, era.count)
+                  : era.label}
               </span>
               <span style={{
                 color: era.status === 'done' ? '#1B7A2E'
-                  : era.status === 'analyzing' ? '#C84B31'
-                  : era.status === 'fetching' ? '#C84B31'
+                  : (era.status === 'analyzing' || era.status === 'fetching') ? '#C84B31'
                   : '#C8C0B0',
-                fontSize: 11,
-                fontWeight: (era.status === 'analyzing' || era.status === 'fetching') ? 600 : 400,
+                fontSize: 13, marginLeft: 8,
               }}>
-                {era.status === 'done' ? tl.eraAnalyzed
-                  : era.status === 'analyzing' ? tl.analyzingEra(era.label)
-                  : era.status === 'fetching' ? '…'
+                {era.status === 'done' ? '✓'
+                  : (era.status === 'analyzing' || era.status === 'fetching') ? '…'
                   : tl.eraPending}
               </span>
             </div>
