@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 _MAX_NODES = 50
 _MAX_EDGES = 100
-_REF_SEEDS_CAP = 5   # limit references API calls to top N seeds
+_REF_SEEDS_CAP = 3   # limit references API calls to top N seeds
 _REFS_PER_SEED = 30
 
 
@@ -35,7 +35,7 @@ def _parse_year(published_date: str) -> int | None:
 
 def build_citation_graph(
     query: str,
-    max_seed_papers: int = 20,
+    max_seed_papers: int = 10,
     max_depth: int = 1,
     min_citations: int = 0,
 ) -> dict:
@@ -85,10 +85,15 @@ def build_citation_graph(
             break
 
         seed_key = seed["paper_id"]
+        seed_year = _parse_year(seed.get("published_date", ""))
         refs = get_paper_references(seed_key, limit=_REFS_PER_SEED)
 
         for ref in refs:
             if (ref.get("citation_count") or 0) < min_citations:
+                continue
+            # Skip references published after the seed — likely metadata anomalies
+            ref_year = _parse_year(ref.get("published_date", ""))
+            if seed_year and ref_year and ref_year > seed_year:
                 continue
             ref_key = _node_key(ref)
             if not ref_key:

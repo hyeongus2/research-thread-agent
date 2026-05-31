@@ -133,7 +133,7 @@ const en = {
     lineageHint: 'Shows how seed papers connect to the works they cite. Citation relationships do not guarantee direct intellectual inheritance.',
     lineageGraphTab: 'Graph',
     lineageAllTab: (n) => `All Results (${n})`,
-    lineageSubsetNote: (nodes, totalNodes, edges, totalEdges) => `Showing ${nodes}/${totalNodes} nodes · ${edges}/${totalEdges} edges — see All Results tab for full data`,
+    lineageSubsetNote: (nodes, totalNodes, edges, totalEdges, isolated) => `Showing ${nodes}/${totalNodes} nodes · ${edges}/${totalEdges} edges${isolated > 0 ? ` · ${isolated} isolated hidden` : ''} — see All Results tab for full data`,
     lineageViewSource: 'View on Semantic Scholar →',
     venuesSelectYear: 'SELECT YEAR',
     aiLoading: 'Generating…',

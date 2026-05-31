@@ -55,6 +55,23 @@ function selectGraphEdges(edges, visibleIds) {
     .slice(0, GRAPH_MAX_EDGES);
 }
 
+// ---------- Edge path (bezier curve) ----------
+
+function edgePath(sp, tp) {
+  const x1 = sp.x + NODE_W;
+  const y1 = sp.y + NODE_H / 2;
+  const x2 = tp.x;
+  const y2 = tp.y + NODE_H / 2;
+  const dx = x2 - x1;
+  if (dx > 10) {
+    const cp = dx * 0.45;
+    return `M ${x1} ${y1} C ${x1 + cp} ${y1} ${x2 - cp} ${y2} ${x2} ${y2}`;
+  }
+  // Same column or backward edge: arc outward to the right
+  const arc = 50 + Math.abs(y2 - y1) * 0.2;
+  return `M ${x1} ${y1} C ${x1 + arc} ${y1} ${x2 + arc} ${y2} ${x2} ${y2}`;
+}
+
 // ---------- Year-based left-to-right layout ----------
 
 function computeLayout(nodes) {
@@ -203,7 +220,14 @@ export default function CitationGraph({ embedded }) {
   const graphNodes = selectGraphNodes(allNodes, allEdges);
   const visibleIds = new Set(graphNodes.map(n => n.id));
   const graphEdges = selectGraphEdges(allEdges, visibleIds);
-  const { positions, svgW, svgH, cols } = computeLayout(graphNodes);
+
+  // Filter isolated nodes from graph view (nodes with no edges are just noise)
+  const connectedIds = new Set();
+  graphEdges.forEach(e => { connectedIds.add(e.source); connectedIds.add(e.target); });
+  const displayNodes = graphNodes.filter(n => connectedIds.has(n.id));
+  const isolatedCount = graphNodes.length - displayNodes.length;
+
+  const { positions, svgW, svgH, cols } = computeLayout(displayNodes);
   const nodeById = Object.fromEntries(allNodes.map(n => [n.id, n]));
   const selectedNode = selectedId ? nodeById[selectedId] : null;
 
@@ -321,15 +345,12 @@ export default function CitationGraph({ embedded }) {
                     const sp = positions[e.source];
                     const tp = positions[e.target];
                     if (!sp || !tp) return null;
-                    const x1 = sp.x + NODE_W;
-                    const y1 = sp.y + NODE_H / 2;
-                    const x2 = tp.x;
-                    const y2 = tp.y + NODE_H / 2;
                     const isHov = hoveredEdgeIdx === i;
                     const isInf = e.isInfluential;
                     return (
-                      <line key={i}
-                        x1={x1} y1={y1} x2={x2} y2={y2}
+                      <path key={i}
+                        d={edgePath(sp, tp)}
+                        fill="none"
                         stroke={isInf ? '#C84B31' : '#D0C8C0'}
                         strokeWidth={isInf ? 1.5 : 1}
                         strokeOpacity={isHov ? 1 : isInf ? 0.75 : 0.55}
@@ -369,7 +390,7 @@ export default function CitationGraph({ embedded }) {
                   })()}
 
                   {/* Nodes */}
-                  {graphNodes.map(n => {
+                  {displayNodes.map(n => {
                     const pos = positions[n.id];
                     if (!pos) return null;
                     const isSeed = n.type === 'seed';
@@ -406,9 +427,9 @@ export default function CitationGraph({ embedded }) {
               </div>
 
               {/* Subset note */}
-              {(graphNodes.length < allNodes.length || graphEdges.length < allEdges.length) && (
+              {(displayNodes.length < allNodes.length || graphEdges.length < allEdges.length) && (
                 <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '5px 0 0', textAlign: 'right' }}>
-                  {ts.lineageSubsetNote(graphNodes.length, allNodes.length, graphEdges.length, allEdges.length)}
+                  {ts.lineageSubsetNote(displayNodes.length, allNodes.length, graphEdges.length, allEdges.length, isolatedCount)}
                 </p>
               )}
 

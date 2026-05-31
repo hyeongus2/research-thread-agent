@@ -133,7 +133,7 @@ const ko = {
     lineageHint: '시드 논문이 인용하는 논문의 연결을 보여줍니다. 인용 관계는 직접적인 지적 계보를 보증하지 않습니다.',
     lineageGraphTab: '그래프',
     lineageAllTab: (n) => `전체 결과 (${n})`,
-    lineageSubsetNote: (nodes, totalNodes, edges, totalEdges) => `${nodes}/${totalNodes}개 노드 · ${edges}/${totalEdges}개 엣지 표시 중 — 전체 결과 탭에서 모두 확인`,
+    lineageSubsetNote: (nodes, totalNodes, edges, totalEdges, isolated) => `${nodes}/${totalNodes}개 노드 · ${edges}/${totalEdges}개 엣지 표시 중${isolated > 0 ? ` · ${isolated}개 고립 노드 숨김` : ''} — 전체 결과 탭에서 모두 확인`,
     lineageViewSource: 'Semantic Scholar에서 보기 →',
     venuesSelectYear: '연도 선택',
     aiLoading: '생성 중…',
