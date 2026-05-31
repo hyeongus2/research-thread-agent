@@ -98,6 +98,44 @@ def _serialize_paper(paper: dict) -> dict:
     return result
 
 
+def _analyse_era(
+    topic: str,
+    label: str,
+    era_papers: list,
+    models_payload: list,
+    repos_payload: list,
+    ai_key_missing: bool,
+    lang: str,
+) -> dict:
+    """Run Claude analysis for one era and return the assembled era dict."""
+    serialized = [_serialize_paper(p) for p in era_papers]
+    analysis = claude_service.generate_era_analysis(topic, label, serialized, lang=lang)
+
+    era_summary = ""
+    ai_status = "no_key" if ai_key_missing else "ok"
+
+    if analysis:
+        era_summary = analysis.get("summary", "")
+        paper_analyses = {p.get("index", 0): p for p in analysis.get("papers", [])}
+        for i, paper in enumerate(serialized, 1):
+            pa = paper_analyses.get(i, {})
+            paper["problem"] = pa.get("problem", "")
+            paper["solution"] = pa.get("solution", "")
+            paper["significance"] = pa.get("significance", "")
+            paper["limitations"] = pa.get("limitations", "")
+    elif not ai_key_missing:
+        ai_status = "error"
+
+    return {
+        "label": label,
+        "summary": era_summary,
+        "ai_status": ai_status,
+        "papers": serialized,
+        "models": models_payload,
+        "repos": repos_payload,
+    }
+
+
 def _build_result(
     topic: str,
     era_groups: dict,
@@ -107,38 +145,39 @@ def _build_result(
     repos_error: bool,
     lang: str,
 ) -> tuple[dict, str]:
-    """Shared result assembly: call Claude per era and compose the final dict."""
+    """Shared result assembly: call Claude per era (parallel) and compose the final dict."""
     ai_key_missing = not settings.ANTHROPIC_API_KEY
-    eras = []
 
-    for label, era_papers in era_groups.items():
-        serialized = [_serialize_paper(p) for p in era_papers]
+    era_items = list(era_groups.items())
 
-        analysis = claude_service.generate_era_analysis(topic, label, serialized, lang=lang)
+    with ThreadPoolExecutor(max_workers=len(era_items) or 1) as pool:
+        futures = {
+            pool.submit(
+                _analyse_era,
+                topic, label, papers,
+                models_payload, repos_payload,
+                ai_key_missing, lang,
+            ): idx
+            for idx, (label, papers) in enumerate(era_items)
+        }
+        era_results: dict[int, dict] = {}
+        for future in futures:
+            idx = futures[future]
+            try:
+                era_results[idx] = future.result()
+            except Exception as exc:
+                logger.error("Era analysis future failed (idx=%d): %s", idx, exc)
+                label, papers = era_items[idx]
+                era_results[idx] = {
+                    "label": label,
+                    "summary": "",
+                    "ai_status": "error",
+                    "papers": [_serialize_paper(p) for p in papers],
+                    "models": models_payload,
+                    "repos": repos_payload,
+                }
 
-        era_summary = ""
-        ai_status = "no_key" if ai_key_missing else "ok"
-
-        if analysis:
-            era_summary = analysis.get("summary", "")
-            paper_analyses = {p.get("index", 0): p for p in analysis.get("papers", [])}
-            for i, paper in enumerate(serialized, 1):
-                pa = paper_analyses.get(i, {})
-                paper["problem"] = pa.get("problem", "")
-                paper["solution"] = pa.get("solution", "")
-                paper["significance"] = pa.get("significance", "")
-                paper["limitations"] = pa.get("limitations", "")
-        elif not ai_key_missing:
-            ai_status = "error"
-
-        eras.append({
-            "label": label,
-            "summary": era_summary,
-            "ai_status": ai_status,
-            "papers": serialized,
-            "models": models_payload,
-            "repos": repos_payload,
-        })
+    eras = [era_results[i] for i in range(len(era_items))]
 
     all_years = sorted({
         str(p.get("published_date") or "")[:4]
@@ -289,39 +328,41 @@ def build_learning_path_stream(
         else:
             yield {"type": "repos_done", "count": len(repos_payload)}
 
-    # ── Per-era Claude analysis ─────────────────────────────────────────────────
+    # ── Per-era Claude analysis (parallel) ────────────────────────────────────
     ai_key_missing = not settings.ANTHROPIC_API_KEY
-    eras = []
+    era_items = list(era_groups.items())
 
-    for label, era_papers in era_groups.items():
-        serialized = [_serialize_paper(p) for p in era_papers]
-        yield {"type": "analyzing_era", "label": label}
+    yield {"type": "analyzing_era", "label": "all"}
 
-        analysis = claude_service.generate_era_analysis(topic, label, serialized, lang=lang)
+    era_results: dict[int, dict] = {}
+    with ThreadPoolExecutor(max_workers=len(era_items) or 1) as pool:
+        futures = {
+            pool.submit(
+                _analyse_era,
+                topic, label, papers,
+                models_payload, repos_payload,
+                ai_key_missing, lang,
+            ): idx
+            for idx, (label, papers) in enumerate(era_items)
+        }
+        for future in futures:
+            idx = futures[future]
+            label = era_items[idx][0]
+            try:
+                era_results[idx] = future.result()
+            except Exception as exc:
+                logger.error("Era analysis future failed (idx=%d): %s", idx, exc)
+                era_results[idx] = {
+                    "label": label,
+                    "summary": "",
+                    "ai_status": "error",
+                    "papers": [_serialize_paper(p) for p in era_items[idx][1]],
+                    "models": models_payload,
+                    "repos": repos_payload,
+                }
+            yield {"type": "era_analyzed", "label": label}
 
-        era_summary = ""
-        ai_status = "no_key" if ai_key_missing else "ok"
-        if analysis:
-            era_summary = analysis.get("summary", "")
-            paper_analyses = {p.get("index", 0): p for p in analysis.get("papers", [])}
-            for i, paper in enumerate(serialized, 1):
-                pa = paper_analyses.get(i, {})
-                paper["problem"] = pa.get("problem", "")
-                paper["solution"] = pa.get("solution", "")
-                paper["significance"] = pa.get("significance", "")
-                paper["limitations"] = pa.get("limitations", "")
-        elif not ai_key_missing:
-            ai_status = "error"
-
-        eras.append({
-            "label": label,
-            "summary": era_summary,
-            "ai_status": ai_status,
-            "papers": serialized,
-            "models": models_payload,
-            "repos": repos_payload,
-        })
-        yield {"type": "era_analyzed", "label": label}
+    eras = [era_results[i] for i in range(len(era_items))]
 
     # ── Overview ────────────────────────────────────────────────────────────────
     overview_papers = [p for era in eras for p in era.get("papers", [])][:10]
