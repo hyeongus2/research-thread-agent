@@ -999,6 +999,13 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
   const [sourceStatus, setSourceStatus] = useState({});
   const [sourceErrors, setSourceErrors] = useState({});
   const elapsedRef = useRef(null);
+  const searchAbortRef = useRef(null);
+
+  const handleCancelSearch = () => {
+    if (searchAbortRef.current) { searchAbortRef.current.abort(); searchAbortRef.current = null; }
+    if (elapsedRef.current) clearInterval(elapsedRef.current);
+    setSearchState('idle');
+  };
 
   // Tab / pagination
   const [activeTab, setActiveTab] = useState('paper');
@@ -1110,7 +1117,9 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
 
     const { start, end } = getPeriodDates(period, nMonths, customFrom, customTo);
     const searchLimits = getSearchLimits();
+    if (searchAbortRef.current) searchAbortRef.current.abort();
     const controller = new AbortController();
+    searchAbortRef.current = controller;
     const timeout = setTimeout(() => controller.abort(), 90000);
 
     try {
@@ -1157,9 +1166,11 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
           }
         }
       }
-    } catch {
+    } catch (err) {
       clearTimeout(timeout); clearInterval(elapsedRef.current);
-      setSearchState('error');
+      if (err?.name !== 'AbortError') setSearchState('error');
+    } finally {
+      searchAbortRef.current = null;
     }
   }, [query, period, nMonths, customFrom, customTo, userId]);
 
@@ -1406,7 +1417,14 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
                   )}
 
                   {searchState === 'loading' && (
-                    <SearchProgress lang={lang} elapsed={elapsed} sourceStatus={sourceStatus} papersSourceLabel={papersSourceLabel} />
+                    <div>
+                      <SearchProgress lang={lang} elapsed={elapsed} sourceStatus={sourceStatus} papersSourceLabel={papersSourceLabel} />
+                      <div style={{ textAlign: 'center', padding: '8px 0 16px' }}>
+                        <button onClick={handleCancelSearch} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 4, padding: '7px 18px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer' }}>
+                          {lang === 'ko' ? '취소' : 'Cancel'}
+                        </button>
+                      </div>
+                    </div>
                   )}
 
                   {searchState === 'done' && (

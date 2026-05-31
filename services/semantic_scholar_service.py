@@ -45,12 +45,15 @@ def _search_semantic_scholar(
     start_date: Optional[date],
     end_date: Optional[date],
     limit: int,
+    fields_of_study: Optional[str] = None,
 ) -> list[dict]:
     current_params: dict = {
         "query": keyword,
         "limit": min(limit, 100),
         "fields": _SS_FIELDS,
     }
+    if fields_of_study:
+        current_params["fieldsOfStudy"] = fields_of_study
     if start_date or end_date:
         year_from = str(start_date.year) if start_date else ""
         year_to = str(end_date.year) if end_date else ""
@@ -176,6 +179,7 @@ def search_papers(
     end_date: Optional[date] = None,
     limit: int = 50,
     _source_out: Optional[list] = None,
+    fields_of_study: Optional[str] = None,
 ) -> list[dict]:
     """Search for papers relevant to keyword.
 
@@ -189,12 +193,13 @@ def search_papers(
         limit: Maximum papers to return.
         _source_out: Optional single-element list; if provided, will be set to
             the name of the source actually used ("Semantic Scholar" or "OpenAlex").
+        fields_of_study: Optional SS fieldsOfStudy filter (e.g. "Computer Science").
 
     Returns:
         List of paper dicts sorted by citation count desc.
     """
     try:
-        result = _search_semantic_scholar(keyword, start_date, end_date, limit)
+        result = _search_semantic_scholar(keyword, start_date, end_date, limit, fields_of_study)
         if _source_out is not None:
             _source_out.append("Semantic Scholar")
         return result

@@ -152,6 +152,7 @@ const ko = {
     historyDelete: '삭제',
     placeholder: '예: RAG',
     buildBtn: '만들기',
+    cancelBtn: '취소',
     building: '만드는 중…',
     buildHint: 'Semantic Scholar에서 논문을 수집하고 시대별 분석을 생성하고 있어요 — 30~60초 소요될 수 있어요',
     backBtn: '검색으로 돌아가기',

@@ -168,6 +168,13 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
   const [lpHistory, setLpHistory] = useState([]);
 
   const eraTabRef = useRef(null);
+  const abortRef = useRef(null);
+
+  const handleCancel = () => {
+    if (abortRef.current) { abortRef.current.abort(); abortRef.current = null; }
+    setState('idle');
+    setProgress(INIT_PROGRESS);
+  };
 
   // Non-passive wheel listener so preventDefault() actually stops page scroll at edges
   useEffect(() => {
@@ -208,6 +215,9 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
 
   const buildTopic = async (trimmed) => {
     if (!trimmed) return;
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setState('loading');
     setProgress(INIT_PROGRESS);
 
@@ -222,6 +232,7 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
           models_count: lpLimits.models,
           repos_count: lpLimits.repos,
         }),
+        signal: controller.signal,
       });
       if (!res.ok) throw new Error('API error');
 
@@ -292,8 +303,10 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
           }
         }
       }
-    } catch {
-      setState('error');
+    } catch (err) {
+      if (err?.name !== 'AbortError') setState('error');
+    } finally {
+      abortRef.current = null;
     }
   };
 
@@ -390,6 +403,14 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
       {state === 'loading' && (
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <BuildProgress topic={topic} progress={progress} tl={tl} />
+          <div style={{ padding: '0 16px 24px', textAlign: 'center' }}>
+            <button
+              onClick={handleCancel}
+              style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 4, padding: '7px 18px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer' }}
+            >
+              {tl.cancelBtn || 'Cancel'}
+            </button>
+          </div>
         </div>
       )}
 
