@@ -40,13 +40,14 @@ def summarize_paper(abstract: str, lang: str = "en") -> Optional[str]:
     try:
         response = _client().messages.create(
             model=settings.CLAUDE_MODEL,
-            max_tokens=300,
+            max_tokens=600,
             messages=[{
                 "role": "user",
                 "content": (
-                    f"Summarize this paper abstract in 2-3 plain sentences. "
-                    f"Cover: (1) the problem addressed, (2) the proposed approach, (3) key results or contributions. "
-                    f"Write as plain prose — no markdown, no bullet points, no bold, no headers.\n\n"
+                    f"Summarize this paper abstract in 3-4 complete plain sentences. "
+                    f"Cover: (1) the problem addressed, (2) the proposed approach, (3) key results or contributions, (4) broader impact if notable. "
+                    f"Write as plain prose — no markdown, no bullet points, no bold, no headers. "
+                    f"Do not cut off mid-sentence.\n\n"
                     f"{abstract}\n\nNo preamble."
                     + (f" {lang_note}" if lang_note else "")
                 ),

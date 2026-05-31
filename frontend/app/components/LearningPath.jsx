@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
-import PaperCard from './PaperCard';
+import PaperCard, { TYPE_COLORS } from './PaperCard';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
