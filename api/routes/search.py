@@ -2,7 +2,7 @@ import json
 import queue
 import threading
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
@@ -120,6 +120,62 @@ def summarize_overview(body: SummarizeOverviewRequest):
         return {"overview": None, "no_api_key": True}
     overview = claude_service.generate_overview(body.keyword, body.papers, lang=body.lang)
     return {"overview": overview, "no_api_key": False}
+
+
+@router.get("/search/author-papers")
+def search_author_papers(name: str = Query(..., min_length=2), limit: int = Query(50, le=100)):
+    """Search papers by a specific author using the SS Author API.
+
+    More accurate than keyword search for author names — finds the author's
+    actual papers rather than papers that mention their name.
+    Returns same paper format as /search.
+    """
+    from services.lab_genealogy_service import search_author, get_author_papers
+    from datetime import datetime
+
+    author = search_author(name)
+    if not author or not author.get("authorId"):
+        return {"keyword": name, "papers": [], "models": [], "repos": [], "generated_at": datetime.utcnow().isoformat(), "author": None}
+
+    raw_papers = get_author_papers(author["authorId"], limit=limit)
+
+    papers = []
+    for p in raw_papers:
+        paper_id = p.get("paperId") or ""
+        url = f"https://www.semanticscholar.org/paper/{paper_id}" if paper_id else ""
+        venue_obj = p.get("publicationVenue") or {}
+        venue = venue_obj.get("name") or ""
+        authors = [a.get("name", "") for a in (p.get("authors") or [])[:5]]
+        papers.append({
+            "paper_id": paper_id,
+            "title": p.get("title") or "",
+            "authors": authors,
+            "abstract": p.get("abstract") or "",
+            "url": url,
+            "pdf_url": "",
+            "published_date": str(p.get("year") or ""),
+            "citation_count": p.get("citationCount") or 0,
+            "venue": venue,
+            "arxiv_id": "",
+            "code_links": [],
+        })
+
+    papers.sort(key=lambda x: x["citation_count"], reverse=True)
+
+    return {
+        "keyword": name,
+        "papers": papers,
+        "models": [],
+        "repos": [],
+        "generated_at": datetime.utcnow().isoformat(),
+        "author": {
+            "name": author["name"],
+            "authorId": author["authorId"],
+            "hIndex": author.get("hIndex"),
+            "citationCount": author.get("citationCount"),
+            "affiliations": author.get("affiliations") or [],
+        },
+    }
 
 
 @router.get("/search/history")

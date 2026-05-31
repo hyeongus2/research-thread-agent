@@ -105,3 +105,9 @@ class CitationGraphRequest(BaseModel):
     max_seed_papers: int = 20
     max_depth: int = 1
     min_citations: int = 0
+
+
+class LabGenealogyRequest(BaseModel):
+    root_author_name: str
+    max_depth: int = 1
+    lang: str = "en"

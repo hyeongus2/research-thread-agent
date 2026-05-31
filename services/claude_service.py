@@ -130,6 +130,56 @@ def generate_era_analysis(
         return None
 
 
+def generate_lab_focus_summary(
+    root_pi_name: str,
+    candidates: list[dict],
+    lang: str = "en",
+) -> Optional[dict]:
+    """Generate lab focus summaries for genealogy candidates from paper titles.
+
+    Returns {"nodes": [{"authorId": "...", "labFocus": "..."}]} or None.
+    LLM output is descriptive only; it does not confirm or validate relationships.
+    """
+    if not settings.ANTHROPIC_API_KEY or not candidates:
+        return None
+
+    lang_note = _lang_suffix(lang)
+    items = candidates[:15]
+    block = ""
+    for item in items:
+        titles = "; ".join(item.get("paper_titles", [])[:5])
+        block += f"- authorId: {item['authorId']}, name: {item['name']}, papers: {titles}\n"
+
+    try:
+        response = _client().messages.create(
+            model=settings.CLAUDE_MODEL,
+            max_tokens=1500,
+            messages=[{
+                "role": "user",
+                "content": (
+                    f"Based on publication metadata only, write a 1-sentence lab focus summary "
+                    f"for each researcher listed below. Focus on their research theme inferred "
+                    f"from paper titles. These are associated with PI '{root_pi_name}'.\n\n"
+                    f"IMPORTANT: Do NOT imply these are verified advisor-student relationships. "
+                    f"You are summarizing research themes only.\n\n"
+                    f"{block}\n"
+                    f"Return valid JSON only, no markdown fences.\n"
+                    f'Schema: {{"nodes": [{{"authorId": "...", "labFocus": "..."}}]}}'
+                    + (f"\n{lang_note}" if lang_note else "")
+                ),
+            }],
+        )
+        text = response.content[0].text.strip()
+        if text.startswith("```"):
+            text = "\n".join(text.split("\n")[1:])
+            text = text.rsplit("```", 1)[0].strip()
+        import json as _json
+        return _json.loads(text)
+    except Exception as exc:
+        logger.error("generate_lab_focus_summary failed: %s", exc)
+        return None
+
+
 def generate_overview(keyword: str, papers: list[dict], lang: str = "en") -> str:
     """Generate a plain-text overview of research on keyword.
 

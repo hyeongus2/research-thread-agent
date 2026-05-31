@@ -31,5 +31,8 @@ class Settings:
     # Re-generate a Learning Path only if the cached version is older than this
     LEARNING_PATH_CACHE_DAYS: int = 90
 
+    # Re-generate a Lab Genealogy only if the cached version is older than this
+    GENEALOGY_CACHE_DAYS: int = 30
+
 
 settings = Settings()

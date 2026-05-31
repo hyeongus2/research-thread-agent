@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen, Library, GitBranch } from 'lucide-react';
+import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen, Library, GitBranch, Users } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import LearningPath from './LearningPath';
 import CitationGraph from './CitationGraph';
+import LabGenealogy from './LabGenealogy';
 import PaperCard, { TYPE_COLORS } from './PaperCard';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
@@ -560,7 +561,7 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
 // =============================================================================
 // Notification dropdown
 // =============================================================================
-function NotificationDropdown({ userId, onClose, onAllRead, onRead }) {
+function NotificationDropdown({ userId, onClose, onAllRead, onRead, lpNotifs = [], onLpNotifClick }) {
   const { t } = useLanguage();
   const tn = t.notifications;
   const [notifs, setNotifs] = useState([]);
@@ -630,7 +631,32 @@ function NotificationDropdown({ userId, onClose, onAllRead, onRead }) {
 
       {/* List */}
       <div style={{ overflowY: 'auto', flex: 1 }}>
-        {notifs.length === 0 ? (
+        {/* Learning Path completion notifications */}
+        {lpNotifs.map(n => (
+          <div
+            key={n.id}
+            onClick={() => onLpNotifClick && onLpNotifClick(n.id)}
+            style={{
+              padding: '10px 14px', borderBottom: '1px solid #F0EBE0', cursor: 'pointer',
+              background: n.is_read ? 'transparent' : '#F5F0FF',
+              display: 'flex', gap: 10, alignItems: 'flex-start',
+            }}
+          >
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: n.is_read ? 'transparent' : '#7C5CBF', marginTop: 5, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', fontWeight: n.is_read ? 400 : 600, marginBottom: 2 }}>
+                Learning Path 완성
+              </div>
+              <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#5A4E3C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {n.topic}
+              </div>
+              <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9E9485', marginTop: 2 }}>
+                {relTime(n.completedAt)} · 클릭해서 보기
+              </div>
+            </div>
+          </div>
+        ))}
+        {notifs.length === 0 && lpNotifs.length === 0 ? (
           <div style={{ padding: '24px 14px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9E9485', textAlign: 'center' }}>
             {tn.empty}
           </div>
@@ -957,6 +983,7 @@ function SearchModeToggle({ mode, onMode, t }) {
         { key: 'quick', label: ts.modeQuick, Icon: Search },
         { key: 'learning', label: ts.modeLearning, Icon: BookOpen },
         { key: 'lineage', label: ts.modeLineage, Icon: GitBranch },
+        { key: 'genealogy', label: ts.modeGenealogy, Icon: Users },
       ].map(({ key, label, Icon }) => {
         const active = mode === key;
         return (
@@ -980,6 +1007,11 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
 
   const [view, setView] = useState('trending');      // 'trending' | 'myFeed' | 'search'
   const [searchMode, setSearchMode] = useState('quick'); // 'quick' | 'learning'
+
+  // Learning Path local notifications (not persisted to backend)
+  const [lpNotifs, setLpNotifs] = useState([]); // [{id, topic, completedAt, is_read}]
+  const [lpToast, setLpToast] = useState(null); // { topic } | null
+  const lpToastTimerRef = useRef(null);
 
   const today = new Date();
   const dateLabel = today.toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' });
@@ -1090,10 +1122,68 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
   };
 
   // ── Search ────────────────────────────────────────────────────────────────
+  // Detect if a query looks like a researcher's name (2–3 capitalized words, no topic terms)
+  const looksLikeAuthorName = (q) => {
+    const words = q.trim().split(/\s+/);
+    if (words.length < 2 || words.length > 3) return false;
+    const nameWord = /^[A-Z][a-zA-Z\-'\.]{1,}$/;
+    if (!words.every(w => nameWord.test(w))) return false;
+    const topicWords = new Set([
+      'deep','neural','network','networks','learning','model','models','machine',
+      'transformer','transformers','attention','diffusion','generation','language',
+      'vision','graph','reinforcement','transfer','large','pre','fine','tuning',
+      'training','inference','efficient','self','supervised','semi','unsupervised',
+      'contrastive','multimodal','multi','cross','text','image','video','audio',
+      'speech','retrieval','augmented','reasoning','alignment','instruction',
+      'prompting','embedding','representation','classification','detection',
+      'segmentation','generation','synthesis','compression','optimization',
+      'gradient','loss','batch','layer','token','encoder','decoder',
+    ]);
+    if (words.some(w => topicWords.has(w.toLowerCase()))) return false;
+    return true;
+  };
+
+  const handleAuthorSearch = useCallback(async (authorName) => {
+    setSearchMode('quick');
+    setView('search');
+    setKeywords([]);
+    setQuery(authorName);
+    setActiveTab('paper');
+    setPage(1);
+    setSearchState('loading');
+    setElapsed(0);
+    setOverviewText(null);
+    setSearchResults(null);
+    if (elapsedRef.current) clearInterval(elapsedRef.current);
+    const startedAt = Date.now();
+    elapsedRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    if (searchAbortRef.current) searchAbortRef.current.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    try {
+      const res = await fetch(`${API}/search/author-papers?name=${encodeURIComponent(authorName)}&limit=50`, { signal: controller.signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setSearchResults(data);
+      setSearchState('done');
+    } catch (err) {
+      if (err.name !== 'AbortError') setSearchState('error');
+    } finally {
+      if (elapsedRef.current) clearInterval(elapsedRef.current);
+      searchAbortRef.current = null;
+    }
+  }, []);
+
   const runSearch = useCallback(async (kws, singleKw) => {
     const allKws = singleKw ? [singleKw] : [...kws, ...(query.trim() ? [query.trim()] : [])];
     if (allKws.length === 0) return;
     const combined = allKws.join(' ');
+
+    // Auto-detect author name: single token that looks like a person's name
+    if (allKws.length === 1 && looksLikeAuthorName(combined)) {
+      handleAuthorSearch(combined);
+      return;
+    }
 
     setSearchMode('quick');
     setView('search');
@@ -1201,12 +1291,26 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
   };
 
   // Switching to search tab from trending
+  const handleLpBuildComplete = useCallback((topic) => {
+    // Add to bell notification list
+    setLpNotifs(prev => [
+      { id: `lp-${Date.now()}`, topic, completedAt: new Date().toISOString(), is_read: false },
+      ...prev,
+    ]);
+    // Also show a temporary toast
+    if (lpToastTimerRef.current) clearTimeout(lpToastTimerRef.current);
+    setLpToast({ topic });
+    lpToastTimerRef.current = setTimeout(() => setLpToast(null), 6000);
+  }, []);
+
   const handleQuickSearch = (kw) => {
     setKeywords([]);
     setQuery('');
+    setSearchMode('quick');
     runSearch([], kw);
   };
 
+  // Used by Genealogy: searches papers by author name via SS Author API (more accurate)
   // ── Tab / pagination ──────────────────────────────────────────────────────
   const handleTab = (tab) => { setActiveTab(tab); setPage(1); };
   const handlePerPage = (n) => { setPerPage(n); setPage(1); };
@@ -1262,6 +1366,40 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#FAF7F2' }}>
 
+      {/* Learning Path completion toast */}
+      {lpToast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 1000,
+          background: '#1A1611', color: '#FAF7F2', borderRadius: 8,
+          padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.25)', fontFamily: "'Geist', sans-serif",
+          fontSize: 13, maxWidth: 320,
+        }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>
+              {lang === 'ko' ? 'Learning Path 완성!' : 'Learning Path ready!'}
+            </div>
+            <div style={{ fontSize: 11, color: '#C8B99A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {lpToast.topic}
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setView('search'); setSearchMode('learning');
+              setLpToast(null);
+              if (lpToastTimerRef.current) clearTimeout(lpToastTimerRef.current);
+            }}
+            style={{ background: '#FAF7F2', color: '#1A1611', border: 'none', borderRadius: 4, padding: '6px 12px', fontFamily: "'Geist', sans-serif", fontSize: 11, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            {lang === 'ko' ? '보기 →' : 'View →'}
+          </button>
+          <button
+            onClick={() => { setLpToast(null); if (lpToastTimerRef.current) clearTimeout(lpToastTimerRef.current); }}
+            style={{ background: 'none', border: 'none', color: '#8B7355', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}
+          >✕</button>
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ padding: '52px 24px 16px', background: '#FAF7F2', borderBottom: '1px solid #E8E2D5', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
@@ -1276,7 +1414,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
           <div ref={bellRef} style={{ position: 'relative' }}>
             <button onClick={() => setShowNotifs(p => !p)} style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611', cursor: 'pointer', position: 'relative' }}>
               <Bell size={18} />
-              {unreadCount > 0 && (
+              {(unreadCount + lpNotifs.filter(n => !n.is_read).length) > 0 && (
                 <span style={{
                   position: 'absolute', top: 4, right: 4,
                   width: 8, height: 8, borderRadius: '50%',
@@ -1287,7 +1425,20 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
               )}
             </button>
             {showNotifs && (
-              <NotificationDropdown userId={userId} onClose={() => setShowNotifs(false)} onAllRead={() => setUnreadCount(0)} onRead={() => setUnreadCount(prev => Math.max(0, prev - 1))} />
+              <NotificationDropdown
+                userId={userId}
+                onClose={() => setShowNotifs(false)}
+                onAllRead={() => setUnreadCount(0)}
+                onRead={() => setUnreadCount(prev => Math.max(0, prev - 1))}
+                lpNotifs={lpNotifs}
+                onLpNotifRead={(id) => setLpNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))}
+                onLpNotifClick={(id) => {
+                  setLpNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+                  setView('search');
+                  setSearchMode('learning');
+                  setShowNotifs(false);
+                }}
+              />
             )}
           </div>
           <button onClick={onSettings} style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611', cursor: 'pointer' }}>
@@ -1390,15 +1541,26 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
           {/* Search tab */}
           {view === 'search' && (
             <>
-              {searchMode === 'learning' && (
-                <div style={{ paddingTop: 8 }}>
-                  <LearningPath userId={userId} onBack={() => setSearchMode('quick')} embedded />
-                </div>
-              )}
+              {/* LearningPath is always mounted to keep SSE alive during background builds.
+                  Hidden via display:none when not active so state is preserved. */}
+              <div style={{ display: searchMode === 'learning' ? 'block' : 'none', paddingTop: 8 }}>
+                <LearningPath
+                  userId={userId}
+                  onBack={() => setSearchMode('quick')}
+                  embedded
+                  onBuildComplete={handleLpBuildComplete}
+                />
+              </div>
 
               {searchMode === 'lineage' && (
                 <div style={{ paddingTop: 8 }}>
                   <CitationGraph embedded />
+                </div>
+              )}
+
+              {searchMode === 'genealogy' && (
+                <div style={{ paddingTop: 8 }}>
+                  <LabGenealogy embedded onQuickSearch={handleAuthorSearch} />
                 </div>
               )}
 

@@ -155,7 +155,7 @@ const INIT_PROGRESS = {
   eras: [],
 };
 
-export default function LearningPath({ userId, onBack, embedded = false }) {
+export default function LearningPath({ userId, onBack, embedded = false, onBuildComplete }) {
   const { t, lang } = useLanguage();
   const tl = t.learningPath;
 
@@ -239,6 +239,7 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let fromCache = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -252,11 +253,14 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
           let event;
           try { event = JSON.parse(line.slice(6)); } catch { continue; }
 
-          if (event.type === 'done') {
+          if (event.type === 'cache_hit') {
+            fromCache = true;
+          } else if (event.type === 'done') {
             setResult(event.result);
             setActiveEra(0);
             setActiveContentTab('papers');
             setState('done');
+            if (onBuildComplete && !fromCache) onBuildComplete(trimmed);
             return;
           } else if (event.type === 'error') {
             setState('error');

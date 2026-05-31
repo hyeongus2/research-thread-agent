@@ -198,21 +198,23 @@ def search_papers(
     Returns:
         List of paper dicts sorted by citation count desc.
     """
+    from services.paper_relevance import rerank_and_filter_papers
+
     try:
         result = _search_semantic_scholar(keyword, start_date, end_date, limit, fields_of_study)
         if _source_out is not None:
             _source_out.append("Semantic Scholar")
-        return result
     except requests.RequestException as ss_exc:
         logger.warning("Semantic Scholar unavailable (%s); falling back to OpenAlex", ss_exc)
         try:
             result = _search_openalex(keyword, start_date, end_date, limit)
             if _source_out is not None:
                 _source_out.append("OpenAlex")
-            return result
         except requests.RequestException as oa_exc:
             logger.error("OpenAlex fallback also failed: %s", oa_exc)
             raise ss_exc
+
+    return rerank_and_filter_papers(keyword, result, len(result))
 
 
 def get_paper_references(paper_id: str, limit: int = 30) -> list[dict]:

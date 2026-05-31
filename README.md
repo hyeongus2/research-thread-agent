@@ -61,6 +61,17 @@ Enter a research topic and explore citation-based connections between papers:
 
 > **Limitation**: Citation relationships are metadata-based approximations. A paper citing another may use it as background, comparison, method, dataset, or critique. Citation edges do not guarantee direct intellectual inheritance.
 
+### Lab Genealogy / PI Network
+Enter a PI (Principal Investigator) name and explore possible lab member candidates inferred from publication metadata:
+- Search for a researcher by name on Semantic Scholar
+- Infer possible former lab members / trainees from coauthorship patterns, shared affiliations, author position, and timing
+- Visualize a generation tree: Root PI → candidates → depth-2 candidates (optional)
+- Each relationship shows evidence: shared paper count, shared affiliations, author position counts, confidence score
+- Optional Claude-powered lab focus summary per researcher (requires Anthropic API key)
+- Results cached for 30 days
+
+> **Important limitation**: These are **not verified advisor-student relationships**. The app infers candidate relationships from coauthorship, shared affiliations, timing, and publication patterns using Semantic Scholar metadata only. No web crawling or external genealogy databases are used. Inferred relationships may be incorrect — treat them as exploration candidates, not facts.
+
 ---
 
 ## Tech Stack

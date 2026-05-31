@@ -153,6 +153,7 @@ def delete_search_history_item(db: Session, item_id: int) -> bool:
 def get_lp_history(db: Session) -> list[dict]:
     records = (
         db.query(HistoricalThread)
+        .filter(~HistoricalThread.topic.startswith("genealogy"))
         .order_by(HistoricalThread.updated_at.desc())
         .all()
     )
@@ -198,6 +199,21 @@ def save_historical_thread(
     db.commit()
     db.refresh(record)
     return record
+
+
+# MVP: reuse existing JSON cache table for genealogy results.
+def get_cached_genealogy(db: Session, cache_key: str) -> Optional[dict]:
+    record = db.query(HistoricalThread).filter(HistoricalThread.topic == cache_key).first()
+    if not record:
+        return None
+    cache_expiry = record.updated_at + timedelta(days=settings.GENEALOGY_CACHE_DAYS)
+    if datetime.utcnow() > cache_expiry:
+        return None
+    return json.loads(record.data) if record.data else None
+
+
+def save_genealogy(db: Session, cache_key: str, data: dict) -> None:
+    save_historical_thread(db, topic=cache_key, data=data)
 
 
 def get_or_create_notification_settings(
