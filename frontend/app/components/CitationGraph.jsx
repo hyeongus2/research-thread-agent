@@ -109,7 +109,7 @@ function AllResultsList({ nodes, edges, nodeById }) {
           <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.15em', marginBottom: 8 }}>
             {ts.lineageSeedHeader} ({seeds.length})
           </div>
-          {seeds.map(n => <PaperCard key={n.id} item={n} type="paper" />)}
+          {seeds.map(n => <PaperCard key={n.id} item={n} type="paper" showCite />)}
         </section>
       )}
       {refs.length > 0 && (
@@ -117,7 +117,7 @@ function AllResultsList({ nodes, edges, nodeById }) {
           <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.15em', marginBottom: 8 }}>
             {ts.lineageRefHeader} ({refs.length})
           </div>
-          {refs.map(n => <PaperCard key={n.id} item={n} type="paper" />)}
+          {refs.map(n => <PaperCard key={n.id} item={n} type="paper" showCite />)}
         </section>
       )}
       {edges.length > 0 && (
