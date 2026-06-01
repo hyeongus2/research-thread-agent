@@ -255,12 +255,20 @@ On Windows, use the `.venv\Scripts\python.exe` path:
 | `learning_path` | Chronological era-based history of a topic | "Build a learning path for diffusion models" |
 | `trending_papers` | Top HF Daily Papers by upvotes | "What are the trending AI papers this week?" |
 | `venue_papers` | Papers from a major ML conference + year | "Show me NeurIPS 2024 papers on transformers" |
+| `research_lineage` | Citation-based graph of influential papers | "Show the research lineage for attention mechanism transformer" |
+| `my_feed` | Personalized paper alerts from your local DB | "Show my unread paper alerts" |
+
+> **Note on `my_feed`**: Returns papers already saved to your local database. The database is updated when you open the app and visit the My Feed tab (or when the daily background scheduler runs). Requires completing onboarding at least once.
 
 ---
 
 ## Roadmap
 
-### v1.0.1 (current)
+### v1.0.2 (current)
+- [x] **MCP: `research_lineage` tool** — exposes citation graph as a text-friendly structure; `edges` use paper titles instead of raw IDs; includes a `summary` field listing the top influential papers with year, citation count, and venue
+- [x] **MCP: `my_feed` tool** — read-only access to personalized paper alerts stored in the local database; returns notifications sorted by recency with title, topic, citation count, and source URL; supports `unread_only` filter
+
+### v1.0.1
 - [x] **Activity notifications** — bell dropdown now shows a "Recent Activity" section for feature completions (Quick Search, Learning Path, Research Lineage, Trending, My Feed, Venues); clicking a notification navigates directly to that tab; unread red dot per item disappears on click; bell badge clears when all notifications are read
 - [x] **Notification delete** — × button on every individual notification item (both Activity and Paper Alerts); "Delete all" button per section header to bulk-clear each section independently; Paper Alert deletes hit `DELETE /api/notifications/{id}`
 - [x] **Back button fix** — "Back to feed" in Learning Path results now returns to the Learning Path idle screen (not Quick Search); same fix applied to Research Lineage
