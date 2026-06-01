@@ -51,13 +51,14 @@ Enter any research topic (e.g., *Retrieval-Augmented Generation*) and get:
 
 ### Research Lineage
 Enter a research topic and explore citation-based connections between papers:
-- Seed papers are fetched from Semantic Scholar by keyword
-- Each seed paper's reference list is expanded one level (depth = 1)
-- Connections displayed as **Foundational Paper → Citing Paper**
-- Papers ranked by an importance score (citation count, recency, seed status)
-- Influential citation edges marked with ★
+- Top 100 papers fetched in a **single API call** (reference data embedded — no per-paper expansion calls)
+- Top-5 by citation count become **Influential** (red) nodes; the rest become **Related** (blue) nodes
+- Edges drawn where two papers in the result set have a citation relationship
+- Red arrows indicate influence radiating **out from** influential papers
+- Node click shows a paper detail card with AI Summary button
+- Previous graphs saved and shown as a history list — click to reload instantly from cache
 
-**Differs from Learning Path**: Learning Path groups papers into chronological eras with AI-generated summaries. Research Lineage shows citation-based relationships between individual papers based on metadata.
+**Differs from Learning Path**: Learning Path groups papers into chronological eras with AI-generated summaries. Research Lineage shows citation-based relationships between individual papers.
 
 > **Limitation**: Citation relationships are metadata-based approximations. A paper citing another may use it as background, comparison, method, dataset, or critique. Citation edges do not guarantee direct intellectual inheritance.
 
@@ -192,46 +193,22 @@ research-thread-agent/
 
 ## Roadmap
 
-### v0.10.5 (current)
-- [x] **Search result limit now user-controlled up to 1,000** — Settings paper limit cap raised from 100 to 1,000 (models/repos: 0–200); bulk endpoint `limit` parameter was being ignored server-side and now correctly slices results after fetch; default raised from 50 → 100 papers
-- [x] **My Feed field coverage** — `fieldsOfStudy=CS,Mathematics,Statistics,Engineering` filter applied to My Feed paper fetches (was missing; Quick Search, Learning Path, Research Lineage already had it); papers per topic raised from 10 → 50
-- [x] **AI input capped** — Quick Search AI Overview sends top 30 papers (citation-sorted) instead of the full result set, preventing excessive token usage on large fetches
-- [x] **Learning Path overview no longer truncated** — `max_tokens` raised from 2,000 → 4,000; prompt reduced from 4–5 paragraphs to 3 focused paragraphs with explicit instruction to finish the final sentence completely
-- [x] **Learning Path build progress text** — era rows now show descriptive status text on the left (`"Before 2018 · fetching papers…"` / `"Before 2018 · AI analyzing…"` / `"Analysis written ✓"`) instead of a bare circle or checkmark symbol
-- [x] **Learning Path settings range labels** — limit input descriptions now show allowed ranges (papers per era: 3–20 · models/repos: 0–20)
+### v0.11.0 (current)
+- [x] **Research Lineage rebuilt — 34 API calls → 2, build time ~3 s** — switched from per-year + per-paper reference expansion to a single bulk search with a batch reference fetch (`POST /paper/batch`); graph now covers top 100 papers and draws edges from reference intersection within that set; build time reduced from 30–60 s to ~3 s
+- [x] **Research Lineage: graph history** — idle state now shows recent graph list (like Learning Path); click any entry to reload from cache instantly; per-item delete; list refreshes after each new build
+- [x] **Research Lineage: UX improvements** — selected node highlighted in amber (distinct from connected nodes); red arrows now mean "influence radiating out from an influential paper" (source = top-5 node); AI Summary button available on the node detail card; legend updated ("Seed" → "Influential", white node type removed); hint text rewritten for clarity
+- [x] **Quick Search: Author mode** — Topic / Author toggle below the search bar; Author mode shows a candidate list of matching authors (name, paper count, citation count) to resolve ambiguity; selecting an author fetches that author's papers sorted by citation count; independent caches for candidates and paper lists; Settings paper limit applies to author results; date period filter applied to author paper results client-side
+- [x] **`fieldsOfStudy` unified** — `AI_FIELDS_OF_STUDY` constant exported from `semantic_scholar_service.py` and imported by Quick Search, Learning Path, and Research Lineage, ensuring consistent CS/Math/Stats/Engineering filtering across all three features
 
-### v0.10.4
-- [x] **Semantic Scholar bulk endpoint** — switched from standard search (max 100) to bulk search endpoint (max 1,000) across Quick Search, Learning Path, and Research Lineage; citation-count sort applied server-side
-- [x] **ML acronym query expansion** — single-token queries matching a known AI/ML acronym are automatically expanded before sending to Semantic Scholar (e.g. `RAG` → `RAG retrieval augmented generation`), so papers using the full phrase are also retrieved; 100 terms covering foundational architectures, transformers, LLMs, fine-tuning/alignment (GRPO, KTO, ORPO, …), diffusion, vision, NLP tasks, RL, and graph learning; multi-token queries are sent as-is to avoid distorting relevance ranking
-- [x] **Research Lineage quality improvements** — SVG edges redrawn as bezier curves; isolated nodes (no edges) hidden from graph view and counted in the subset note; reference edges that point to papers *newer* than the seed are filtered out as metadata anomalies; top-seed cap reduced from 5→3 API calls
-
-### v0.10.3
-- [x] **Learning Path field coverage expanded** — Semantic Scholar `fieldsOfStudy` filter now includes Mathematics, Statistics, and Engineering in addition to Computer Science; captures optimization theory (Adam/SGD convergence proofs, LoRA geometry), audio/multimodal signal processing (EESS), and edge-efficiency papers that would otherwise be missing from era results
-
-### v0.10.2
-- [x] **Unified paper card component** — single `PaperCard` component replaces four separate card implementations across Quick Search, My Feed, Learning Path, and Citation Graph; all cards now share identical layout, abstract toggle, and action buttons
-- [x] **Weekend / holiday fallback for Trending** — when HF Daily Papers has no papers for today (weekends, holidays), automatically scans back up to 7 days and shows the most recent available batch with an explanatory note below the period selector
-- [x] **My Feed auto-mark-as-read** — red dots on My Feed cards clear automatically as soon as the tab loads, without requiring a manual click
-- [x] **AI output plain prose** — fixed raw markdown symbols (`##`, `**`, bullet points) appearing verbatim in AI Overview, per-paper summaries, and Learning Path era summaries; all three AI functions now instruct Claude to write plain prose
-- [x] **Deeper Learning Path era analysis** — per-paper analysis now requests 2–4 substantive sentences per field (Problem / Solution / Significance / Limitations) with explicit guidance on what each field should cover; `max_tokens` raised from 4,000 to 8,000 to accommodate longer output; era summary raised to 3–4 sentences
-- [x] **BibTeX on all paper cards** — "Cite" copy button now available in My Feed, Learning Path, and Citation Graph cards (was Quick Search and Venues only)
-
-### v0.10.1
-- [x] **Venues tab: accurate venue filtering** — switched from keyword search + post-filter to Semantic Scholar bulk search `venue` parameter, which filters by actual publication venue; NeurIPS 2024 results went from ~360 to 4,257 papers with correct top-cited papers (YOLOv10, VMamba, Depth Anything V2, etc.)
-- [x] **Venues tab: no search query bias** — `query` parameter removed entirely; `venue` + `year` filter alone is sufficient and avoids dropping papers that don't match a topic keyword
-- [x] **Venues tab: dynamic years** — year list generated from current year back to 2010; selecting the current year shows a note that SS may tag papers by arXiv update date rather than the actual conference year
-- [x] **Venues tab: Settings integration** — paper limit for Venues tab now configurable in Settings (same as Quick Search limits)
-- [x] **Research Lineage + Learning Path: i18n** — "Graph", "All Results", subset note, and "View on Semantic Scholar" strings now use i18n keys; fully translated in EN and KO
-- [x] **Search placeholders** — Learning Path and Research Lineage input placeholders simplified to "e.g. RAG" / "예: RAG"
-
-### v0.10.0
-- [x] **Research Lineage** — new Search mode: citation-based graph (SVG, year-based left→right layout) showing how seed papers connect to the foundational works they cite; depth-1 reference expansion via Semantic Scholar; importance score per paper; influential edges highlighted; side panel on node click; "All Results" fallback tab
-- [x] **Venues tab** — 4th navigation tab for browsing papers by conference and year (NeurIPS, ICML, ICLR, CVPR, AAAI, ECCV, ACL, EMNLP · 2020–2025)
-- [x] **BibTeX copy button** — "Cite" button on Quick Search and Venues paper cards; generates and copies a formatted BibTeX entry to the clipboard (`@inproceedings` for conference papers, `@article` for arXiv preprints)
-- [x] **Code link button** — "Code" button on paper cards when a GitHub implementation is available; powered by the Papers with Code archive (run `python scripts/import_pwc_links.py` once to populate)
-- [x] **arXiv ID extraction** — Semantic Scholar responses now include `arxiv_id` from `externalIds`, enabling PWC code-link matching and future integrations
-- [x] **Search speed fix** — global `threading.Semaphore(1)` + 1 s inter-request gap prevents concurrent Semantic Scholar calls from cascading 429s; minimises OpenAlex fallback (worst-case latency: ~40 s → ~2 s per query)
-- [x] **LAN support** — uvicorn binds to `0.0.0.0`; frontend API URL is hostname-dynamic; sensitive endpoints (API key save, DB reset) remain localhost-only
+### v0.10.x
+- [x] Research Lineage launched (SVG citation graph, depth-1 reference expansion, importance scores, node click panel, All Results tab)
+- [x] Venues tab (NeurIPS, ICML, ICLR, CVPR, AAAI, ECCV, ACL, EMNLP · 2020–2025); accurate venue filtering via SS bulk `venue` parameter; configurable paper limit in Settings
+- [x] BibTeX copy button on all paper cards; Code link button powered by Papers with Code archive
+- [x] Unified `PaperCard` component across Quick Search, My Feed, Learning Path, Citation Graph
+- [x] Semantic Scholar bulk endpoint (max 1,000); ML acronym query expansion (100 terms); `fieldsOfStudy` filter extended to Math/Stats/Engineering
+- [x] Search result limit user-controlled up to 1,000; AI Overview input capped at 30 papers; Learning Path `max_tokens` raised; build progress text improved
+- [x] My Feed field coverage fix; weekend/holiday Trending fallback; My Feed auto-mark-as-read; AI output plain prose; deeper era analysis
+- [x] LAN support; Semantic Scholar 429 handling; per-era sequential fetching with delay; Learning Path + Research Lineage i18n
 
 ### v0.9.x
 - [x] Fix: Trending "Today" tab uses UTC date — avoids empty results for UTC+9 (KST) users before HF's daily update window

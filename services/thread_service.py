@@ -7,6 +7,7 @@ from typing import Callable, Optional
 from sqlalchemy.orm import Session
 
 from services import github_service, hf_service, semantic_scholar_service
+from services.semantic_scholar_service import AI_FIELDS_OF_STUDY
 from services.database_service import save_search_history
 from utils.logger import get_logger
 
@@ -83,7 +84,7 @@ def create_research_thread(
             futures[executor.submit(
                 semantic_scholar_service.search_papers,
                 keyword, start_date, end_date, paper_limit, papers_source_out,
-                "Computer Science,Mathematics,Statistics,Engineering",
+                AI_FIELDS_OF_STUDY,
             )] = "papers"
         else:
             _progress("source_done", "papers:0")

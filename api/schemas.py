@@ -102,6 +102,6 @@ class NotificationSettingsUpdate(BaseModel):
 
 class CitationGraphRequest(BaseModel):
     query: str
-    max_seed_papers: int = 20
+    max_seed_papers: int = 5
     max_depth: int = 1
     min_citations: int = 0

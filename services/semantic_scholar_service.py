@@ -155,6 +155,10 @@ _SS_FIELDS = (
     "externalIds,abstract,openAccessPdf,publicationDate"
 )
 
+# Shared fieldsOfStudy filter applied consistently across Quick Search,
+# Learning Path, and Research Lineage.
+AI_FIELDS_OF_STUDY = "Computer Science,Mathematics,Statistics,Engineering"
+
 _OA_URL = "https://api.openalex.org/works"
 
 
@@ -379,8 +383,13 @@ def get_paper_references(paper_id: str, limit: int = 30) -> list[dict]:
         logger.warning("SS references fetch failed: %s → %d", paper_id, resp.status_code)
         return []
 
+    body = resp.json()
+    if not isinstance(body, dict):
+        logger.warning("SS references unexpected response body for %s", paper_id)
+        return []
+
     results = []
-    for item in resp.json().get("data", []):
+    for item in body.get("data") or []:
         p = item.get("citedPaper") or {}
         pid = p.get("paperId") or ""
         if not pid:
@@ -403,3 +412,241 @@ def get_paper_references(paper_id: str, limit: int = 30) -> list[dict]:
         })
     logger.info("SS references '%s' → %d papers", paper_id, len(results))
     return results
+
+
+def get_paper_citations(paper_id: str, limit: int = 100) -> list[dict]:
+    """Fetch papers that cite paper_id using the Semantic Scholar citations endpoint.
+
+    The SS citations endpoint returns papers in recency-descending order (newest
+    first) and does not support server-side citation-count sorting.  To surface
+    older high-impact citing papers we paginate through up to ceil(limit/500)
+    pages, then sort the combined results by citation count client-side.
+    """
+    _fields = (
+        "paperId,title,authors,year,citationCount,publicationVenue,"
+        "abstract,openAccessPdf,externalIds"
+    )
+    headers: dict = {}
+    if settings.SEMANTIC_SCHOLAR_API_KEY:
+        headers["x-api-key"] = settings.SEMANTIC_SCHOLAR_API_KEY
+
+    base_url = f"https://api.semanticscholar.org/graph/v1/paper/{paper_id}/citations"
+    chunk_size = 500
+    pages = max(1, (min(limit, 1000) + chunk_size - 1) // chunk_size)
+
+    all_results: list[dict] = []
+    for page in range(pages):
+        params = {
+            "fields": _fields,
+            "limit": chunk_size,
+            "offset": page * chunk_size,
+        }
+        with _ss_lock:
+            resp = requests.get(base_url, params=params, headers=headers, timeout=30)
+            if resp.status_code == 429:
+                logger.warning("SS citations 429 for %s; retrying after 2 s", paper_id)
+                time.sleep(2)
+                resp = requests.get(base_url, params=params, headers=headers, timeout=30)
+            time.sleep(1.0)
+        if resp.status_code != 200:
+            logger.warning("SS citations fetch failed: %s → %d", paper_id, resp.status_code)
+            break
+
+        body = resp.json()
+        if not isinstance(body, dict):
+            logger.warning("SS citations unexpected response body for %s", paper_id)
+            break
+
+        chunk: list[dict] = []
+        for item in body.get("data") or []:
+            p = item.get("citingPaper") or {}
+            pid = p.get("paperId") or ""
+            if not pid:
+                continue
+            venue_obj = p.get("publicationVenue") or {}
+            arxiv_id = (p.get("externalIds") or {}).get("ArXiv") or ""
+            year_raw = p.get("year")
+            chunk.append({
+                "paper_id": pid,
+                "title": p.get("title") or "",
+                "authors": [a.get("name", "") for a in (p.get("authors") or [])[:5]],
+                "abstract": p.get("abstract") or "",
+                "url": f"https://www.semanticscholar.org/paper/{pid}",
+                "pdf_url": (p.get("openAccessPdf") or {}).get("url") or "",
+                "published_date": str(year_raw) if year_raw else "",
+                "citation_count": p.get("citationCount") or 0,
+                "venue": venue_obj.get("name") or "",
+                "arxiv_id": arxiv_id,
+                "is_influential": bool(item.get("isInfluential")),
+            })
+        all_results.extend(chunk)
+        if len(chunk) < chunk_size:
+            break  # no more pages
+
+    all_results.sort(key=lambda x: x["citation_count"], reverse=True)
+    logger.info("SS citations '%s' → %d papers (%d page(s))", paper_id, len(all_results), pages)
+    return all_results
+
+
+_SS_BATCH_URL = "https://api.semanticscholar.org/graph/v1/paper/batch"
+
+
+def search_papers_for_graph(keyword: str, limit: int = 100, fields_of_study: Optional[str] = None) -> list[dict]:
+    """Fetch papers with embedded reference IDs for citation graph building.
+
+    Two API calls total:
+      1. Bulk search → top `limit` papers by citation count.
+      2. POST /paper/batch → references for all papers in one request.
+
+    Returns the same structure as search_papers() but each dict also has a
+    'reference_ids' field: list of (paperId, citationCount) tuples.
+    """
+    papers = search_papers(keyword, limit=limit, fields_of_study=fields_of_study)
+    if not papers:
+        return []
+
+    paper_ids = [p["paper_id"] for p in papers if p["paper_id"]]
+    if not paper_ids:
+        return papers
+
+    headers: dict = {}
+    if settings.SEMANTIC_SCHOLAR_API_KEY:
+        headers["x-api-key"] = settings.SEMANTIC_SCHOLAR_API_KEY
+
+    def _do_batch():
+        return requests.post(
+            _SS_BATCH_URL,
+            params={"fields": "references.paperId,references.citationCount"},
+            json={"ids": paper_ids},
+            headers=headers,
+            timeout=30,
+        )
+
+    with _ss_lock:
+        resp = _do_batch()
+        if resp.status_code == 429:
+            logger.warning("SS batch refs 429; retrying after 3 s")
+            time.sleep(3)
+            resp = _do_batch()
+        time.sleep(1.0)
+
+    ref_by_id: dict[str, list] = {}
+    if resp.status_code == 200:
+        for item in (resp.json() or []):
+            if not item or not item.get("paperId"):
+                continue
+            ref_by_id[item["paperId"]] = [
+                (r.get("paperId") or "", r.get("citationCount") or 0)
+                for r in (item.get("references") or [])
+                if r.get("paperId")
+            ]
+    else:
+        logger.warning("SS batch refs failed (%d); graph will have no edges", resp.status_code)
+
+    for p in papers:
+        p["reference_ids"] = ref_by_id.get(p["paper_id"], [])
+
+    logger.info("SS graph search '%s' → %d papers, refs loaded for %d", keyword, len(papers), len(ref_by_id))
+    return papers
+
+
+_SS_AUTHOR_SEARCH_URL = "https://api.semanticscholar.org/graph/v1/author/search"
+_SS_AUTHOR_PAPERS_URL = "https://api.semanticscholar.org/graph/v1/author/{author_id}/papers"
+_AUTHOR_PAPER_FIELDS = (
+    "paperId,title,authors,year,citationCount,publicationVenue,"
+    "abstract,openAccessPdf,externalIds"
+)
+
+
+def search_author_candidates(name: str, limit: int = 10) -> list[dict]:
+    """Search for authors by name and return all candidates.
+
+    Returns:
+        List of {"id", "name", "citation_count", "paper_count"} dicts,
+        sorted by citation count desc.
+    """
+    headers: dict = {}
+    if settings.SEMANTIC_SCHOLAR_API_KEY:
+        headers["x-api-key"] = settings.SEMANTIC_SCHOLAR_API_KEY
+
+    with _ss_lock:
+        resp = requests.get(
+            _SS_AUTHOR_SEARCH_URL,
+            params={"query": name, "fields": "authorId,name,citationCount,paperCount", "limit": limit},
+            headers=headers,
+            timeout=20,
+        )
+        time.sleep(1.0)
+
+    if resp.status_code != 200:
+        logger.warning("SS author search failed for '%s': %d", name, resp.status_code)
+        return []
+
+    candidates = (resp.json() or {}).get("data") or []
+    result = [
+        {
+            "id": c.get("authorId") or "",
+            "name": c.get("name") or "",
+            "citation_count": c.get("citationCount") or 0,
+            "paper_count": c.get("paperCount") or 0,
+        }
+        for c in candidates
+        if c.get("authorId")
+    ]
+    result.sort(key=lambda x: x["citation_count"], reverse=True)
+    logger.info("SS author candidates for '%s' → %d results", name, len(result))
+    return result
+
+
+def get_author_papers(author_id: str, author_name: str = "", limit: int = 50) -> dict:
+    """Fetch papers for a specific author by their SS authorId.
+
+    Returns:
+        {"author": {"id", "name", "citation_count", "paper_count"}, "papers": [...]}
+    """
+    headers: dict = {}
+    if settings.SEMANTIC_SCHOLAR_API_KEY:
+        headers["x-api-key"] = settings.SEMANTIC_SCHOLAR_API_KEY
+
+    # Fetch author metadata + papers in parallel isn't possible with SS API,
+    # so we fetch papers (which include enough info) and skip re-fetching author meta.
+    with _ss_lock:
+        presp = requests.get(
+            _SS_AUTHOR_PAPERS_URL.format(author_id=author_id),
+            params={"fields": _AUTHOR_PAPER_FIELDS, "limit": min(limit, 1000)},
+            headers=headers,
+            timeout=20,
+        )
+        time.sleep(1.0)
+
+    if presp.status_code != 200:
+        logger.warning("SS author papers failed for '%s': %d", author_id, presp.status_code)
+        return {"author": {"id": author_id, "name": author_name}, "papers": []}
+
+    raw_papers = (presp.json() or {}).get("data") or []
+    papers: list[dict] = []
+    for p in raw_papers:
+        pid = p.get("paperId") or ""
+        venue_obj = p.get("publicationVenue") or {}
+        arxiv_id = (p.get("externalIds") or {}).get("ArXiv") or ""
+        year_raw = p.get("year")
+        papers.append({
+            "paper_id": pid,
+            "title": p.get("title") or "",
+            "authors": [a.get("name", "") for a in (p.get("authors") or [])[:5]],
+            "abstract": p.get("abstract") or "",
+            "url": f"https://www.semanticscholar.org/paper/{pid}" if pid else "",
+            "pdf_url": (p.get("openAccessPdf") or {}).get("url") or "",
+            "arxiv_id": arxiv_id,
+            "published_date": str(year_raw) if year_raw else "",
+            "citation_count": p.get("citationCount") or 0,
+            "venue": venue_obj.get("name") or "",
+        })
+
+    papers.sort(key=lambda x: x["citation_count"], reverse=True)
+    papers = papers[:limit]
+    logger.info("SS author '%s' (%s) → %d papers", author_name, author_id, len(papers))
+    return {
+        "author": {"id": author_id, "name": author_name},
+        "papers": papers,
+    }

@@ -150,9 +150,23 @@ def delete_search_history_item(db: Session, item_id: int) -> bool:
     return True
 
 
+def get_citation_history(db: Session) -> list[dict]:
+    records = (
+        db.query(HistoricalThread)
+        .filter(HistoricalThread.topic.startswith("citation::"))
+        .order_by(HistoricalThread.updated_at.desc())
+        .all()
+    )
+    return [
+        {"topic": r.topic, "query": r.topic.removeprefix("citation::"), "updated_at": str(r.updated_at)}
+        for r in records
+    ]
+
+
 def get_lp_history(db: Session) -> list[dict]:
     records = (
         db.query(HistoricalThread)
+        .filter(~HistoricalThread.topic.startswith("citation::"))
         .order_by(HistoricalThread.updated_at.desc())
         .all()
     )

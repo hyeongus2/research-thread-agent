@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from config.settings import settings
 from services import semantic_scholar_service, claude_service, database_service, github_service, hf_service
+from services.semantic_scholar_service import AI_FIELDS_OF_STUDY
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -76,7 +77,7 @@ def _fetch_papers_per_era(
         end = _date(end_year, 12, 31)
         src: list = []
         try:
-            papers = semantic_scholar_service.search_papers(topic, start, end, papers_per_era, src, fields_of_study="Computer Science,Mathematics,Statistics,Engineering")
+            papers = semantic_scholar_service.search_papers(topic, start, end, papers_per_era, src, fields_of_study=AI_FIELDS_OF_STUDY)
         except Exception as exc:
             logger.warning("Era '%s' fetch failed: %s", label, exc)
             papers = []
@@ -302,7 +303,7 @@ def build_learning_path_stream(
             end = _date(end_year, 12, 31)
             src: list = []
             try:
-                papers = semantic_scholar_service.search_papers(topic, start, end, papers_per_era, src, fields_of_study="Computer Science,Mathematics,Statistics,Engineering")
+                papers = semantic_scholar_service.search_papers(topic, start, end, papers_per_era, src, fields_of_study=AI_FIELDS_OF_STUDY)
             except Exception as exc:
                 logger.warning("Era '%s' fetch failed: %s", label, exc)
                 papers = []

@@ -34,6 +34,19 @@ input:focus {
   background: transparent;
 }
 
+.cg-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.cg-scroll::-webkit-scrollbar-thumb {
+  background: #C0B8B0;
+  border-radius: 4px;
+}
+.cg-scroll::-webkit-scrollbar-track {
+  background: #F0EBE2;
+  border-radius: 4px;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }

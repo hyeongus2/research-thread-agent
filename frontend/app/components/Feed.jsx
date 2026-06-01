@@ -68,8 +68,8 @@ function getPageNumbers(page, totalPages) {
 // =============================================================================
 // Tab bar
 // =============================================================================
-function TabBar({ activeTab, counts, onTab, perPage, onPerPage, ts }) {
-  const tabs = ['paper', 'model', 'repo'];
+function TabBar({ activeTab, counts, onTab, perPage, onPerPage, ts, authorOnly = false }) {
+  const tabs = authorOnly ? ['paper'] : ['paper', 'model', 'repo'];
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8, flexWrap: 'wrap' }}>
       <div style={{ display: 'flex', gap: 4 }}>
@@ -1001,6 +1001,16 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
   const elapsedRef = useRef(null);
   const searchAbortRef = useRef(null);
 
+  // Topic / Author toggle
+  // authorStep: 'candidates' = showing candidate list, 'papers' = showing one author's papers
+  const [queryType, setQueryType] = useState('topic');
+  const [authorStep, setAuthorStep] = useState('candidates'); // 'candidates' | 'papers'
+  const [authorCandidates, setAuthorCandidates] = useState([]);
+  const [authorResults, setAuthorResults] = useState(null); // {author, papers} | null
+  const [authorLoading, setAuthorLoading] = useState(false);
+  const authorCandidatesCacheRef = useRef({}); // keyed by query keyword
+  const authorPapersCacheRef = useRef({});     // keyed by author_id
+
   const handleCancelSearch = () => {
     if (searchAbortRef.current) { searchAbortRef.current.abort(); searchAbortRef.current = null; }
     if (elapsedRef.current) clearInterval(elapsedRef.current);
@@ -1101,6 +1111,10 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
     setElapsed(0);
     setSourceStatus({});
     setSourceErrors({});
+    setQueryType('topic');
+    setAuthorStep('candidates');
+    setAuthorCandidates([]);
+    setAuthorResults(null);
     setPapersSourceLabel('Semantic Scholar');
     setActiveTab('paper');
     setPage(1);
@@ -1200,6 +1214,51 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
     if (elapsedRef.current) clearInterval(elapsedRef.current);
   };
 
+  const handleAuthorSwitch = async () => {
+    setQueryType('author');
+    setAuthorStep('candidates');
+    setAuthorResults(null);
+    const keyword = (searchResults?.keyword || '').trim();
+    if (!keyword) return;
+    const cacheKey = keyword.toLowerCase();
+    if (authorCandidatesCacheRef.current[cacheKey]) {
+      setAuthorCandidates(authorCandidatesCacheRef.current[cacheKey]);
+      return;
+    }
+    setAuthorLoading(true);
+    try {
+      const res = await fetch(`${API}/search/author-candidates?name=${encodeURIComponent(keyword)}`);
+      const data = await res.json();
+      const candidates = data.candidates || [];
+      authorCandidatesCacheRef.current[cacheKey] = candidates;
+      setAuthorCandidates(candidates);
+    } catch {
+      setAuthorCandidates([]);
+    }
+    setAuthorLoading(false);
+  };
+
+  const handleSelectAuthor = async (author) => {
+    setAuthorStep('papers');
+    setAuthorResults(null);
+    const cacheKey = author.id;
+    if (authorPapersCacheRef.current[cacheKey]) {
+      setAuthorResults(authorPapersCacheRef.current[cacheKey]);
+      return;
+    }
+    setAuthorLoading(true);
+    try {
+      const limit = getSearchLimits().papers;
+      const res = await fetch(`${API}/search/author-papers?author_id=${encodeURIComponent(author.id)}&author_name=${encodeURIComponent(author.name)}&limit=${limit}`);
+      const data = await res.json();
+      authorPapersCacheRef.current[cacheKey] = data;
+      setAuthorResults(data);
+    } catch {
+      setAuthorResults({ author, papers: [] });
+    }
+    setAuthorLoading(false);
+  };
+
   // Switching to search tab from trending
   const handleQuickSearch = (kw) => {
     setKeywords([]);
@@ -1211,17 +1270,35 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
   const handleTab = (tab) => { setActiveTab(tab); setPage(1); };
   const handlePerPage = (n) => { setPerPage(n); setPage(1); };
 
+  const isAuthorMode = queryType === 'author';
   const tabKey = TAB_KEYS[activeTab];
-  const tabItems = searchResults?.[tabKey] || [];
+  const tabItems = isAuthorMode
+    ? (() => {
+        const papers = authorResults?.papers || [];
+        const { start, end } = getPeriodDates(period, nMonths, customFrom, customTo);
+        if (!start && !end) return papers;
+        const startYear = start ? parseInt(start.split('-')[0]) : null;
+        const endYear = end ? parseInt(end.split('-')[0]) : null;
+        return papers.filter(p => {
+          const y = parseInt(p.published_date);
+          if (isNaN(y)) return true;
+          if (startYear && y < startYear) return false;
+          if (endYear && y > endYear) return false;
+          return true;
+        });
+      })()
+    : (searchResults?.[tabKey] || []);
   const totalPages = Math.ceil(tabItems.length / perPage);
   const pageStart = (page - 1) * perPage;
   const pageItems = tabItems.slice(pageStart, pageStart + perPage);
 
-  const tabCounts = {
-    paper: searchResults?.papers?.length ?? 0,
-    model: searchResults?.models?.length ?? 0,
-    repo:  searchResults?.repos?.length ?? 0,
-  };
+  const tabCounts = isAuthorMode
+    ? { paper: authorResults?.papers?.length ?? 0, model: 0, repo: 0 }
+    : {
+        paper: searchResults?.papers?.length ?? 0,
+        model: searchResults?.models?.length ?? 0,
+        repo:  searchResults?.repos?.length ?? 0,
+      };
 
   // ── AI overview ───────────────────────────────────────────────────────────
   const fetchOverview = async () => {
@@ -1346,7 +1423,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
               {/* Period pills */}
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto', paddingBottom: 2 }}>
                 {['week', 'month', 'threeMonths', 'lastNMonths', 'custom', 'all'].map(p => (
-                  <button key={p} onClick={() => setPeriod(p)} style={{ padding: '5px 10px', background: period === p ? '#1A1611' : 'transparent', color: period === p ? '#FAF7F2' : '#6B6358', border: '1px solid ' + (period === p ? '#1A1611' : '#D8D0BE'), borderRadius: 20, fontFamily: "'Geist', sans-serif", fontSize: 11, fontWeight: period === p ? 600 : 400, whiteSpace: 'nowrap', cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <button key={p} onClick={() => { setPeriod(p); setPage(1); }} style={{ padding: '5px 10px', background: period === p ? '#1A1611' : 'transparent', color: period === p ? '#FAF7F2' : '#6B6358', border: '1px solid ' + (period === p ? '#1A1611' : '#D8D0BE'), borderRadius: 20, fontFamily: "'Geist', sans-serif", fontSize: 11, fontWeight: period === p ? 600 : 400, whiteSpace: 'nowrap', cursor: 'pointer', transition: 'all 0.15s' }}>
                     {ts.periods[p]}
                   </button>
                 ))}
@@ -1435,46 +1512,155 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
 
                       <SourceErrorBanner sourceErrors={sourceErrors} lang={lang} />
 
-                      {/* AI Overview */}
-                      <div style={{ margin: '4px 0 16px', padding: '12px 16px', background: '#FFFFFF', borderLeft: '3px solid #C84B31', borderRadius: '0 4px 4px 0' }}>
-                        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 8 }}>OVERVIEW</div>
-                        {overviewText ? (
-                          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', lineHeight: 1.6, margin: 0 }}>{overviewText}</p>
-                        ) : overviewNoKey ? (
-                          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>{ts.noApiKeyOverview}</p>
-                        ) : overviewError ? (
-                          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#C84B31', lineHeight: 1.6, margin: 0 }}>{ts.overviewError}</p>
-                        ) : overviewLoading ? (
-                          <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', fontStyle: 'italic', margin: 0 }}>{ts.aiLoading}</p>
-                        ) : (
-                          <button onClick={fetchOverview} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '5px 12px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer' }}>
-                            {ts.aiOverviewBtn}
-                          </button>
-                        )}
-                      </div>
-
-                      <TabBar activeTab={activeTab} counts={tabCounts} onTab={handleTab} perPage={perPage} onPerPage={handlePerPage} ts={ts} />
-
-                      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', marginBottom: 10, padding: '0 2px' }}>
-                        {ts.resultsFor(tabItems.length, searchResults?.keyword || '')}
-                      </div>
-
-                      {pageItems.length === 0 ? (
-                        <div style={{ padding: '40px 24px', textAlign: 'center' }}>
-                          <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#1A1611', fontStyle: 'italic' }}>
-                            {ts.noResults(searchResults?.keyword || '')}
-                          </div>
-                        </div>
-                      ) : (
-                        pageItems.map((item, i) => {
-                          const title = item.title || item.name || '';
+                      {/* Topic / Author toggle */}
+                      <div style={{ display: 'flex', gap: 0, background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: 3, marginBottom: 12 }}>
+                        {[
+                          { key: 'topic', label: ts.queryTypeTopic },
+                          { key: 'author', label: ts.queryTypeAuthor },
+                        ].map(({ key, label }) => {
+                          const active = queryType === key;
                           return (
-                            <PaperCard key={`${activeTab}-${pageStart + i}`} item={item} type={activeTab} showCite showCode summary={paperSummaries[title]} summaryLoading={!!summaryLoading[title]} summaryNoKey={!!paperNoKey[title]} onSummarize={() => fetchPaperSummary(title, item.abstract)} />
+                            <button
+                              key={key}
+                              onClick={() => key === 'author' ? handleAuthorSwitch() : setQueryType('topic')}
+                              style={{ flex: 1, padding: '7px 12px', background: active ? '#1A1611' : 'transparent', color: active ? '#FAF7F2' : '#6B6358', border: 'none', borderRadius: 2, fontFamily: "'Geist', sans-serif", fontSize: 12, fontWeight: active ? 600 : 400, cursor: 'pointer', transition: 'all 0.15s' }}
+                            >
+                              {label}
+                            </button>
                           );
-                        })
+                        })}
+                      </div>
+
+                      {/* Author mode content */}
+                      {isAuthorMode && (
+                        authorLoading ? (
+                          <div style={{ padding: '40px 8px 0' }}>
+                            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, color: '#1A1611', fontStyle: 'italic', textAlign: 'center', marginBottom: 28 }}>
+                              {lang === 'ko' ? '검색 중…' : 'Searching…'}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginBottom: 24 }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                                <div style={{ width: 32, height: 32, borderRadius: '50%', border: '2px solid #D8D0BE', background: '#FAF7F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <span style={{ color: '#C8C0B0', fontSize: 20 }}>·</span>
+                                </div>
+                                <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', textAlign: 'center', maxWidth: 80 }}>Semantic Scholar</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : authorStep === 'candidates' ? (
+                          /* ── Candidate list ── */
+                          authorCandidates.length === 0 ? (
+                            <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+                              <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#1A1611', fontStyle: 'italic' }}>
+                                {ts.authorNotFound(searchResults?.keyword || '')}
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 12 }}>
+                                {ts.authorCandidatesHeader.toUpperCase()}
+                              </div>
+                              {authorCandidates.map(author => (
+                                <button
+                                  key={author.id}
+                                  onClick={() => handleSelectAuthor(author)}
+                                  style={{ width: '100%', textAlign: 'left', background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: '14px 18px', marginBottom: 10, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}
+                                >
+                                  <div>
+                                    <div style={{ fontFamily: "'Fraunces', serif", fontSize: 15, fontWeight: 500, color: '#1A1611', marginBottom: 4 }}>{author.name}</div>
+                                    <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358' }}>
+                                      {ts.authorPaperCount(author.paper_count)} · {ts.citations(author.citation_count)}
+                                    </div>
+                                  </div>
+                                  <span style={{ color: '#9B9185', fontSize: 16, flexShrink: 0 }}>›</span>
+                                </button>
+                              ))}
+                            </>
+                          )
+                        ) : (
+                          /* ── Papers for selected author ── */
+                          <>
+                            <button
+                              onClick={() => { setAuthorStep('candidates'); setAuthorResults(null); setPage(1); }}
+                              style={{ background: 'none', border: 'none', padding: '0 0 10px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer' }}>
+                              {ts.authorBackToCandidates}
+                            </button>
+
+                            {authorResults && (
+                              <>
+                                <div style={{ margin: '0 0 12px', padding: '10px 14px', background: '#FFFFFF', borderLeft: '3px solid #C84B31', borderRadius: '0 4px 4px 0' }}>
+                                  <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 4 }}>AUTHOR</div>
+                                  <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 14, fontWeight: 600, color: '#1A1611' }}>{authorResults.author?.name}</div>
+                                  <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', marginTop: 2 }}>
+                                    {ts.authorPaperCount(tabItems.length)}
+                                  </div>
+                                </div>
+
+                                <TabBar activeTab="paper" counts={tabCounts} onTab={() => {}} perPage={perPage} onPerPage={handlePerPage} ts={ts} authorOnly />
+
+                                {pageItems.length === 0 ? (
+                                  <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+                                    <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#1A1611', fontStyle: 'italic' }}>
+                                      {ts.noResults(authorResults.author?.name || '')}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  pageItems.map((item, i) => (
+                                    <PaperCard key={`author-${pageStart + i}`} item={item} type="paper" showCite showCode summary={paperSummaries[item.title]} summaryLoading={!!summaryLoading[item.title]} summaryNoKey={!!paperNoKey[item.title]} onSummarize={() => fetchPaperSummary(item.title, item.abstract)} />
+                                  ))
+                                )}
+                                <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+                              </>
+                            )}
+                          </>
+                        )
                       )}
 
-                      <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+                      {/* Topic mode content */}
+                      {!isAuthorMode && (
+                        <>
+                          {/* AI Overview */}
+                          <div style={{ margin: '4px 0 16px', padding: '12px 16px', background: '#FFFFFF', borderLeft: '3px solid #C84B31', borderRadius: '0 4px 4px 0' }}>
+                            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 8 }}>OVERVIEW</div>
+                            {overviewText ? (
+                              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', lineHeight: 1.6, margin: 0 }}>{overviewText}</p>
+                            ) : overviewNoKey ? (
+                              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>{ts.noApiKeyOverview}</p>
+                            ) : overviewError ? (
+                              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#C84B31', lineHeight: 1.6, margin: 0 }}>{ts.overviewError}</p>
+                            ) : overviewLoading ? (
+                              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', fontStyle: 'italic', margin: 0 }}>{ts.aiLoading}</p>
+                            ) : (
+                              <button onClick={fetchOverview} style={{ background: 'none', border: '1px solid #D8D0BE', borderRadius: 3, padding: '5px 12px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer' }}>
+                                {ts.aiOverviewBtn}
+                              </button>
+                            )}
+                          </div>
+
+                          <TabBar activeTab={activeTab} counts={tabCounts} onTab={handleTab} perPage={perPage} onPerPage={handlePerPage} ts={ts} />
+
+                          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', marginBottom: 10, padding: '0 2px' }}>
+                            {ts.resultsFor(tabItems.length, searchResults?.keyword || '')}
+                          </div>
+
+                          {pageItems.length === 0 ? (
+                            <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+                              <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, color: '#1A1611', fontStyle: 'italic' }}>
+                                {ts.noResults(searchResults?.keyword || '')}
+                              </div>
+                            </div>
+                          ) : (
+                            pageItems.map((item, i) => {
+                              const title = item.title || item.name || '';
+                              return (
+                                <PaperCard key={`${activeTab}-${pageStart + i}`} item={item} type={activeTab} showCite showCode summary={paperSummaries[title]} summaryLoading={!!summaryLoading[title]} summaryNoKey={!!paperNoKey[title]} onSummarize={() => fetchPaperSummary(title, item.abstract)} />
+                              );
+                            })
+                          )}
+
+                          <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+                        </>
+                      )}
                     </>
                   )}
 

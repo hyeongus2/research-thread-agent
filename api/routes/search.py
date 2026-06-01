@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from api.schemas import SearchRequest, SummarizeOverviewRequest, SummarizePaperRequest
 from config.settings import settings
 from services import claude_service, thread_service
+from services.semantic_scholar_service import search_author_candidates, get_author_papers
 from utils.database import get_db
 
 router = APIRouter()
@@ -120,6 +121,18 @@ def summarize_overview(body: SummarizeOverviewRequest):
         return {"overview": None, "no_api_key": True}
     overview = claude_service.generate_overview(body.keyword, body.papers, lang=body.lang)
     return {"overview": overview, "no_api_key": False}
+
+
+@router.get("/search/author-candidates")
+def author_candidates(name: str):
+    """Return author candidates matching the given name query."""
+    return {"candidates": search_author_candidates(name)}
+
+
+@router.get("/search/author-papers")
+def author_papers(author_id: str, author_name: str = "", limit: int = 50):
+    """Return papers for a specific author by their Semantic Scholar author ID."""
+    return get_author_papers(author_id, author_name=author_name, limit=limit)
 
 
 @router.get("/search/history")
