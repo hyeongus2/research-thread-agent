@@ -2,12 +2,14 @@
 
 A local-first, open-source research curation tool for AI/ML researchers and developers.
 
-Automatically collects papers, models, and repositories from **Semantic Scholar**, **Hugging Face Hub**, and **GitHub**, then presents them in two modes:
+Automatically collects papers, models, and repositories from **Semantic Scholar**, **Hugging Face Hub**, and **GitHub**, then presents them in six views:
 
 - **Quick Search** — Papers, models, and repos for a keyword, sorted by quality signal (citations / downloads / stars)
 - **Learning Path** — Historical development of a topic, organized chronologically by era
+- **Research Lineage** — Citation-based graph showing relationships between papers
 - **Trending Feed** — Community-upvoted papers from Hugging Face (daily / weekly / monthly)
 - **My Feed** — Personalized paper alerts based on your subscribed categories and keywords
+- **Venues** — Browse papers from major ML/AI conferences by year
 
 All data is stored on your local machine (SQLite). No external server, no account required, no telemetry.
 
