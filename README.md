@@ -113,10 +113,13 @@ chmod +x setup.sh && ./setup.sh
 Open the generated `.env` file and fill in your keys:
 
 ```
-ANTHROPIC_API_KEY=sk-ant-...      # optional — enables AI summary buttons
-GITHUB_TOKEN=ghp_...              # required
-HF_API_TOKEN=hf_...               # optional
-SEMANTIC_SCHOLAR_API_KEY=         # optional — raises SS rate limit
+ANTHROPIC_API_KEY=        # optional — enables AI Overview, AI Summary, and era analysis
+GITHUB_TOKEN=             # required — unauthenticated requests limited to 60/hour
+HF_API_TOKEN=             # optional — increases HF model search rate limits
+SEMANTIC_SCHOLAR_API_KEY= # optional — raises rate limit from 100 req/5 min to 1 req/sec
+RESEND_API_KEY=           # optional — only needed for email digest feature
+USER_EMAIL=               # optional — recipient address for email digest
+CLAUDE_MODEL=             # optional — defaults to claude-sonnet-4-6
 ```
 
 ### Run
