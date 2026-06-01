@@ -244,7 +244,12 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
   return (
     <div style={{
       position: 'fixed',
-      inset: 0,
+      top: 0,
+      bottom: 0,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: '100%',
+      maxWidth: 1200,
       background: '#FAF7F2',
       display: 'flex',
       flexDirection: 'column',

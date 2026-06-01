@@ -45,6 +45,9 @@ async def reset_db(request: Request):
     from models import user, subscription, notification, thread, settings  # noqa: F401
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    from api.routes.feed import _myfeed_cache, _cache
+    _myfeed_cache.clear()
+    _cache.clear()
     return {"message": "Database reset successfully"}
 
 

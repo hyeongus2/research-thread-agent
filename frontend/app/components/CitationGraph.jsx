@@ -205,7 +205,7 @@ function AllResultsList({ nodes, edges, nodeById }) {
 
 // ---------- Main component ----------
 
-export default function CitationGraph({ embedded }) {
+export default function CitationGraph({ embedded, onBack, onComplete }) {
   const { t, lang } = useLanguage();
   const ts = t.search;
 
@@ -216,7 +216,9 @@ export default function CitationGraph({ embedded }) {
   const [selectedId, setSelectedId] = useState(null);
   const [hoveredEdgeIdx, setHoveredEdgeIdx] = useState(null);
   const [history, setHistory] = useState(null);
+  const [showHistoryCG, setShowHistoryCG] = useState(false);
   const abortRef = useRef(null);
+  const cgInputRef = useRef(null);
 
   const loadHistory = async () => {
     try {
@@ -236,6 +238,16 @@ export default function CitationGraph({ embedded }) {
   const [nodeSumNoKey, setNodeSumNoKey] = useState({});
 
   useEffect(() => { loadHistory(); }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (cgInputRef.current && !cgInputRef.current.contains(e.target)) {
+        setShowHistoryCG(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const fetchNodeSummary = async (title, abstract) => {
     if (!abstract || nodeSummaries[title] !== undefined || nodeSumNoKey[title] || nodeSumLoading[title]) return;
@@ -276,9 +288,11 @@ export default function CitationGraph({ embedded }) {
         signal: controller.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setResult(await res.json());
+      const graphData = await res.json();
+      setResult(graphData);
       setBuildState('done');
       loadHistory();
+      if (onComplete) onComplete(q);
     } catch (err) {
       if (err?.name !== 'AbortError') setBuildState('error');
     } finally {
@@ -316,14 +330,42 @@ export default function CitationGraph({ embedded }) {
   return (
     <div style={{ paddingBottom: 40 }}>
       {/* Query input */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleBuild()}
-          placeholder={ts.lineagePlaceholder}
-          style={{ flex: 1, padding: '9px 12px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none' }}
-        />
+      <div ref={cgInputRef} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleBuild()}
+            onFocus={() => setShowHistoryCG(true)}
+            placeholder={ts.lineagePlaceholder}
+            style={{ width: '100%', padding: '9px 12px', border: '1px solid #D8D0BE', borderRadius: showHistoryCG && history && history.length > 0 ? '4px 4px 0 0' : 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+          />
+          {showHistoryCG && history && history.length > 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#FFFFFF', border: '1px solid #D8D0BE', borderTop: 'none', borderRadius: '0 0 4px 4px', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', maxHeight: 240, overflowY: 'auto' }}>
+              <div style={{ padding: '8px 12px 4px', fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.12em' }}>
+                {lang === 'ko' ? '최근 인용 계보' : 'RECENT GRAPHS'}
+              </div>
+              {history.map(item => (
+                <div key={item.query}
+                  style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', borderTop: '1px solid #F0EAD9' }}
+                  onClick={() => { setQuery(item.query); setShowHistoryCG(false); handleBuildWithQuery(item.query); }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FAF7F2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span style={{ flex: 1, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.query}
+                  </span>
+                  <button
+                    onClick={(e) => deleteHistory(item.query, e)}
+                    style={{ background: 'none', border: 'none', padding: '2px 4px', color: '#9B9185', cursor: 'pointer', fontSize: 12, fontFamily: "'Geist', sans-serif", flexShrink: 0 }}
+                  >
+                    {lang === 'ko' ? '삭제' : 'Delete'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           onClick={handleBuild}
           disabled={!query.trim() || buildState === 'loading'}
@@ -336,28 +378,6 @@ export default function CitationGraph({ embedded }) {
       <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', lineHeight: 1.5, margin: '0 0 16px' }}>
         {ts.lineageHint}
       </p>
-
-      {buildState === 'idle' && history && history.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.15em', marginBottom: 8 }}>
-            {lang === 'ko' ? '최근 인용 계보' : 'RECENT GRAPHS'}
-          </div>
-          {history.map(item => (
-            <div key={item.query}
-              onClick={() => { setQuery(item.query); handleBuildWithQuery(item.query); }}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, marginBottom: 6, cursor: 'pointer' }}
-            >
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611' }}>{item.query}</span>
-              <button
-                onClick={(e) => deleteHistory(item.query, e)}
-                style={{ background: 'none', border: 'none', color: '#9B9185', cursor: 'pointer', fontSize: 12, padding: '0 2px', fontFamily: "'Geist', sans-serif" }}
-              >
-                {lang === 'ko' ? '삭제' : 'Delete'}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {buildState === 'loading' && (
         <div style={{ padding: '40px 0', textAlign: 'center' }}>
@@ -384,6 +404,14 @@ export default function CitationGraph({ embedded }) {
 
       {buildState === 'done' && allNodes.length > 0 && (
         <>
+          {embedded && (
+            <button
+              onClick={() => { setBuildState('idle'); setResult(null); setSelectedId(null); }}
+              style={{ background: 'none', border: 'none', padding: '0 0 8px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              ← {ts.backToFeed}
+            </button>
+          )}
           {result?.cache_hit && (
             <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '0 0 8px', textAlign: 'right' }}>
               ⚡ cached result

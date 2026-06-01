@@ -63,6 +63,22 @@ def read_notification(
     return {"ok": True}
 
 
+@router.delete("/notifications/{notification_id}")
+def delete_notification(
+    notification_id: int, user_id: int, db: Session = Depends(get_db)
+):
+    n = (
+        db.query(Notification)
+        .filter(Notification.id == notification_id, Notification.user_id == user_id)
+        .first()
+    )
+    if not n:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    db.delete(n)
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/notifications/read-all")
 def read_all_notifications(user_id: int, db: Session = Depends(get_db)):
     updated = (
@@ -141,6 +157,7 @@ def check_stream(user_id: int):
     def run() -> None:
         from services.notification_service import check_and_notify_for_user
         from api.routes.feed import _myfeed_cache
+        _myfeed_cache.pop(user_id, None)  # invalidate before check so loadPapers sees fresh DB
         db = SessionLocal()
         try:
             def progress_cb(event):

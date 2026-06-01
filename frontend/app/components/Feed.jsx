@@ -255,7 +255,7 @@ function TrendingCard({ p, onQuickSearch, onSummarize, aiSummary, summaryLoading
 // =============================================================================
 // Trending feed (HF Daily Papers)
 // =============================================================================
-function TrendingFeed({ onQuickSearch }) {
+function TrendingFeed({ onQuickSearch, onComplete }) {
   const { t, lang } = useLanguage();
   const tf = t.feed;
   const ts = t.search;
@@ -267,6 +267,7 @@ function TrendingFeed({ onQuickSearch }) {
   const [paperSummaries, setPaperSummaries] = useState({});
   const [summaryLoading, setSummaryLoading] = useState({});
   const [paperNoKey, setPaperNoKey] = useState({});
+  const isInitialLoadRef = useRef(true);
 
   const fetchPaperSummary = async (title, abstract) => {
     if (!abstract || paperSummaries[title] !== undefined || paperNoKey[title] || summaryLoading[title]) return;
@@ -286,6 +287,8 @@ function TrendingFeed({ onQuickSearch }) {
   };
 
   useEffect(() => {
+    const wasInitial = isInitialLoadRef.current;
+    isInitialLoadRef.current = false;
     setPapers(null);
     setLoading(true);
     setError(false);
@@ -297,6 +300,7 @@ function TrendingFeed({ onQuickSearch }) {
         const data = await res.json();
         setPapers(data.papers || []);
         setFallbackDays(data.fallback_days || 0);
+        if (!wasInitial && onComplete) onComplete();
       } catch {
         setError(true);
       } finally {
@@ -381,7 +385,7 @@ function TrendingFeed({ onQuickSearch }) {
 // Persists across remounts so SSE doesn't re-run on every tab visit
 let _lastCheckedRefreshKey = -1;
 
-function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone }) {
+function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone, onComplete }) {
   const { t, lang } = useLanguage();
   const tf = t.feed;
   const ts = t.search;
@@ -483,6 +487,7 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
           setChecking(false);
           loadPapers();
           if (onCheckDone) onCheckDone();
+          if (ev.stage === 'done' && onComplete) onComplete();
         }
       } catch (_) {}
     };
@@ -562,16 +567,16 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
 // =============================================================================
 // Notification dropdown
 // =============================================================================
-function NotificationDropdown({ userId, onClose, onAllRead, onRead }) {
-  const { t } = useLanguage();
+function NotificationDropdown({ userId, onClose, onAllRead, onRead, localNotifs = [], onLocalRead, onLocalAllRead, onNotifNavigate, onLocalDelete, onDbDelete }) {
+  const { t, lang } = useLanguage();
   const tn = t.notifications;
-  const [notifs, setNotifs] = useState([]);
+  const [dbNotifs, setDbNotifs] = useState([]);
   const ref = useRef(null);
 
   useEffect(() => {
     fetch(`${API}/notifications?user_id=${userId || 1}`)
       .then(r => r.json())
-      .then(setNotifs)
+      .then(setDbNotifs)
       .catch(() => {});
   }, [userId]);
 
@@ -583,21 +588,34 @@ function NotificationDropdown({ userId, onClose, onAllRead, onRead }) {
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
 
-  const markRead = async (id) => {
+  const markDbRead = async (id) => {
     await fetch(`${API}/notifications/${id}/read?user_id=${userId || 1}`, { method: 'PATCH' });
-    setNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    setDbNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     if (onRead) onRead();
   };
 
   const markAllRead = async () => {
     await fetch(`${API}/notifications/read-all?user_id=${userId || 1}`, { method: 'POST' });
-    setNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
+    setDbNotifs(prev => prev.map(n => ({ ...n, is_read: true })));
     if (onAllRead) onAllRead();
+    if (onLocalAllRead) onLocalAllRead();
   };
 
-  const handleClick = (n) => {
-    if (!n.is_read) markRead(n.id);
+  const deleteDbNotif = async (id, e) => {
+    e.stopPropagation();
+    await fetch(`${API}/notifications/${id}?user_id=${userId || 1}`, { method: 'DELETE' });
+    setDbNotifs(prev => prev.filter(n => n.id !== id));
+    if (onDbDelete) onDbDelete(id);
+  };
+
+  const handleDbClick = (n) => {
+    if (!n.is_read) markDbRead(n.id);
     if (n.source_url) window.open(n.source_url, '_blank');
+  };
+
+  const handleLocalClick = (n) => {
+    if (!n.isRead && onLocalRead) onLocalRead(n.id);
+    if (onNotifNavigate) onNotifNavigate(n.tab, n.mode);
   };
 
   const relTime = (ts) => {
@@ -608,13 +626,16 @@ function NotificationDropdown({ userId, onClose, onAllRead, onRead }) {
     return `${Math.floor(h / 24)}d ago`;
   };
 
-  const unread = notifs.filter(n => !n.is_read).length;
+  const dbUnread = dbNotifs.filter(n => !n.is_read).length;
+  const localUnread = localNotifs.filter(n => !n.isRead).length;
+  const hasAnyUnread = dbUnread + localUnread > 0;
+  const isEmpty = dbNotifs.length === 0 && localNotifs.length === 0;
 
   return (
     <div ref={ref} style={{
       position: 'absolute', top: '100%', right: 0, zIndex: 200,
       background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 8,
-      width: 320, maxHeight: 400, overflow: 'hidden',
+      width: 320, maxHeight: 440, overflow: 'hidden',
       display: 'flex', flexDirection: 'column',
       boxShadow: '0 4px 16px rgba(0,0,0,0.10)',
     }}>
@@ -623,7 +644,7 @@ function NotificationDropdown({ userId, onClose, onAllRead, onRead }) {
         <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, fontWeight: 600, color: '#1A1611', letterSpacing: '0.08em' }}>
           {tn.title}
         </span>
-        {unread > 0 && (
+        {hasAnyUnread && (
           <button onClick={markAllRead} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#C84B31' }}>
             {tn.markAllRead}
           </button>
@@ -632,41 +653,100 @@ function NotificationDropdown({ userId, onClose, onAllRead, onRead }) {
 
       {/* List */}
       <div style={{ overflowY: 'auto', flex: 1 }}>
-        {notifs.length === 0 ? (
+        {isEmpty && (
           <div style={{ padding: '24px 14px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9E9485', textAlign: 'center' }}>
             {tn.empty}
           </div>
-        ) : notifs.map(n => (
-          <div
-            key={n.id}
-            onClick={() => handleClick(n)}
-            style={{
-              padding: '10px 14px', borderBottom: '1px solid #F0EBE0', cursor: n.source_url ? 'pointer' : 'default',
-              background: n.is_read ? 'transparent' : '#FDF8F2',
-              display: 'flex', gap: 10, alignItems: 'flex-start',
-            }}
-          >
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: n.is_read ? 'transparent' : '#C84B31', marginTop: 5, flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', fontWeight: n.is_read ? 400 : 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {n.title}
-              </div>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                {n.topic && (
-                  <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', background: '#F0EBE0', padding: '1px 6px', borderRadius: 10 }}>
-                    {n.topic}
-                  </span>
-                )}
-                <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9E9485' }}>
-                  {relTime(n.created_at)}
-                </span>
-              </div>
+        )}
+
+        {/* Activity notifications (client-side) */}
+        {localNotifs.length > 0 && (
+          <>
+            <div style={{ padding: '6px 14px 4px', fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.1em', background: '#FAFAFA', borderBottom: '1px solid #F0EBE0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{lang === 'ko' ? '최근 활동' : 'RECENT ACTIVITY'}</span>
+              <button onClick={() => { if (onLocalDelete) localNotifs.forEach(n => onLocalDelete(n.id)); }} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#C84B31' }}>
+                {lang === 'ko' ? '모두 삭제' : 'Delete all'}
+              </button>
             </div>
-            {n.source_url && (
-              <ArrowUpRight size={12} style={{ color: '#9E9485', flexShrink: 0, marginTop: 3 }} />
-            )}
-          </div>
-        ))}
+            {localNotifs.map(n => (
+              <div
+                key={n.id}
+                onClick={() => handleLocalClick(n)}
+                style={{
+                  padding: '10px 14px', borderBottom: '1px solid #F0EBE0', cursor: 'pointer',
+                  background: n.isRead ? 'transparent' : '#FDF8F2',
+                  display: 'flex', gap: 10, alignItems: 'flex-start',
+                }}
+              >
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: n.isRead ? 'transparent' : '#C84B31', marginTop: 5, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', fontWeight: n.isRead ? 400 : 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {n.title}
+                  </div>
+                  <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9E9485' }}>
+                    {relTime(n.created_at)}
+                  </div>
+                </div>
+                <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185', flexShrink: 0, marginTop: 1 }}>→</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (onLocalDelete) onLocalDelete(n.id); }}
+                  style={{ background: 'none', border: 'none', padding: '0 0 0 4px', cursor: 'pointer', color: '#C4B8A8', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+                >×</button>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* DB paper alert notifications */}
+        {dbNotifs.length > 0 && (
+          <>
+            <div style={{ padding: '6px 14px 4px', fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.1em', background: '#FAFAFA', borderBottom: '1px solid #F0EBE0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{lang === 'ko' ? '논문 알림' : 'PAPER ALERTS'}</span>
+              <button onClick={async () => {
+                await Promise.all(dbNotifs.map(n => fetch(`${API}/notifications/${n.id}?user_id=${userId || 1}`, { method: 'DELETE' })));
+                setDbNotifs([]);
+                if (onAllRead) onAllRead();
+              }} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#C84B31' }}>
+                {lang === 'ko' ? '모두 삭제' : 'Delete all'}
+              </button>
+            </div>
+            {dbNotifs.map(n => (
+              <div
+                key={n.id}
+                onClick={() => handleDbClick(n)}
+                style={{
+                  padding: '10px 14px', borderBottom: '1px solid #F0EBE0', cursor: n.source_url ? 'pointer' : 'default',
+                  background: n.is_read ? 'transparent' : '#FDF8F2',
+                  display: 'flex', gap: 10, alignItems: 'flex-start',
+                }}
+              >
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: n.is_read ? 'transparent' : '#C84B31', marginTop: 5, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', fontWeight: n.is_read ? 400 : 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {n.title}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {n.topic && (
+                      <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', background: '#F0EBE0', padding: '1px 6px', borderRadius: 10 }}>
+                        {n.topic}
+                      </span>
+                    )}
+                    <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9E9485' }}>
+                      {relTime(n.created_at)}
+                    </span>
+                  </div>
+                </div>
+                {n.source_url && (
+                  <ArrowUpRight size={12} style={{ color: '#9E9485', flexShrink: 0, marginTop: 3 }} />
+                )}
+                <button
+                  onClick={(e) => deleteDbNotif(n.id, e)}
+                  style={{ background: 'none', border: 'none', padding: '0 0 0 4px', cursor: 'pointer', color: '#C4B8A8', fontSize: 14, lineHeight: 1, flexShrink: 0 }}
+                >×</button>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
@@ -768,7 +848,7 @@ function readVenueLimit() {
   } catch { return 50; }
 }
 
-function VenuesView() {
+function VenuesView({ onComplete }) {
   const { t, lang } = useLanguage();
   const tf = t.feed;
   const ts = t.search;
@@ -800,6 +880,7 @@ function VenuesView() {
       const d = await r.json();
       setPapers(d.papers || []);
       setVenueState('done');
+      if (onComplete) onComplete(venue, year);
     } catch {
       setVenueState('error');
     }
@@ -1049,6 +1130,19 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
   const prevUnreadRef = useRef(null);
   const bellRef = useRef(null);
 
+  // Client-side activity notifications (ephemeral, cleared on page reload)
+  const [localNotifs, setLocalNotifs] = useState([]);
+  const addLocalNotif = useCallback((title, tab, mode = null) => {
+    setLocalNotifs(prev => [{
+      id: Date.now(),
+      title,
+      tab,
+      mode,
+      isRead: false,
+      created_at: new Date().toISOString(),
+    }, ...prev.slice(0, 19)]);
+  }, []);
+
   const fetchUnreadCount = useCallback(async () => {
     try {
       const res = await fetch(`${API}/notifications/count?user_id=${userId || 1}`);
@@ -1166,7 +1260,13 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
           try { event = JSON.parse(line.slice(6)); } catch { continue; }
           if (event.stage === 'done') {
             clearTimeout(timeout); clearInterval(elapsedRef.current);
-            setSearchResults(event.result); setSearchState('done'); return;
+            setSearchResults(event.result); setSearchState('done');
+            setLocalNotifs(prev => [{
+              id: Date.now(), tab: 'search', mode: 'quick', isRead: false,
+              title: lang === 'ko' ? `빠른 검색: "${combined}" 완료` : `Quick Search: "${combined}" done`,
+              created_at: new Date().toISOString(),
+            }, ...prev.slice(0, 19)]);
+            return;
           } else if (event.stage === 'error') {
             clearTimeout(timeout); clearInterval(elapsedRef.current);
             setSearchState('error'); return;
@@ -1192,7 +1292,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
     } finally {
       searchAbortRef.current = null;
     }
-  }, [query, period, nMonths, customFrom, customTo, userId]);
+  }, [query, period, nMonths, customFrom, customTo, userId, lang]);
 
   const handleSearchClick = () => {
     setShowHistory(false);
@@ -1361,7 +1461,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
           <div ref={bellRef} style={{ position: 'relative' }}>
             <button onClick={() => setShowNotifs(p => !p)} style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611', cursor: 'pointer', position: 'relative' }}>
               <Bell size={18} />
-              {unreadCount > 0 && (
+              {(unreadCount + localNotifs.filter(n => !n.isRead).length) > 0 && (
                 <span style={{
                   position: 'absolute', top: 4, right: 4,
                   width: 8, height: 8, borderRadius: '50%',
@@ -1372,7 +1472,18 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
               )}
             </button>
             {showNotifs && (
-              <NotificationDropdown userId={userId} onClose={() => setShowNotifs(false)} onAllRead={() => setUnreadCount(0)} onRead={() => setUnreadCount(prev => Math.max(0, prev - 1))} />
+              <NotificationDropdown
+                userId={userId}
+                onClose={() => setShowNotifs(false)}
+                onAllRead={() => setUnreadCount(0)}
+                onRead={() => setUnreadCount(prev => Math.max(0, prev - 1))}
+                localNotifs={localNotifs}
+                onLocalRead={(id) => setLocalNotifs(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))}
+                onLocalAllRead={() => setLocalNotifs(prev => prev.map(n => ({ ...n, isRead: true })))}
+                onLocalDelete={(id) => setLocalNotifs(prev => prev.filter(n => n.id !== id))}
+                onDbDelete={(id) => setUnreadCount(prev => Math.max(0, prev - 1))}
+                onNotifNavigate={(tab, mode) => { setView(tab); if (mode) setSearchMode(mode); setShowNotifs(false); }}
+              />
             )}
           </div>
           <button onClick={onSettings} style={{ background: 'none', border: 'none', padding: 8, color: '#1A1611', cursor: 'pointer' }}>
@@ -1382,8 +1493,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
       </div>
 
       {/* Search controls — only in search view */}
-      {view === 'search' && (
-        <div style={{ padding: '14px 16px 0', background: '#FAF7F2' }}>
+      <div style={{ display: view === 'search' ? 'block' : 'none', padding: '14px 16px 0', background: '#FAF7F2' }}>
 
           {/* Mode toggle */}
           <SearchModeToggle mode={searchMode} onMode={setSearchMode} t={t} />
@@ -1457,37 +1567,58 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
             </>
           )}
         </div>
-      )}
 
       {/* Content area */}
       <div style={{ position: 'relative', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '0 16px 80px', background: '#FAF7F2' }}>
 
           {/* Trending tab */}
-          {view === 'trending' && <TrendingFeed onQuickSearch={handleQuickSearch} />}
+          <div style={{ display: view === 'trending' ? 'block' : 'none' }}>
+            <TrendingFeed
+              onQuickSearch={handleQuickSearch}
+              onComplete={() => addLocalNotif(lang === 'ko' ? '트렌딩 논문 로드됨' : 'Trending papers loaded', 'trending', null)}
+            />
+          </div>
 
           {/* My Feed tab */}
-          {view === 'myFeed' && <MyFeedView userId={userId} refreshKey={myFeedRefreshKey} papersRefreshKey={myFeedPapersKey} onCheckDone={fetchUnreadCount} />}
+          <div style={{ display: view === 'myFeed' ? 'block' : 'none' }}>
+            <MyFeedView
+              userId={userId}
+              refreshKey={myFeedRefreshKey}
+              papersRefreshKey={myFeedPapersKey}
+              onCheckDone={fetchUnreadCount}
+              onComplete={() => addLocalNotif(lang === 'ko' ? '내 피드 업데이트됨' : 'My Feed updated', 'myFeed', null)}
+            />
+          </div>
 
           {/* Venues tab */}
-          {view === 'venues' && <VenuesView />}
+          <div style={{ display: view === 'venues' ? 'block' : 'none' }}>
+            <VenuesView
+              onComplete={(venue, year) => addLocalNotif(lang === 'ko' ? `${venue} ${year} 논문 로드됨` : `${venue} ${year} papers loaded`, 'venues', null)}
+            />
+          </div>
 
           {/* Search tab */}
-          {view === 'search' && (
-            <>
-              {searchMode === 'learning' && (
-                <div style={{ paddingTop: 8 }}>
-                  <LearningPath userId={userId} onBack={() => setSearchMode('quick')} embedded />
-                </div>
-              )}
+          <div style={{ display: view === 'search' ? 'block' : 'none' }}>
+            <div style={{ display: searchMode === 'learning' ? 'block' : 'none', paddingTop: 8 }}>
+              <LearningPath
+                userId={userId}
+                onBack={() => setSearchMode('quick')}
+                onComplete={(topic) => addLocalNotif(lang === 'ko' ? `학습 경로: "${topic}" 완료` : `Learning Path: "${topic}" ready`, 'search', 'learning')}
+                embedded
+              />
+            </div>
 
-              {searchMode === 'lineage' && (
-                <div style={{ paddingTop: 8 }}>
-                  <CitationGraph embedded />
-                </div>
-              )}
+            <div style={{ display: searchMode === 'lineage' ? 'block' : 'none', paddingTop: 8 }}>
+              <CitationGraph
+                embedded
+                onBack={() => setSearchMode('quick')}
+                onComplete={(q) => addLocalNotif(lang === 'ko' ? `인용 계보: "${q}" 완료` : `Research Lineage: "${q}" ready`, 'search', 'lineage')}
+              />
+            </div>
 
-              {searchMode === 'quick' && (
+            <div style={{ display: searchMode === 'quick' ? 'block' : 'none' }}>
+              <>
                 <>
                   {searchState === 'idle' && (
                     <div style={{ padding: '32px 8px 0', textAlign: 'center' }}>
@@ -1685,9 +1816,9 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
                     </div>
                   )}
                 </>
-              )}
-            </>
-          )}
+              </>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1698,7 +1829,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
       </div>
 
       {/* Bottom navigation */}
-      <BottomNav view={view} onView={setView} t={t} />
+      <BottomNav view={view} onView={(v) => { setView(v); if (scrollRef.current) scrollRef.current.scrollTop = 0; }} t={t} />
     </div>
   );
 }

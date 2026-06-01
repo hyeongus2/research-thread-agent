@@ -241,7 +241,13 @@ On Windows, use the `.venv\Scripts\python.exe` path:
 
 ## Roadmap
 
-### v1.0.0 (current)
+### v1.0.1 (current)
+- [x] **Activity notifications** — bell dropdown now shows a "Recent Activity" section for feature completions (Quick Search, Learning Path, Research Lineage, Trending, My Feed, Venues); clicking a notification navigates directly to that tab; unread red dot per item disappears on click; bell badge clears when all notifications are read
+- [x] **Notification delete** — × button on every individual notification item (both Activity and Paper Alerts); "Delete all" button per section header to bulk-clear each section independently; Paper Alert deletes hit `DELETE /api/notifications/{id}`
+- [x] **Back button fix** — "Back to feed" in Learning Path results now returns to the Learning Path idle screen (not Quick Search); same fix applied to Research Lineage
+- [x] **Learning Path dropdown fix** — history dropdown no longer clipped when input is focused; input element moved outside the scroll container so the absolute-positioned dropdown renders at full height
+
+### v1.0.0
 - [x] **MCP server** — 4 tools exposed to Claude.ai chat: `quick_search`, `learning_path`, `trending_papers`, `venue_papers`; Claude Desktop config documented; stdio transport with clean JSON-RPC (no stdout log pollution)
 - [x] **Responsive 2-column grid** — PC view shows cards in a 2-col grid; mobile stays 1-col; mixed-height cards align correctly per row
 - [x] **Author mode cache fix** — empty candidate results no longer cached, preventing stale data across different date periods

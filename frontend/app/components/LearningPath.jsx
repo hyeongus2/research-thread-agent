@@ -163,7 +163,7 @@ const INIT_PROGRESS = {
   eras: [],
 };
 
-export default function LearningPath({ userId, onBack, embedded = false }) {
+export default function LearningPath({ userId, onBack, onComplete, embedded = false }) {
   const { t, lang } = useLanguage();
   const tl = t.learningPath;
 
@@ -177,6 +177,9 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
 
   const eraTabRef = useRef(null);
   const abortRef = useRef(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const idleInputRef = useRef(null);
+  const doneInputRef = useRef(null);
 
   const handleCancel = () => {
     if (abortRef.current) { abortRef.current.abort(); abortRef.current = null; }
@@ -196,6 +199,16 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
     el.addEventListener('wheel', handler, { passive: false });
     return () => el.removeEventListener('wheel', handler);
   }, [state]); // re-attach when state becomes 'done' (div mounts)
+
+  useEffect(() => {
+    const handler = (e) => {
+      const insideIdle = idleInputRef.current?.contains(e.target);
+      const insideDone = doneInputRef.current?.contains(e.target);
+      if (!insideIdle && !insideDone) setShowHistory(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -265,6 +278,8 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
             setActiveEra(0);
             setActiveContentTab('papers');
             setState('done');
+            fetch(`${API}/learning-path/history`).then(r => r.json()).then(setLpHistory).catch(() => {});
+            if (onComplete) onComplete(trimmed);
             return;
           } else if (event.type === 'error') {
             setState('error');
@@ -320,6 +335,37 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
 
   const era = result?.eras?.[activeEra];
 
+  const historyDropdown = showHistory && lpHistory.length > 0 && (
+    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#FFFFFF', border: '1px solid #D8D0BE', borderTop: 'none', borderRadius: '0 0 4px 4px', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', maxHeight: 240, overflowY: 'auto' }}>
+      <div style={{ padding: '8px 12px 4px', fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.12em' }}>
+        {tl.historyLabel}
+      </div>
+      {lpHistory.map(h => (
+        <div key={h.topic}
+          style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', borderTop: '1px solid #F0EAD9' }}
+          onClick={() => { setTopic(h.topic); setShowHistory(false); buildTopic(h.topic); }}
+          onMouseEnter={e => e.currentTarget.style.background = '#FAF7F2'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          <span style={{ flex: 1, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {h.topic}
+          </span>
+          {h.year_range && (
+            <span style={{ fontFamily: "'Geist Mono', monospace", fontSize: 10, color: '#9B9185', marginRight: 8, flexShrink: 0 }}>
+              {h.year_range}
+            </span>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); handleDeleteHistory(e, h.topic); }}
+            style={{ background: 'none', border: 'none', padding: '2px 4px', color: '#C8C0B0', cursor: 'pointer', lineHeight: 0, flexShrink: 0 }}
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#FAF7F2' }}>
 
@@ -346,16 +392,21 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
 
       {/* Topic input + history */}
       {(state === 'idle' || state === 'error') && (
-        <div style={{ padding: embedded ? '8px 0 0' : '20px 16px 0', flex: 1, overflowY: 'auto' }}>
-          <div style={{ padding: embedded ? '0' : '0', marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input
-                value={topic}
-                onChange={e => setTopic(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && build()}
-                placeholder={tl.placeholder}
-                style={{ flex: 1, padding: '10px 12px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none' }}
-              />
+        <>
+          {/* Input — must be outside overflowY container so the dropdown isn't clipped */}
+          <div style={{ padding: embedded ? '8px 0 0' : '20px 16px 0', flexShrink: 0 }}>
+            <div ref={idleInputRef} style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input
+                  value={topic}
+                  onChange={e => setTopic(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && build()}
+                  onFocus={() => setShowHistory(true)}
+                  placeholder={tl.placeholder}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #D8D0BE', borderRadius: showHistory && lpHistory.length > 0 ? '4px 4px 0 0' : 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                />
+                {historyDropdown}
+              </div>
               <button
                 onClick={build}
                 disabled={!topic.trim()}
@@ -368,43 +419,14 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
               <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#C84B31', margin: '10px 0 0' }}>{tl.error}</p>
             )}
           </div>
-
-          {/* LP history */}
-          <div style={{ marginTop: 8 }}>
-            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 10 }}>
-              {tl.historyLabel}
-            </div>
-            {lpHistory.length === 0 ? (
-              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185', fontStyle: 'italic', margin: 0 }}>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {lpHistory.length === 0 && (
+              <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185', fontStyle: 'italic', margin: embedded ? '8px 0' : '8px 16px' }}>
                 {tl.historyEmpty}
               </p>
-            ) : lpHistory.map(h => (
-              <div key={h.topic}
-                onClick={() => handleHistoryClick(h.topic)}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, marginBottom: 8, cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#FAF7F2'}
-                onMouseLeave={e => e.currentTarget.style.background = '#FFFFFF'}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: 14, color: '#1A1611', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {h.topic}
-                  </div>
-                  {h.year_range && (
-                    <div style={{ fontFamily: "'Geist Mono', monospace", fontSize: 10, color: '#9B9185', marginTop: 2 }}>
-                      {h.year_range}
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={(e) => handleDeleteHistory(e, h.topic)}
-                  style={{ background: 'none', border: 'none', padding: '4px 6px', color: '#C8C0B0', cursor: 'pointer', lineHeight: 0, flexShrink: 0, marginLeft: 8 }}
-                >
-                  <X size={13} />
-                </button>
-              </div>
-            ))}
+            )}
           </div>
-        </div>
+        </>
       )}
 
       {/* Loading */}
@@ -425,6 +447,38 @@ export default function LearningPath({ userId, onBack, embedded = false }) {
       {/* Results */}
       {state === 'done' && result && (
         <>
+          {/* Back button + search bar */}
+          <div style={{ padding: '10px 16px 0' }}>
+            {embedded && (
+              <button
+                onClick={() => { setState('idle'); setResult(null); setTopic(''); setProgress(INIT_PROGRESS); }}
+                style={{ background: 'none', border: 'none', padding: '4px 0 8px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                ← {t.search.backToFeed}
+              </button>
+            )}
+            <div ref={doneInputRef} style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1, position: 'relative' }}>
+                <input
+                  value={topic}
+                  onChange={e => setTopic(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && build()}
+                  onFocus={() => setShowHistory(true)}
+                  placeholder={tl.placeholder}
+                  style={{ width: '100%', padding: '9px 12px', border: '1px solid #D8D0BE', borderRadius: showHistory && lpHistory.length > 0 ? '4px 4px 0 0' : 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                />
+                {historyDropdown}
+              </div>
+              <button
+                onClick={build}
+                disabled={!topic.trim()}
+                style={{ padding: '0 16px', background: topic.trim() ? '#1A1611' : '#D8D0BE', color: '#FAF7F2', border: 'none', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 13, fontWeight: 500, cursor: topic.trim() ? 'pointer' : 'default', whiteSpace: 'nowrap', transition: 'background 0.15s' }}
+              >
+                {tl.buildBtn}
+              </button>
+            </div>
+          </div>
+
           {/* Topic title */}
           <div style={{ padding: '14px 16px 0' }}>
             <div style={{
