@@ -5,16 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from api.routes import auth, citation_graph, config, feed, learning, notifications, search, subscriptions, venues
-from services.scheduler_service import start_scheduler, stop_scheduler
 from utils.database import Base, engine, get_db, init_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    start_scheduler()
     yield
-    stop_scheduler()
 
 
 app = FastAPI(title="Research Thread Agent API", lifespan=lifespan)
@@ -45,9 +42,8 @@ async def reset_db(request: Request):
     from models import user, subscription, notification, thread, settings  # noqa: F401
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    from api.routes.feed import _myfeed_cache, _cache
-    _myfeed_cache.clear()
-    _cache.clear()
+    from api.routes.venues import _venues_cache
+    _venues_cache.clear()
     return {"message": "Database reset successfully"}
 
 

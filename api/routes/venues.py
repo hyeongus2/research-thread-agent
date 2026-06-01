@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# In-memory cache: key = "VENUE::YEAR::LIMIT", value = list of paper dicts
+_venues_cache: dict[str, list] = {}
+
 VENUES = [
     {"key": "NeurIPS", "label": "NeurIPS", "field": "ML"},
     {"key": "ICML",    "label": "ICML",    "field": "ML"},
@@ -39,6 +42,11 @@ def venues_papers(
     limit: int = 50,
     db: Session = Depends(get_db),
 ):
+    cache_key = f"{venue}::{year}::{limit}"
+    if cache_key in _venues_cache:
+        logger.info("Venues cache hit: %s", cache_key)
+        return {"venue": venue, "year": year, "papers": _venues_cache[cache_key]}
+
     papers = search_papers_by_venue(venue_key=venue, year=year, limit=limit)
 
     # attach code links if PWC data has been imported
@@ -48,4 +56,5 @@ def venues_papers(
     except Exception as exc:
         logger.warning("Code link attachment skipped: %s", exc)
 
+    _venues_cache[cache_key] = papers
     return {"venue": venue, "year": year, "papers": papers}

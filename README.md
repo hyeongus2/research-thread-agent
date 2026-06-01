@@ -267,7 +267,15 @@ On Windows, use the `.venv\Scripts\python.exe` path:
 
 ## Roadmap
 
-### v1.0.2 (current)
+### v1.0.3 (current)
+- [x] **My Feed daily refresh guard** — SSE check now skips re-fetching if already run today; state stored in DB (`mycheck::` key in `historical_threads`) so it survives server restarts; cleared automatically when interests are saved in Settings
+- [x] **30-day notification auto-cleanup** — notifications older than 30 days are deleted at the start of each daily SSE refresh
+- [x] **Trending feed DB persistence** — trending results cached in `historical_threads` table (same-day invalidation); no longer re-fetches on server restart
+- [x] **Trending feed 2-column grid** — matches My Feed layout; 2 columns at ≥768px, 1 column on mobile
+- [x] **Onboarding persistence fix** — if `localStorage` is cleared (e.g. Chrome incognito or "clear on exit" setting), app recovers `user_id` from DB automatically; onboarding only shown if DB has no user
+- [x] **Language setting persistence** — selected language (EN/KO) now saved to DB user preferences via `PATCH /api/me/lang`; survives `localStorage` clear and Chrome incognito sessions
+
+### v1.0.2
 - [x] **MCP: `research_lineage` tool** — exposes citation graph as a text-friendly structure; `edges` use paper titles instead of raw IDs; includes a `summary` field listing the top influential papers with year, citation count, and venue
 - [x] **MCP: `my_feed` tool** — read-only access to personalized paper alerts stored in the local database; returns notifications sorted by recency with title, topic, citation count, and source URL; supports `unread_only` filter
 

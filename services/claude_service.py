@@ -104,17 +104,13 @@ def generate_era_analysis(
                     f"Papers:\n{papers_block}\n"
                     "Return valid JSON only, no markdown fences. All string values must be plain prose — "
                     "no markdown, no bullet points, no bold, no headers.\n\n"
-                    "For the era summary: write 3-4 sentences describing the dominant research directions, "
-                    "key breakthroughs, and how the field shifted during this period.\n\n"
+                    "For the era summary: write 2-3 sentences describing the dominant research directions "
+                    "and key breakthroughs during this period.\n\n"
                     "For each paper, write 2-4 substantive sentences per field:\n"
-                    "  problem: What specific technical or scientific limitation did this paper address? "
-                    "What was the state of the field before this work, and why was this problem important?\n"
-                    "  solution: What is the core technical approach or methodology? "
-                    "Explain the key idea, architecture, or algorithm concretely.\n"
-                    "  significance: What did this work enable or change? "
-                    "How did it advance the field beyond prior work, and what follow-on research did it inspire?\n"
-                    "  limitations: What does this approach not handle well, or what assumptions does it rely on? "
-                    "What open problems remain after this work?\n\n"
+                    "  problem: What limitation or gap did this paper address?\n"
+                    "  solution: What is the core technical approach or method?\n"
+                    "  significance: What did this work enable, change, or improve?\n"
+                    "  limitations: What does this approach not handle well or leave open?\n\n"
                     'JSON schema: {"summary":"...","papers":[{"index":1,"problem":"...","solution":"...","significance":"...","limitations":"..."}]}'
                     + (f"\n{lang_note}" if lang_note else "")
                 ),
@@ -162,18 +158,15 @@ def generate_overview(keyword: str, papers: list[dict], lang: str = "en") -> str
     try:
         response = _client().messages.create(
             model=settings.CLAUDE_MODEL,
-            max_tokens=4000,
+            max_tokens=1000,
             messages=[
                 {
                     "role": "user",
                     "content": (
-                        f'Write a 3-paragraph overview of the current research landscape on "{keyword}" '
-                        f"for an AI/ML researcher. Cover: (1) the core problem and dominant approaches, "
-                        f"(2) major milestones and current trends, "
-                        f"(3) practical applications and open challenges. "
-                        f"Write as plain prose — no markdown, no bullet points, no bold, no headers. "
-                        f"Each paragraph must be 4-6 complete sentences. Always finish the final sentence completely.\n\n"
-                        f"{papers_block}\n\nBe specific and informative. No preamble."
+                        f'Write a 3-sentence overview of the research landscape on "{keyword}" '
+                        f"for an AI/ML researcher. Cover the core problem, current state of the field, and key open challenges. "
+                        f"Plain prose only — no markdown, no bullet points.\n\n"
+                        f"{papers_block}\n\nNo preamble."
                         + (f" {lang_note}" if lang_note else "")
                     ),
                 }

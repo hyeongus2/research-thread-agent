@@ -52,6 +52,19 @@ def get_me(user_id: int, db: Session = Depends(get_db)):
     return UserResponse(user_id=user.id, username=user.username, preferences=prefs)
 
 
+@router.patch("/me/lang")
+def update_lang(user_id: int, lang: str, db: Session = Depends(get_db)):
+    from models.user import User
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return {"ok": False}
+    prefs = json.loads(user.preferences) if user.preferences else {}
+    prefs["lang"] = lang
+    user.preferences = json.dumps(prefs)
+    db.commit()
+    return {"ok": True}
+
+
 @router.patch("/me/preferences")
 def update_preferences(user_id: int, body: PreferencesUpdate, db: Session = Depends(get_db)):
     from models.user import User
@@ -72,7 +85,10 @@ def update_preferences(user_id: int, body: PreferencesUpdate, db: Session = Depe
 
     db.commit()
     db.refresh(user)
-    # Invalidate my-feed cache so the next fetch returns fresh data
-    from api.routes.feed import _myfeed_cache
-    _myfeed_cache.pop(user_id, None)
+    # Clear notifications and today's check record so SSE re-fetches for new interests
+    from models.notification import Notification
+    from models.thread import HistoricalThread
+    db.query(Notification).filter(Notification.user_id == user_id).delete()
+    db.query(HistoricalThread).filter(HistoricalThread.topic == f"mycheck::{user_id}").delete()
+    db.commit()
     return {"ok": True}
