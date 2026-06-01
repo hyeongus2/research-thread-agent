@@ -105,3 +105,12 @@ class CitationGraphRequest(BaseModel):
     max_seed_papers: int = 5
     max_depth: int = 1
     min_citations: int = 0
+
+
+class ResearcherNetworkRequest(BaseModel):
+    root_author_name: str
+    min_shared_papers: int = 2
+    max_collaborators: int = 20
+    year_start: Optional[int] = None
+    year_end: Optional[int] = None
+    max_papers: int = 100

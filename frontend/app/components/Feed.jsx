@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen, Library, GitBranch } from 'lucide-react';
+import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen, Library, GitBranch, Network } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import LearningPath from './LearningPath';
 import CitationGraph from './CitationGraph';
+import ResearcherNetwork from './ResearcherNetwork';
 import PaperCard, { TYPE_COLORS } from './PaperCard';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
@@ -1044,6 +1045,7 @@ function SearchModeToggle({ mode, onMode, t }) {
         { key: 'quick', label: ts.modeQuick, Icon: Search },
         { key: 'learning', label: ts.modeLearning, Icon: BookOpen },
         { key: 'lineage', label: ts.modeLineage, Icon: GitBranch },
+        { key: 'network', label: ts.modeNetwork, Icon: Network },
       ].map(({ key, label, Icon }) => {
         const active = mode === key;
         return (
@@ -1614,6 +1616,14 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
                 embedded
                 onBack={() => setSearchMode('quick')}
                 onComplete={(q) => addLocalNotif(lang === 'ko' ? `인용 계보: "${q}" 완료` : `Research Lineage: "${q}" ready`, 'search', 'lineage')}
+              />
+            </div>
+
+            <div style={{ display: searchMode === 'network' ? 'block' : 'none', paddingTop: 8 }}>
+              <ResearcherNetwork
+                embedded
+                onBack={() => setSearchMode('quick')}
+                onComplete={(q) => addLocalNotif(lang === 'ko' ? `연구자 네트워크: "${q}" 완료` : `Researcher Network: "${q}" ready`, 'search', 'network')}
               />
             </div>
 

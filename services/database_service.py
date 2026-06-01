@@ -167,6 +167,7 @@ def get_lp_history(db: Session) -> list[dict]:
     records = (
         db.query(HistoricalThread)
         .filter(~HistoricalThread.topic.startswith("citation::"))
+        .filter(~HistoricalThread.topic.startswith("network::"))
         .order_by(HistoricalThread.updated_at.desc())
         .all()
     )
