@@ -23,7 +23,7 @@ All data is stored on your local machine (SQLite). No external server, no accoun
 
 Both interfaces run on the same backend. The desktop app bundles FastAPI + Next.js and launches them automatically. The MCP server exposes the same logic as tools Claude can call during chat.
 
-> **Current status**: Next.js + FastAPI interface is available now (run with `run.bat` / `run.sh`). Electron packaging and MCP server are on the roadmap.
+> **Current status**: Next.js + FastAPI interface and MCP server are available now. Electron desktop packaging is on the roadmap.
 
 ---
 
@@ -191,9 +191,60 @@ research-thread-agent/
 
 ---
 
+## MCP Server
+
+The MCP server exposes Research Thread Agent tools directly in Claude.ai chat (requires Claude Pro).
+
+### Setup
+
+1. Install dependencies and run setup as above.
+2. Open Claude Desktop → Settings → Developer → Edit Config, then add:
+
+```json
+{
+  "mcpServers": {
+    "research-thread-agent": {
+      "command": "/path/to/research-thread-agent/.venv/bin/python",
+      "args": ["/path/to/research-thread-agent/mcp_server/server.py"]
+    }
+  }
+}
+```
+
+On Windows, use the `.venv\Scripts\python.exe` path:
+
+```json
+{
+  "mcpServers": {
+    "research-thread-agent": {
+      "command": "C:\\path\\to\\research-thread-agent\\.venv\\Scripts\\python.exe",
+      "args": ["C:\\path\\to\\research-thread-agent\\mcp_server\\server.py"]
+    }
+  }
+}
+```
+
+3. Restart Claude Desktop. A green "running" indicator appears in the Developer tab.
+
+### Available Tools
+
+| Tool | Description | Example prompt |
+|---|---|---|
+| `quick_search` | Papers, models, and repos for a keyword | "Search for recent papers on RAG evaluation from the past month" |
+| `learning_path` | Chronological era-based history of a topic | "Build a learning path for diffusion models" |
+| `trending_papers` | Top HF Daily Papers by upvotes | "What are the trending AI papers this week?" |
+| `venue_papers` | Papers from a major ML conference + year | "Show me NeurIPS 2024 papers on transformers" |
+
+---
+
 ## Roadmap
 
-### v0.11.0 (current)
+### v1.0.0 (current)
+- [x] **MCP server** — 4 tools exposed to Claude.ai chat: `quick_search`, `learning_path`, `trending_papers`, `venue_papers`; Claude Desktop config documented; stdio transport with clean JSON-RPC (no stdout log pollution)
+- [x] **Responsive 2-column grid** — PC view shows cards in a 2-col grid; mobile stays 1-col; mixed-height cards align correctly per row
+- [x] **Author mode cache fix** — empty candidate results no longer cached, preventing stale data across different date periods
+
+### v0.11.0
 - [x] **Research Lineage rebuilt — 34 API calls → 2, build time ~3 s** — switched from per-year + per-paper reference expansion to a single bulk search with a batch reference fetch (`POST /paper/batch`); graph now covers top 100 papers and draws edges from reference intersection within that set; build time reduced from 30–60 s to ~3 s
 - [x] **Research Lineage: graph history** — idle state now shows recent graph list (like Learning Path); click any entry to reload from cache instantly; per-item delete; list refreshes after each new build
 - [x] **Research Lineage: UX improvements** — selected node highlighted in amber (distinct from connected nodes); red arrows now mean "influence radiating out from an influential paper" (source = top-5 node); AI Summary button available on the node detail card; legend updated ("Seed" → "Influential", white node type removed); hint text rewritten for clarity
@@ -271,8 +322,7 @@ research-thread-agent/
 - [x] Settings → Reset Database
 
 ### Upcoming
-- [ ] Phase 5: Electron desktop packaging (no terminal required)
-- [ ] Phase 6: MCP server for Claude.ai chat integration
+- [ ] Phase 6: Electron desktop packaging (no terminal required)
 
 ---
 

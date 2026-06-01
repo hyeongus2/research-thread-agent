@@ -114,8 +114,6 @@ export default function Page() {
         minHeight: '100dvh',
         background: '#FAF7F2',
         position: 'relative',
-        maxWidth: 480,
-        margin: '0 auto',
       }}
     >
       <LangToggle />

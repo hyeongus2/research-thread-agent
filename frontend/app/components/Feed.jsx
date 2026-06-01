@@ -538,21 +538,23 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone 
 
   return (
     <div style={{ padding: '16px 16px 80px' }}>
-      {papers.map(p => (
-        <PaperCard
-          key={p.id}
-          item={p}
-          type="paper"
-          showCite
-          showTopicBadge
-          showReadDot
-          showTimestamp
-          onSummarize={() => fetchPaperSummary(p.title, p.abstract)}
-          summary={paperSummaries[p.title]}
-          summaryLoading={!!summaryLoading[p.title]}
-          summaryNoKey={!!paperNoKey[p.title]}
-        />
-      ))}
+      <div className="card-grid">
+        {papers.map(p => (
+          <PaperCard
+            key={p.id}
+            item={p}
+            type="paper"
+            showCite
+            showTopicBadge
+            showReadDot
+            showTimestamp
+            onSummarize={() => fetchPaperSummary(p.title, p.abstract)}
+            summary={paperSummaries[p.title]}
+            summaryLoading={!!summaryLoading[p.title]}
+            summaryNoKey={!!paperNoKey[p.title]}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -903,19 +905,23 @@ function VenuesView() {
           {tf.venuesSparseNote}
         </div>
       )}
-      {venueState === 'done' && papers.map((paper, i) => (
-        <PaperCard
-          key={i}
-          item={paper}
-          type="paper"
-          showCite
-          showCode
-          summary={paperSummaries[paper.title]}
-          summaryLoading={!!summaryLoading[paper.title]}
-          summaryNoKey={!!paperNoKey[paper.title]}
-          onSummarize={() => fetchPaperSummary(paper.title, paper.abstract)}
-        />
-      ))}
+      {venueState === 'done' && (
+        <div className="card-grid">
+          {papers.map((paper, i) => (
+            <PaperCard
+              key={i}
+              item={paper}
+              type="paper"
+              showCite
+              showCode
+              summary={paperSummaries[paper.title]}
+              summaryLoading={!!summaryLoading[paper.title]}
+              summaryNoKey={!!paperNoKey[paper.title]}
+              onSummarize={() => fetchPaperSummary(paper.title, paper.abstract)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1230,7 +1236,9 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
       const res = await fetch(`${API}/search/author-candidates?name=${encodeURIComponent(keyword)}`);
       const data = await res.json();
       const candidates = data.candidates || [];
-      authorCandidatesCacheRef.current[cacheKey] = candidates;
+      if (candidates.length > 0) {
+        authorCandidatesCacheRef.current[cacheKey] = candidates;
+      }
       setAuthorCandidates(candidates);
     } catch {
       setAuthorCandidates([]);
@@ -1605,9 +1613,11 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
                                     </div>
                                   </div>
                                 ) : (
-                                  pageItems.map((item, i) => (
-                                    <PaperCard key={`author-${pageStart + i}`} item={item} type="paper" showCite showCode summary={paperSummaries[item.title]} summaryLoading={!!summaryLoading[item.title]} summaryNoKey={!!paperNoKey[item.title]} onSummarize={() => fetchPaperSummary(item.title, item.abstract)} />
-                                  ))
+                                  <div className="card-grid">
+                                    {pageItems.map((item, i) => (
+                                      <PaperCard key={`author-${pageStart + i}`} item={item} type="paper" showCite showCode summary={paperSummaries[item.title]} summaryLoading={!!summaryLoading[item.title]} summaryNoKey={!!paperNoKey[item.title]} onSummarize={() => fetchPaperSummary(item.title, item.abstract)} />
+                                    ))}
+                                  </div>
                                 )}
                                 <Pagination page={page} totalPages={totalPages} onPage={setPage} />
                               </>
@@ -1650,12 +1660,14 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
                               </div>
                             </div>
                           ) : (
-                            pageItems.map((item, i) => {
-                              const title = item.title || item.name || '';
-                              return (
-                                <PaperCard key={`${activeTab}-${pageStart + i}`} item={item} type={activeTab} showCite showCode summary={paperSummaries[title]} summaryLoading={!!summaryLoading[title]} summaryNoKey={!!paperNoKey[title]} onSummarize={() => fetchPaperSummary(title, item.abstract)} />
-                              );
-                            })
+                            <div className="card-grid">
+                              {pageItems.map((item, i) => {
+                                const title = item.title || item.name || '';
+                                return (
+                                  <PaperCard key={`${activeTab}-${pageStart + i}`} item={item} type={activeTab} showCite showCode summary={paperSummaries[title]} summaryLoading={!!summaryLoading[title]} summaryNoKey={!!paperNoKey[title]} onSummarize={() => fetchPaperSummary(title, item.abstract)} />
+                                );
+                              })}
+                            </div>
                           )}
 
                           <Pagination page={page} totalPages={totalPages} onPage={setPage} />
