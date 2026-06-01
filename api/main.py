@@ -4,7 +4,7 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from api.routes import auth, config, feed, learning, notifications, search, subscriptions
+from api.routes import auth, citation_graph, config, feed, learning, notifications, search, subscriptions, venues
 from services.scheduler_service import start_scheduler, stop_scheduler
 from utils.database import Base, engine, get_db, init_db
 
@@ -33,6 +33,8 @@ app.include_router(learning.router, prefix="/api")
 app.include_router(feed.router, prefix="/api")
 app.include_router(subscriptions.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
+app.include_router(venues.router, prefix="/api")
+app.include_router(citation_graph.router, prefix="/api")
 
 
 @app.post("/api/admin/reset-db")

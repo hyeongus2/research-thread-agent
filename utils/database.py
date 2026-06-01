@@ -25,7 +25,7 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     # Import all models so their tables are registered with Base.metadata
-    from models import user, subscription, notification, thread, settings  # noqa: F401
+    from models import user, subscription, notification, thread, settings, paper_code  # noqa: F401
     Base.metadata.create_all(bind=engine)
     # Add columns introduced after initial schema creation (SQLite ALTER TABLE is limited)
     with engine.connect() as conn:

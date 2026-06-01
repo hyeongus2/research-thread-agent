@@ -1,5 +1,6 @@
 """Paper search via Semantic Scholar (primary) with OpenAlex fallback."""
 
+import threading
 import time
 from datetime import date
 from typing import Optional
@@ -10,6 +11,11 @@ from config.settings import settings
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Global semaphore: limit concurrent Semantic Scholar API calls to 1.
+# Prevents My Feed, Quick Search, and Learning Path from competing for
+# the same rate limit window and triggering cascading 429s.
+_ss_lock = threading.Semaphore(1)
 
 _SS_URL = "https://api.semanticscholar.org/graph/v1/paper/search"
 _SS_FIELDS = (
@@ -54,28 +60,29 @@ def _search_semantic_scholar(
     if settings.SEMANTIC_SCHOLAR_API_KEY:
         headers["x-api-key"] = settings.SEMANTIC_SCHOLAR_API_KEY
 
-    resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
-
-    if resp.status_code == 429:
-        logger.warning("Semantic Scholar 429; retrying after 10 s")
-        time.sleep(10)
-        resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
-    if resp.status_code == 429:
-        logger.warning("Semantic Scholar 429 again; retrying after 30 s")
-        time.sleep(30)
+    with _ss_lock:
         resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
 
-    if resp.status_code == 403 and "year" in current_params:
-        logger.warning("Semantic Scholar 403 with year filter; retrying without date")
-        current_params = {k: v for k, v in current_params.items() if k != "year"}
-        resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
+        if resp.status_code == 429:
+            logger.warning("Semantic Scholar 429; retrying after 2 s")
+            time.sleep(2)
+            resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
+        if resp.status_code == 429:
+            # Still rate-limited — raise immediately to trigger OpenAlex fallback
+            logger.warning("Semantic Scholar 429 again; falling back to OpenAlex")
+            resp.raise_for_status()
 
-    if resp.status_code == 403:
-        # IP rate-limited — raise immediately to trigger OpenAlex fallback
-        logger.warning("Semantic Scholar 403 (IP rate limit); raising for fallback")
+        if resp.status_code == 403 and "year" in current_params:
+            logger.warning("Semantic Scholar 403 with year filter; retrying without date")
+            current_params = {k: v for k, v in current_params.items() if k != "year"}
+            resp = requests.get(_SS_URL, params=current_params, headers=headers, timeout=30)
+
+        if resp.status_code == 403:
+            # IP rate-limited — raise immediately to trigger OpenAlex fallback
+            logger.warning("Semantic Scholar 403 (IP rate limit); raising for fallback")
+            resp.raise_for_status()
+
         resp.raise_for_status()
-
-    resp.raise_for_status()
     data = resp.json()
 
     papers = []
@@ -87,8 +94,10 @@ def _search_semantic_scholar(
         venue = venue_obj.get("name") or ""
         pub_date = p.get("publicationDate") or (str(p["year"]) if p.get("year") else "")
         authors = [a.get("name", "") for a in (p.get("authors") or [])[:5]]
+        arxiv_id = (p.get("externalIds") or {}).get("ArXiv") or ""
 
         papers.append({
+            "paper_id": paper_id,
             "title": p.get("title") or "",
             "authors": authors,
             "abstract": p.get("abstract") or "",
@@ -97,6 +106,7 @@ def _search_semantic_scholar(
             "published_date": pub_date,
             "citation_count": p.get("citationCount") or 0,
             "venue": venue,
+            "arxiv_id": arxiv_id,
         })
 
     papers.sort(key=lambda x: x.get("citation_count", 0), reverse=True)
@@ -142,6 +152,7 @@ def _search_openalex(
         abstract = _reconstruct_abstract(w.get("abstract_inverted_index"))
 
         papers.append({
+            "paper_id": "",  # OpenAlex results have no Semantic Scholar paperId
             "title": w.get("display_name") or "",
             "authors": authors,
             "abstract": abstract,
@@ -195,3 +206,57 @@ def search_papers(
         except requests.RequestException as oa_exc:
             logger.error("OpenAlex fallback also failed: %s", oa_exc)
             raise ss_exc
+
+
+def get_paper_references(paper_id: str, limit: int = 30) -> list[dict]:
+    """Fetch papers cited by paper_id using the Semantic Scholar references endpoint.
+
+    Returns list of paper dicts (same shape as search_papers output) with an
+    additional 'is_influential' bool from the citation relationship metadata.
+    """
+    url = f"https://api.semanticscholar.org/graph/v1/paper/{paper_id}/references"
+    params = {
+        "fields": (
+            "paperId,title,authors,year,citationCount,publicationVenue,"
+            "abstract,openAccessPdf,externalIds"
+        ),
+        "limit": min(limit, 500),
+    }
+    headers = {}
+    if settings.SEMANTIC_SCHOLAR_API_KEY:
+        headers["x-api-key"] = settings.SEMANTIC_SCHOLAR_API_KEY
+
+    with _ss_lock:
+        resp = requests.get(url, params=params, headers=headers, timeout=30)
+        if resp.status_code == 429:
+            logger.warning("SS references 429 for %s; retrying after 2 s", paper_id)
+            time.sleep(2)
+            resp = requests.get(url, params=params, headers=headers, timeout=30)
+    if resp.status_code != 200:
+        logger.warning("SS references fetch failed: %s → %d", paper_id, resp.status_code)
+        return []
+
+    results = []
+    for item in resp.json().get("data", []):
+        p = item.get("citedPaper") or {}
+        pid = p.get("paperId") or ""
+        if not pid:
+            continue
+        venue_obj = p.get("publicationVenue") or {}
+        arxiv_id = (p.get("externalIds") or {}).get("ArXiv") or ""
+        year_raw = p.get("year")
+        results.append({
+            "paper_id": pid,
+            "title": p.get("title") or "",
+            "authors": [a.get("name", "") for a in (p.get("authors") or [])[:5]],
+            "abstract": p.get("abstract") or "",
+            "url": f"https://www.semanticscholar.org/paper/{pid}",
+            "pdf_url": (p.get("openAccessPdf") or {}).get("url") or "",
+            "published_date": str(year_raw) if year_raw else "",
+            "citation_count": p.get("citationCount") or 0,
+            "venue": venue_obj.get("name") or "",
+            "arxiv_id": arxiv_id,
+            "is_influential": bool(item.get("isInfluential")),
+        })
+    logger.info("SS references '%s' → %d papers", paper_id, len(results))
+    return results

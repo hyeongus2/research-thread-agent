@@ -14,9 +14,34 @@ from utils.database import get_db
 router = APIRouter()
 
 
+def _attach_code_links(papers: list[dict], db: Session) -> None:
+    """Mutate each paper dict in-place, adding a code_links list by arXiv ID."""
+    from models.paper_code import PaperCodeLink
+
+    arxiv_ids = [p["arxiv_id"] for p in papers if p.get("arxiv_id")]
+    if not arxiv_ids:
+        return
+
+    rows = (
+        db.query(PaperCodeLink)
+        .filter(PaperCodeLink.arxiv_id.in_(arxiv_ids))
+        .order_by(PaperCodeLink.is_official.desc(), PaperCodeLink.stars.desc())
+        .all()
+    )
+
+    links_by_id: dict[str, list] = {}
+    for row in rows:
+        links_by_id.setdefault(row.arxiv_id, []).append(
+            {"repo_url": row.repo_url, "is_official": row.is_official, "stars": row.stars}
+        )
+
+    for paper in papers:
+        paper["code_links"] = links_by_id.get(paper.get("arxiv_id", ""), [])
+
+
 @router.post("/search")
 def search(body: SearchRequest, db: Session = Depends(get_db)):
-    return thread_service.create_research_thread(
+    result = thread_service.create_research_thread(
         keyword=body.keyword,
         start_date=body.start_date,
         end_date=body.end_date,
@@ -26,6 +51,8 @@ def search(body: SearchRequest, db: Session = Depends(get_db)):
         model_limit=body.model_limit,
         repo_limit=body.repo_limit,
     )
+    _attach_code_links(result.get("papers", []), db)
+    return result
 
 
 @router.post("/search/stream")
@@ -65,6 +92,7 @@ def search_stream(body: SearchRequest, db: Session = Depends(get_db)):
                 break
             yield f"data: {json.dumps(item)}\n\n"
         if result_holder[0] is not None:
+            _attach_code_links(result_holder[0].get("papers", []), db)
             yield f"data: {json.dumps({'stage': 'done', 'result': result_holder[0]})}\n\n"
         else:
             yield f"data: {json.dumps({'stage': 'error', 'msg': error_holder[0] or 'Search failed'})}\n\n"
