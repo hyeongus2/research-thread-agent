@@ -157,26 +157,45 @@ research-thread-agent/
 ├── frontend/                          # Next.js 15 app (port 3000)
 │   └── app/
 │       ├── page.jsx                   # Root state machine (welcome → onboarding → feed)
-│       └── components/                # Feed, LearningPath, Onboarding, Settings
+│       ├── components/                # Feed, LearningPath, CitationGraph, Onboarding, Settings, …
+│       ├── context/                   # LanguageContext (EN / KO toggle)
+│       └── i18n/                      # en.js, ko.js translation files
 ├── api/                               # FastAPI backend (port 8000)
 │   ├── main.py                        # App entry point, CORS, lifespan
 │   ├── schemas.py                     # Pydantic request/response models
-│   └── routes/                        # auth, search, learning, subscriptions, notifications, venues
+│   └── routes/                        # auth, search, learning, feed, notifications, subscriptions, venues, citation_graph, config
+├── config/
+│   └── settings.py                    # Centralised env-var settings (Pydantic BaseSettings)
 ├── services/                          # Pure Python business logic
 │   ├── semantic_scholar_service.py    # Semantic Scholar paper search (citation-sorted); OpenAlex fallback
 │   ├── hf_service.py                  # HF Hub model search (download-sorted)
+│   ├── hf_daily_service.py            # HF Daily Papers for Trending Feed
 │   ├── github_service.py              # GitHub repo search (star-sorted)
 │   ├── claude_service.py              # On-demand AI summaries (overview + per-paper)
 │   ├── thread_service.py              # Quick Search orchestration
 │   ├── historical_thread_service.py   # Learning Path orchestration
+│   ├── citation_graph_service.py      # Research Lineage graph build (bulk search + batch refs)
+│   ├── openalex_venue_service.py      # OpenAlex venue search fallback
+│   ├── database_service.py            # SQLAlchemy CRUD helpers
 │   ├── notification_service.py        # My Feed: check subscriptions, create notification records
-│   └── scheduler_service.py           # APScheduler daily background check
+│   ├── scheduler_service.py           # APScheduler daily background check
+│   └── email_service.py               # Resend email digest (optional)
 ├── models/                            # SQLAlchemy ORM models
+│   ├── user.py
+│   ├── notification.py
+│   ├── subscription.py
+│   ├── thread.py
+│   ├── settings.py
 │   └── paper_code.py                  # PaperCodeLink — PWC archive code links (arxiv_id → repo_url)
+├── mcp_server/
+│   └── server.py                      # MCP server — 4 tools for Claude.ai chat
 ├── scripts/                           # Utility scripts
 │   ├── reset_db.py                    # Wipe and reinitialize the database
 │   └── import_pwc_links.py            # One-time import of Papers with Code archive into SQLite
 └── utils/                             # DB connection, logging, validators
+    ├── database.py
+    ├── logger.py
+    └── validators.py
 ```
 
 ---
