@@ -164,7 +164,7 @@ def check_stream(user_id: int):
         record = db_check.query(HistoricalThread).filter(HistoricalThread.topic == check_key).first()
         if record and record.updated_at.date() == today:
             def _already_done():
-                yield f"data: {json.dumps({'stage': 'done', 'total_new': 0})}\n\n"
+                yield f"data: {json.dumps({'stage': 'done', 'total_new': 0, 'cached': True})}\n\n"
             return StreamingResponse(_already_done(), media_type="text/event-stream",
                                      headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
     finally:

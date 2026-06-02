@@ -45,7 +45,7 @@ def venues_papers(
     cache_key = f"{venue}::{year}::{limit}"
     if cache_key in _venues_cache:
         logger.info("Venues cache hit: %s", cache_key)
-        return {"venue": venue, "year": year, "papers": _venues_cache[cache_key]}
+        return {"venue": venue, "year": year, "papers": _venues_cache[cache_key], "cached": True}
 
     papers = search_papers_by_venue(venue_key=venue, year=year, limit=limit)
 
@@ -57,4 +57,4 @@ def venues_papers(
         logger.warning("Code link attachment skipped: %s", exc)
 
     _venues_cache[cache_key] = papers
-    return {"venue": venue, "year": year, "papers": papers}
+    return {"venue": venue, "year": year, "papers": papers, "cached": False}

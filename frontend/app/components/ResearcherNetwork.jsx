@@ -109,6 +109,14 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
     e.stopPropagation();
     try { await fetch(`${API}/researcher-network/history?topic=${encodeURIComponent(topic)}`, { method: 'DELETE' }); } catch {}
     setHistory(h => (h || []).filter(item => item.topic !== topic));
+    // Also evict from in-memory cache: topic = "network::min:N:max:N:years:...:name:<name>"
+    const nameMatch = topic.match(/:name:(.+)$/);
+    if (nameMatch) {
+      const namePrefix = nameMatch[1].toLowerCase();
+      Object.keys(cacheRef.current).forEach(k => {
+        if (k.startsWith(namePrefix + ':')) delete cacheRef.current[k];
+      });
+    }
   };
 
   useEffect(() => { loadHistory(); }, []);
@@ -254,16 +262,6 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
         </button>
       </div>
 
-      {/* Searched name chip — shown only while loading or on error */}
-      {(buildState === 'loading' || buildState === 'error') && searchedName && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185' }}>{lang === 'ko' ? '저자' : 'AUTHOR'}</span>
-          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', background: '#F0EAD9', borderRadius: 12, padding: '3px 10px', fontWeight: 500 }}>
-            {searchedName}
-          </span>
-        </div>
-      )}
-
       {/* Filters */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -282,27 +280,23 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
         </label>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {rn.yearStart}
-          <input type="number" min={1900} max={CURRENT_YEAR} placeholder="—" value={yearStart}
-            onChange={e => setYearStart(e.target.value)}
-            onBlur={e => {
-              if (!e.target.value) return;
-              const v = Number(e.target.value);
-              if (v < 1900) setYearStart(1900);
-              else if (v > CURRENT_YEAR) setYearStart(CURRENT_YEAR);
-            }}
-            style={{ width: 80, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12 }} />
+          <select value={yearStart} onChange={e => setYearStart(e.target.value)}
+            style={{ width: 90, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12, background: '#FFFFFF' }}>
+            <option value="">—</option>
+            {Array.from({ length: CURRENT_YEAR - 1950 + 1 }, (_, i) => CURRENT_YEAR - i).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
         </label>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {rn.yearEnd}
-          <input type="number" min={1900} max={CURRENT_YEAR} placeholder="—" value={yearEnd}
-            onChange={e => setYearEnd(e.target.value)}
-            onBlur={e => {
-              if (!e.target.value) return;
-              const v = Number(e.target.value);
-              if (v < 1900) setYearEnd(1900);
-              else if (v > CURRENT_YEAR) setYearEnd(CURRENT_YEAR);
-            }}
-            style={{ width: 80, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12 }} />
+          <select value={yearEnd} onChange={e => setYearEnd(e.target.value)}
+            style={{ width: 90, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12, background: '#FFFFFF' }}>
+            <option value="">—</option>
+            {Array.from({ length: CURRENT_YEAR - 1950 + 1 }, (_, i) => CURRENT_YEAR - i).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
         </label>
       </div>
 
@@ -310,6 +304,25 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
       <div style={{ background: '#FFF8E6', border: '1px solid #E8D9A8', borderRadius: 4, padding: '8px 12px', marginBottom: 14, fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#7A6A2E', lineHeight: 1.5 }}>
         ⚠ {rn.warning}
       </div>
+
+      {buildState !== 'idle' && searchedName && (
+        <>
+          {embedded && buildState === 'done' && (
+            <button onClick={() => { setBuildState('idle'); setResult(null); setSearchedName(''); }}
+              style={{ background: 'none', border: 'none', padding: '0 0 8px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              ← {ts.backToFeed}
+            </button>
+          )}
+          <div style={{ margin: '0 0 12px' }}>
+            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 2 }}>
+              {lang === 'ko' ? '저자' : 'AUTHOR'}
+            </div>
+            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontStyle: 'italic', color: '#1A1611' }}>
+              {result?.root?.name || searchedName}
+            </div>
+          </div>
+        </>
+      )}
 
       {buildState === 'loading' && (
         <div style={{ padding: '40px 0', textAlign: 'center' }}>
@@ -336,31 +349,23 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
 
       {buildState === 'done' && allEdges.length > 0 && (
         <>
-          {embedded && (
-            <button onClick={() => { setBuildState('idle'); setResult(null); setSearchedName(''); }}
-              style={{ background: 'none', border: 'none', padding: '0 0 8px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-              ← {ts.backToFeed}
-            </button>
+          {result?.cached && (
+            <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '-8px 0 8px', textAlign: 'right' }}>
+              ⚡ cached result
+            </p>
           )}
-          <div style={{ margin: '0 0 12px' }}>
-            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 2 }}>
-              {lang === 'ko' ? '저자' : 'AUTHOR'}
-            </div>
-            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontStyle: 'italic', color: '#1A1611' }}>
-              {result?.root?.name || searchedName}
-            </div>
-            {result?.cached && (
-              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185' }}>⚡ cached</span>
-            )}
-          </div>
-
           {/* Tabs */}
           <div style={{ display: 'flex', gap: 0, background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: 3, marginBottom: 14 }}>
-            {[
-              { key: 'graph', label: rn.graphTab },
-              { key: 'collaborators', label: `${rn.collaboratorsTab} (${allEdges.length})` },
-              { key: 'papers', label: rn.papersTab },
-            ].map(({ key, label }) => (
+            {(() => {
+              const sharedPaperCount = selectedTarget && selectedEdge
+                ? (selectedEdge.topSharedPapers || []).length
+                : (() => { const s = new Set(); sortedEdges.forEach(e => (e.topSharedPapers || []).forEach(p => { if (p.paperId) s.add(p.paperId); })); return s.size; })();
+              return [
+                { key: 'graph', label: rn.graphTab },
+                { key: 'collaborators', label: `${rn.collaboratorsTab} (${allEdges.length})` },
+                { key: 'papers', label: `${rn.papersTab} (${sharedPaperCount})` },
+              ];
+            })().map(({ key, label }) => (
               <button key={key} onClick={() => setActiveTab(key)}
                 style={{ flex: 1, padding: '7px 10px', background: activeTab === key ? '#1A1611' : 'transparent', color: activeTab === key ? '#FAF7F2' : '#6B6358', border: 'none', borderRadius: 2, fontFamily: "'Geist', sans-serif", fontSize: 12, fontWeight: activeTab === key ? 600 : 400, cursor: 'pointer' }}>
                 {label}
@@ -490,23 +495,44 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
           {/* ── Shared papers tab ── */}
           {activeTab === 'papers' && (
             <div style={{ background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, overflow: 'hidden' }}>
-              {(() => {
-                const seen = new Set();
-                const papers = [];
-                sortedEdges.forEach(e => (e.topSharedPapers || []).forEach(p => {
-                  if (p.paperId && !seen.has(p.paperId)) { seen.add(p.paperId); papers.push(p); }
-                }));
-                papers.sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0));
-                return papers.map((p, i) => (
-                  <a key={i} href={p.url} target="_blank" rel="noreferrer"
-                    style={{ display: 'block', padding: '10px 14px', borderTop: i > 0 ? '1px solid #F0EBE2' : 'none', textDecoration: 'none' }}>
-                    <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', lineHeight: 1.4 }}>{p.title}</div>
-                    <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', marginTop: 2 }}>
-                      {p.year || '—'} · {ts.citations(p.citationCount || 0)}
-                    </div>
-                  </a>
-                ));
-              })()}
+              {selectedTarget && selectedEdge ? (
+                <>
+                  <div style={{ padding: '8px 14px', fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', borderBottom: '1px solid #F0EBE2', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>{lang === 'ko' ? `${selectedNode?.name}과의 공동 논문` : `Shared with ${selectedNode?.name}`}</span>
+                    <button onClick={() => setSelectedTarget(null)}
+                      style={{ background: 'none', border: 'none', color: '#9B9185', cursor: 'pointer', fontSize: 11, padding: 0, textDecoration: 'underline' }}>
+                      {lang === 'ko' ? '전체 보기' : 'Show all'}
+                    </button>
+                  </div>
+                  {(selectedEdge.topSharedPapers || []).map((p, i) => (
+                    <a key={i} href={p.url} target="_blank" rel="noreferrer"
+                      style={{ display: 'block', padding: '10px 14px', borderTop: i > 0 ? '1px solid #F0EBE2' : 'none', textDecoration: 'none' }}>
+                      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', lineHeight: 1.4 }}>{p.title}</div>
+                      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', marginTop: 2 }}>
+                        {p.year || '—'} · {ts.citations(p.citationCount || 0)}
+                      </div>
+                    </a>
+                  ))}
+                </>
+              ) : (
+                (() => {
+                  const seen = new Set();
+                  const papers = [];
+                  sortedEdges.forEach(e => (e.topSharedPapers || []).forEach(p => {
+                    if (p.paperId && !seen.has(p.paperId)) { seen.add(p.paperId); papers.push(p); }
+                  }));
+                  papers.sort((a, b) => (b.citationCount || 0) - (a.citationCount || 0));
+                  return papers.map((p, i) => (
+                    <a key={i} href={p.url} target="_blank" rel="noreferrer"
+                      style={{ display: 'block', padding: '10px 14px', borderTop: i > 0 ? '1px solid #F0EBE2' : 'none', textDecoration: 'none' }}>
+                      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', lineHeight: 1.4 }}>{p.title}</div>
+                      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', marginTop: 2 }}>
+                        {p.year || '—'} · {ts.citations(p.citationCount || 0)}
+                      </div>
+                    </a>
+                  ));
+                })()
+              )}
             </div>
           )}
 
@@ -546,7 +572,7 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
               )}
 
               <div style={{ marginTop: 10, fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', fontStyle: 'italic', lineHeight: 1.5 }}>
-                {selectedEdge.warning}
+                {rn.warning}
               </div>
             </div>
           )}
