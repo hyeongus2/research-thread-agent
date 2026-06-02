@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
@@ -231,9 +232,9 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
                   </span>
                   <button
                     onClick={(e) => deleteHistory(item.topic, e)}
-                    style={{ background: 'none', border: 'none', padding: '2px 4px', color: '#9B9185', cursor: 'pointer', fontSize: 12, fontFamily: "'Geist', sans-serif", flexShrink: 0 }}
+                    style={{ background: 'none', border: 'none', padding: '2px 4px', color: '#9B9185', cursor: 'pointer', lineHeight: 0, flexShrink: 0 }}
                   >
-                    {rn.historyDelete}
+                    <X size={12} />
                   </button>
                 </div>
               ))}
