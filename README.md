@@ -294,7 +294,7 @@ On Windows, use the `.venv\Scripts\python.exe` path:
 - [x] **Learning Path placeholder improved** — descriptive context text added to match Quick Search and Researcher Network placeholders
 - [x] **Research Lineage placeholder improved** — same
 
-### v1.0.3 (previous)
+### v1.0.3
 - [x] **My Feed daily refresh guard** — SSE check now skips re-fetching if already run today; state stored in DB (`mycheck::` key in `historical_threads`) so it survives server restarts; cleared automatically when interests are saved in Settings
 - [x] **30-day notification auto-cleanup** — notifications older than 30 days are deleted at the start of each daily SSE refresh
 - [x] **Trending feed DB persistence** — trending results cached in `historical_threads` table (same-day invalidation); no longer re-fetches on server restart
