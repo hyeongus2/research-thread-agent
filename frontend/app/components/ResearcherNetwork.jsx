@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
@@ -84,16 +84,68 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
   const [result, setResult] = useState(null);
   const [activeTab, setActiveTab] = useState('graph');
   const [selectedTarget, setSelectedTarget] = useState(null); // collaborator node id
+  const [history, setHistory] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
   const abortRef = useRef(null);
+  const inputWrapRef = useRef(null);
+  // In-memory cache (per name + filters); survives until the app/tab is closed.
+  const cacheRef = useRef({});
+
+  const cacheKeyFor = (p) =>
+    `${(p.name || '').trim().toLowerCase()}:${Number(p.minShared) || 1}:${Number(p.maxCollab) || 20}:${p.yearStart || ''}-${p.yearEnd || ''}`;
+
+  const loadHistory = async () => {
+    try {
+      const r = await fetch(`${API}/researcher-network/history`);
+      setHistory(await r.json());
+    } catch { setHistory([]); }
+  };
+
+  const deleteHistory = async (topic, e) => {
+    e.stopPropagation();
+    try { await fetch(`${API}/researcher-network/history?topic=${encodeURIComponent(topic)}`, { method: 'DELETE' }); } catch {}
+    setHistory(h => (h || []).filter(item => item.topic !== topic));
+  };
+
+  useEffect(() => { loadHistory(); }, []);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (inputWrapRef.current && !inputWrapRef.current.contains(e.target)) {
+        setShowHistory(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleCancel = () => {
     if (abortRef.current) { abortRef.current.abort(); abortRef.current = null; }
     setBuildState('idle');
   };
 
-  const handleBuild = async () => {
-    const root = name.trim();
+  const runBuild = async (params) => {
+    const root = (params.name || '').trim();
     if (!root) return;
+    setName(params.name);
+    setMinShared(params.minShared);
+    setMaxCollab(params.maxCollab);
+    setYearStart(params.yearStart);
+    setYearEnd(params.yearEnd);
+    setShowHistory(false);
+
+    // In-memory cache hit: render instantly, no fetch, no loading state.
+    const key = cacheKeyFor(params);
+    if (cacheRef.current[key]) {
+      if (abortRef.current) { abortRef.current.abort(); abortRef.current = null; }
+      setResult(cacheRef.current[key]);
+      setSelectedTarget(null);
+      setActiveTab('graph');
+      setBuildState('done');
+      if (onComplete) onComplete(root);
+      return;
+    }
+
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -107,18 +159,20 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           root_author_name: root,
-          min_shared_papers: Number(minShared) || 1,
-          max_collaborators: Number(maxCollab) || 20,
-          year_start: yearStart ? Number(yearStart) : null,
-          year_end: yearEnd ? Number(yearEnd) : null,
+          min_shared_papers: Number(params.minShared) || 1,
+          max_collaborators: Number(params.maxCollab) || 20,
+          year_start: params.yearStart ? Number(params.yearStart) : null,
+          year_end: params.yearEnd ? Number(params.yearEnd) : null,
           max_papers: 100,
         }),
         signal: controller.signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      cacheRef.current[key] = data;
       setResult(data);
       setBuildState('done');
+      loadHistory();
       if (onComplete) onComplete(root);
     } catch (err) {
       if (err?.name !== 'AbortError') setBuildState('error');
@@ -126,6 +180,8 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
       abortRef.current = null;
     }
   };
+
+  const handleBuild = () => runBuild({ name, minShared, maxCollab, yearStart, yearEnd });
 
   const allEdges = result?.edges || [];
   const graphEdges = allEdges.slice(0, GRAPH_MAX_COLLABORATORS);
@@ -148,14 +204,42 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
   return (
     <div style={{ paddingBottom: 40, paddingTop: 8 }}>
       {/* Inputs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleBuild()}
-          placeholder={rn.placeholder}
-          style={{ flex: 1, padding: '9px 12px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
-        />
+      <div ref={inputWrapRef} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+        <div style={{ flex: 1, position: 'relative' }}>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleBuild()}
+            onFocus={() => setShowHistory(true)}
+            placeholder={rn.placeholder}
+            style={{ width: '100%', padding: '9px 12px', border: '1px solid #D8D0BE', borderRadius: showHistory && history && history.length > 0 ? '4px 4px 0 0' : 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+          />
+          {showHistory && history && history.length > 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#FFFFFF', border: '1px solid #D8D0BE', borderTop: 'none', borderRadius: '0 0 4px 4px', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', maxHeight: 240, overflowY: 'auto' }}>
+              <div style={{ padding: '8px 12px 4px', fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.12em' }}>
+                {rn.recentNetworks}
+              </div>
+              {history.map(item => (
+                <div key={item.topic}
+                  style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', cursor: 'pointer', borderTop: '1px solid #F0EAD9' }}
+                  onClick={() => runBuild({ name: item.name, minShared: item.min_shared_papers, maxCollab: item.max_collaborators, yearStart: item.year_start ?? '', yearEnd: item.year_end ?? '' })}
+                  onMouseEnter={e => e.currentTarget.style.background = '#FAF7F2'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span style={{ flex: 1, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.name}
+                  </span>
+                  <button
+                    onClick={(e) => deleteHistory(item.topic, e)}
+                    style={{ background: 'none', border: 'none', padding: '2px 4px', color: '#9B9185', cursor: 'pointer', fontSize: 12, fontFamily: "'Geist', sans-serif", flexShrink: 0 }}
+                  >
+                    {rn.historyDelete}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           onClick={handleBuild}
           disabled={!name.trim() || buildState === 'loading'}

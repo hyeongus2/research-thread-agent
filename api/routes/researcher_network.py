@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from api.schemas import ResearcherNetworkRequest
 from services.database_service import (
+    delete_lp_history_item,
     get_cached_historical_thread,
+    get_network_history,
     save_historical_thread,
 )
 from utils.database import get_db
@@ -11,6 +13,19 @@ from utils.database import get_db
 router = APIRouter()
 
 _CACHE_KEY_PREFIX = "network::"
+
+
+@router.get("/researcher-network/history")
+def list_network_history(db: Session = Depends(get_db)):
+    return get_network_history(db)
+
+
+@router.delete("/researcher-network/history")
+def delete_network_history(topic: str, db: Session = Depends(get_db)):
+    ok = delete_lp_history_item(db, topic)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"deleted": True}
 
 
 @router.post("/researcher-network")

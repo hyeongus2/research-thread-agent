@@ -179,6 +179,8 @@ const en = {
       rootLastAuthor: (n) => `Root is last author ${n}×`,
       collaboratorEarly: (n) => `Collaborator is first/early author ${n}×`,
       viewOnSS: 'View on Semantic Scholar →',
+      recentNetworks: 'RECENT NETWORKS',
+      historyDelete: 'Delete',
     },
   },
   learningPath: {

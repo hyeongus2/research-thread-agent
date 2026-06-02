@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -161,6 +162,41 @@ def get_citation_history(db: Session) -> list[dict]:
         {"topic": r.topic, "query": r.topic.removeprefix("citation::"), "updated_at": str(r.updated_at)}
         for r in records
     ]
+
+
+_NETWORK_KEY_RE = re.compile(
+    r"^network::(?P<name>.*):min:(?P<min>\d+):max:(?P<max>\d+)"
+    r":years:(?P<ys>[^-]*)-(?P<ye>[^:]*):papers:(?P<papers>\d+)$"
+)
+
+
+def get_network_history(db: Session) -> list[dict]:
+    records = (
+        db.query(HistoricalThread)
+        .filter(HistoricalThread.topic.startswith("network::"))
+        .order_by(HistoricalThread.updated_at.desc())
+        .all()
+    )
+    items = []
+    for r in records:
+        m = _NETWORK_KEY_RE.match(r.topic)
+        if not m:
+            continue
+        ys = m.group("ys")
+        ye = m.group("ye")
+        items.append(
+            {
+                "topic": r.topic,
+                "name": m.group("name"),
+                "min_shared_papers": int(m.group("min")),
+                "max_collaborators": int(m.group("max")),
+                "year_start": None if ys in ("None", "") else int(ys),
+                "year_end": None if ye in ("None", "") else int(ye),
+                "max_papers": int(m.group("papers")),
+                "updated_at": str(r.updated_at),
+            }
+        )
+    return items
 
 
 def get_lp_history(db: Session) -> list[dict]:
