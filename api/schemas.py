@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -109,8 +109,8 @@ class CitationGraphRequest(BaseModel):
 
 class ResearcherNetworkRequest(BaseModel):
     root_author_name: str
-    min_shared_papers: int = 2
-    max_collaborators: int = 20
-    year_start: Optional[int] = None
-    year_end: Optional[int] = None
-    max_papers: int = 100
+    min_shared_papers: int = Field(default=2, ge=1, le=50)
+    max_collaborators: int = Field(default=20, ge=1, le=50)
+    year_start: Optional[int] = Field(default=None, ge=1900, le=2100)
+    year_end: Optional[int] = Field(default=None, ge=1900, le=2100)
+    max_papers: int = Field(default=100, ge=1, le=200)

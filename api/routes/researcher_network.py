@@ -30,10 +30,12 @@ def delete_network_history(topic: str, db: Session = Depends(get_db)):
 
 @router.post("/researcher-network")
 def get_researcher_network(body: ResearcherNetworkRequest, db: Session = Depends(get_db)):
+    name_key = body.root_author_name.strip().lower()
+    ys = body.year_start if body.year_start is not None else ""
+    ye = body.year_end if body.year_end is not None else ""
     cache_key = (
-        f"{_CACHE_KEY_PREFIX}{body.root_author_name.strip().lower()}"
-        f":min:{body.min_shared_papers}:max:{body.max_collaborators}"
-        f":years:{body.year_start}-{body.year_end}:papers:{body.max_papers}"
+        f"{_CACHE_KEY_PREFIX}min:{body.min_shared_papers}:max:{body.max_collaborators}"
+        f":years:{ys}-{ye}:papers:{body.max_papers}:name:{name_key}"
     )
 
     cached = get_cached_historical_thread(db, cache_key)

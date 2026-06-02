@@ -164,9 +164,11 @@ def get_citation_history(db: Session) -> list[dict]:
     ]
 
 
+# Cache key format: network::min:{min}:max:{max}:years:{ys}-{ye}:papers:{papers}:name:{name}
+# Name is placed last so it never collides with the fixed parameter tokens.
 _NETWORK_KEY_RE = re.compile(
-    r"^network::(?P<name>.*):min:(?P<min>\d+):max:(?P<max>\d+)"
-    r":years:(?P<ys>[^-]*)-(?P<ye>[^:]*):papers:(?P<papers>\d+)$"
+    r"^network::min:(?P<min>\d+):max:(?P<max>\d+)"
+    r":years:(?P<ys>\d*)-(?P<ye>\d*):papers:(?P<papers>\d+):name:(?P<name>.*)$"
 )
 
 
@@ -184,14 +186,25 @@ def get_network_history(db: Session) -> list[dict]:
             continue
         ys = m.group("ys")
         ye = m.group("ye")
+
+        # Prefer the SS-resolved author name stored in data (preserves proper casing).
+        display_name = m.group("name")
+        if r.data:
+            try:
+                stored = json.loads(r.data)
+                root = stored.get("root") or {}
+                display_name = root.get("name") or stored.get("root_author_name") or display_name
+            except Exception:
+                pass
+
         items.append(
             {
                 "topic": r.topic,
-                "name": m.group("name"),
+                "name": display_name,
                 "min_shared_papers": int(m.group("min")),
                 "max_collaborators": int(m.group("max")),
-                "year_start": None if ys in ("None", "") else int(ys),
-                "year_end": None if ye in ("None", "") else int(ye),
+                "year_start": None if not ys else int(ys),
+                "year_end": None if not ye else int(ye),
                 "max_papers": int(m.group("papers")),
                 "updated_at": str(r.updated_at),
             }
