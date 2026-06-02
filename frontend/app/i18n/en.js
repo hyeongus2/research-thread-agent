@@ -42,6 +42,7 @@ const en = {
     trendingLabel: 'TRENDING TOPICS',
     subscribeLabel: 'YOUR FEED',
     comingSoon: 'Personalized feed is coming in a future update. Use search to explore research now.',
+    navReels: 'Reels',
     navTrending: 'Trending',
     navMyFeed: 'My Feed',
     navSearch: 'Search',

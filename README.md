@@ -32,6 +32,15 @@ Both interfaces run on the same backend. The desktop app bundles FastAPI + Next.
 
 ## Features
 
+### Reels
+A full-screen, vertically swipeable feed of recent trending papers — one paper per screen, scroll for the next:
+- Papers from Hugging Face Daily Papers (past 30 days), sorted by upvotes; shares the Trending Feed DB cache
+- Each card shows the paper's preview image (HF thumbnail); papers without one fall back to a text-centric card
+- **✦ AI** button toggles between the abstract and an on-demand AI summary (requires Anthropic API key)
+- Like / save buttons (session-local UI), and a direct link to the arXiv page
+- Smooth proximity scroll-snap; next cards' images are preloaded for instant display
+- Kept mounted across tab switches, so returning to Reels preserves your position
+
 ### Quick Search
 Search across three sources simultaneously with a single keyword:
 - **Papers** tab — Semantic Scholar: up to 1,000 papers sorted by citation count
