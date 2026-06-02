@@ -209,7 +209,17 @@ def get_network_history(db: Session) -> list[dict]:
                 "updated_at": str(r.updated_at),
             }
         )
-    return items
+
+    # Deduplicate by author name (case-insensitive), keeping the most recently updated entry.
+    # Records are already ordered by updated_at desc, so first occurrence wins.
+    seen: set[str] = set()
+    deduped = []
+    for item in items:
+        key = (item["name"] or "").strip().lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(item)
+    return deduped
 
 
 def get_lp_history(db: Session) -> list[dict]:

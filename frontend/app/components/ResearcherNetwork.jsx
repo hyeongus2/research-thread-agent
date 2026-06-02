@@ -10,7 +10,6 @@ const API = typeof window !== 'undefined' ? `${window.location.protocol}//${wind
 const GRAPH_MAX_COLLABORATORS = 30;
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - 1949 }, (_, i) => CURRENT_YEAR - i);
 
 // SVG canvas
 const SVG_W = 640;
@@ -255,18 +254,13 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
         </button>
       </div>
 
-      {/* Searched name chip */}
-      {buildState !== 'idle' && searchedName && (
+      {/* Searched name chip — shown only while loading or on error */}
+      {(buildState === 'loading' || buildState === 'error') && searchedName && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185' }}>{rn.authorLabel}</span>
+          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185' }}>{lang === 'ko' ? '저자' : 'AUTHOR'}</span>
           <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', background: '#F0EAD9', borderRadius: 12, padding: '3px 10px', fontWeight: 500 }}>
             {searchedName}
           </span>
-          <button
-            onClick={() => { setBuildState('idle'); setResult(null); setSearchedName(''); }}
-            style={{ background: 'none', border: 'none', padding: '2px 4px', color: '#9B9185', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>
-            ×
-          </button>
         </div>
       )}
 
@@ -274,29 +268,41 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {rn.minSharedPapers}
-          <input type="number" min={1} max={50} value={minShared} onChange={e => setMinShared(e.target.value)}
+          <input type="number" min={1} max={50} value={minShared}
+            onChange={e => setMinShared(e.target.value)}
+            onBlur={e => setMinShared(Math.min(50, Math.max(1, Number(e.target.value) || 1)))}
             style={{ width: 70, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12 }} />
         </label>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {rn.maxCollaborators}
-          <input type="number" min={1} max={50} value={maxCollab} onChange={e => setMaxCollab(e.target.value)}
+          <input type="number" min={1} max={50} value={maxCollab}
+            onChange={e => setMaxCollab(e.target.value)}
+            onBlur={e => setMaxCollab(Math.min(50, Math.max(1, Number(e.target.value) || 1)))}
             style={{ width: 70, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12 }} />
         </label>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {rn.yearStart}
-          <select value={yearStart} onChange={e => setYearStart(e.target.value)}
-            style={{ width: 90, padding: '5px 6px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12, background: '#FFFFFF' }}>
-            <option value="">—</option>
-            {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+          <input type="number" min={1900} max={CURRENT_YEAR} placeholder="—" value={yearStart}
+            onChange={e => setYearStart(e.target.value)}
+            onBlur={e => {
+              if (!e.target.value) return;
+              const v = Number(e.target.value);
+              if (v < 1900) setYearStart(1900);
+              else if (v > CURRENT_YEAR) setYearStart(CURRENT_YEAR);
+            }}
+            style={{ width: 80, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12 }} />
         </label>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {rn.yearEnd}
-          <select value={yearEnd} onChange={e => setYearEnd(e.target.value)}
-            style={{ width: 90, padding: '5px 6px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12, background: '#FFFFFF' }}>
-            <option value="">—</option>
-            {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+          <input type="number" min={1900} max={CURRENT_YEAR} placeholder="—" value={yearEnd}
+            onChange={e => setYearEnd(e.target.value)}
+            onBlur={e => {
+              if (!e.target.value) return;
+              const v = Number(e.target.value);
+              if (v < 1900) setYearEnd(1900);
+              else if (v > CURRENT_YEAR) setYearEnd(CURRENT_YEAR);
+            }}
+            style={{ width: 80, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12 }} />
         </label>
       </div>
 
@@ -332,13 +338,21 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
         <>
           {embedded && (
             <button onClick={() => { setBuildState('idle'); setResult(null); setSearchedName(''); }}
-              style={{ background: 'none', border: 'none', padding: '0 0 8px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer' }}>
-              ← {rn.backToIdle}
+              style={{ background: 'none', border: 'none', padding: '0 0 8px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              ← {ts.backToFeed}
             </button>
           )}
-          {result?.cached && (
-            <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '0 0 8px', textAlign: 'right' }}>⚡ cached result</p>
-          )}
+          <div style={{ margin: '0 0 12px' }}>
+            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 2 }}>
+              {lang === 'ko' ? '저자' : 'AUTHOR'}
+            </div>
+            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontStyle: 'italic', color: '#1A1611' }}>
+              {result?.root?.name || searchedName}
+            </div>
+            {result?.cached && (
+              <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185' }}>⚡ cached</span>
+            )}
+          </div>
 
           {/* Tabs */}
           <div style={{ display: 'flex', gap: 0, background: '#FFFFFF', border: '1px solid #E8E2D5', borderRadius: 4, padding: 3, marginBottom: 14 }}>
