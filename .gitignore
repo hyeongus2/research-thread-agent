@@ -1,5 +1,5 @@
-# Claude Code guidance (local only)
-CLAUDE.md
+# Claude Code guidance — root CLAUDE.md is tracked; stale frontend copy stays local
+frontend/CLAUDE.md
 .claude/
 
 # Environment variables
