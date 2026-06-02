@@ -281,7 +281,20 @@ On Windows, use the `.venv\Scripts\python.exe` path:
 
 ## Roadmap
 
-### v1.0.3 (current)
+### v1.1.0 (current)
+- [x] **⚡ cached result indicator across all 7 features** — right-aligned label shown whenever a result is served from cache (DB-backed or in-memory); consistent position and style across Quick Search, Learning Path, Research Lineage, Researcher Network, Trending Feed, My Feed, and Venues
+- [x] **Quick Search topic mode in-memory cache** — same keyword + period combination renders instantly on re-search without re-fetching; cache lives for the duration of the browser session
+- [x] **Researcher Network: year filter → dropdowns** — year start/end inputs replaced with `<select>` elements (1950–current year, descending); clearing selection shows `—` naturally
+- [x] **Researcher Network: author name shown during loading** — Fraunces italic author header appears immediately when search starts, not only after the graph is built
+- [x] **Researcher Network: shared papers tab count badge** — tab label shows `(N)` matching collaborators tab; count updates dynamically when a collaborator is selected
+- [x] **Researcher Network: history delete clears in-memory cache** — deleting a history entry now evicts the matching `cacheRef` entry so re-search correctly hits the API instead of stale data
+- [x] **Researcher Network: topSharedPapers limit 5 → 20** — up to 20 shared papers shown per collaborator edge instead of 5
+- [x] **Researcher Network: shared papers filtered by selected collaborator** — clicking a node or list row filters the shared papers tab to that pair; deselect restores full list
+- [x] **Researcher Network: warning text i18n fix** — "Coauthorship does not imply an advisor-student relationship." in the side panel now switches between EN and KO correctly
+- [x] **Learning Path placeholder improved** — descriptive context text added to match Quick Search and Researcher Network placeholders
+- [x] **Research Lineage placeholder improved** — same
+
+### v1.0.3 (previous)
 - [x] **My Feed daily refresh guard** — SSE check now skips re-fetching if already run today; state stored in DB (`mycheck::` key in `historical_threads`) so it survives server restarts; cleared automatically when interests are saved in Settings
 - [x] **30-day notification auto-cleanup** — notifications older than 30 days are deleted at the start of each daily SSE refresh
 - [x] **Trending feed DB persistence** — trending results cached in `historical_threads` table (same-day invalidation); no longer re-fetches on server restart
