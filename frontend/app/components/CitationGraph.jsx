@@ -272,6 +272,7 @@ export default function CitationGraph({ embedded, onBack, onComplete }) {
   };
 
   const handleBuildWithQuery = async (q) => {
+    setQuery('');
     if (!q) return;
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
@@ -338,8 +339,11 @@ export default function CitationGraph({ embedded, onBack, onComplete }) {
             onKeyDown={e => e.key === 'Enter' && handleBuild()}
             onFocus={() => setShowHistoryCG(true)}
             placeholder={ts.lineagePlaceholder}
-            style={{ width: '100%', padding: '9px 12px', border: '1px solid #D8D0BE', borderRadius: showHistoryCG && history && history.length > 0 ? '4px 4px 0 0' : 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '9px 32px 9px 12px', border: '1px solid #D8D0BE', borderRadius: showHistoryCG && history && history.length > 0 ? '4px 4px 0 0' : 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
           />
+          {query && (
+            <button onClick={() => setQuery('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9B9185', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>
+          )}
           {showHistoryCG && history && history.length > 0 && (
             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#FFFFFF', border: '1px solid #D8D0BE', borderTop: 'none', borderRadius: '0 0 4px 4px', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', maxHeight: 240, overflowY: 'auto' }}>
               <div style={{ padding: '8px 12px 4px', fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', letterSpacing: '0.12em' }}>
@@ -355,11 +359,16 @@ export default function CitationGraph({ embedded, onBack, onComplete }) {
                   <span style={{ flex: 1, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.query}
                   </span>
+                  {item.year_range && (
+                    <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185', marginLeft: 8, flexShrink: 0 }}>
+                      {item.year_range}
+                    </span>
+                  )}
                   <button
                     onClick={(e) => deleteHistory(item.query, e)}
-                    style={{ background: 'none', border: 'none', padding: '2px 4px', color: '#9B9185', cursor: 'pointer', fontSize: 12, fontFamily: "'Geist', sans-serif", flexShrink: 0 }}
+                    style={{ background: 'none', border: 'none', padding: '2px 6px', color: '#9B9185', cursor: 'pointer', fontSize: 14, lineHeight: 1, flexShrink: 0, marginLeft: 4 }}
                   >
-                    {lang === 'ko' ? '삭제' : 'Delete'}
+                    ×
                   </button>
                 </div>
               ))}
@@ -412,8 +421,16 @@ export default function CitationGraph({ embedded, onBack, onComplete }) {
               ← {ts.backToFeed}
             </button>
           )}
+          <div style={{ margin: '0 0 12px' }}>
+            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 2 }}>
+              {lang === 'ko' ? '주제' : 'TOPIC'}
+            </div>
+            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontStyle: 'italic', color: '#1A1611' }}>
+              {result?.query}
+            </div>
+          </div>
           {result?.cache_hit && (
-            <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '0 0 8px', textAlign: 'right' }}>
+            <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '-8px 0 8px', textAlign: 'right' }}>
               ⚡ cached result
             </p>
           )}

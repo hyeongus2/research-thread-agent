@@ -19,6 +19,8 @@ from services.thread_service import create_research_thread
 from services.historical_thread_service import build_learning_path
 from services.hf_daily_service import fetch_papers_range
 from services.openalex_venue_service import search_papers_by_venue
+from services.citation_graph_service import build_citation_graph
+from models.notification import Notification
 from utils.database import SessionLocal
 
 mcp = FastMCP("Research Thread Agent", log_level="ERROR")
@@ -156,6 +158,133 @@ def venue_papers(
         return {"error": f"Year must be between 2020 and {current_year}."}
     papers = search_papers_by_venue(venue_key=venue, year=year, limit=min(limit, 50))
     return {"venue": venue, "year": year, "papers": papers}
+
+
+@mcp.tool()
+def research_lineage(
+    query: str,
+    min_citations: int = 0,
+) -> dict:
+    """Build a citation-based research lineage graph for an AI/ML topic.
+
+    Fetches top 100 papers from Semantic Scholar, identifies the top-5 most
+    cited as influential "seed" papers, and maps citation edges between them.
+
+    Args:
+        query: Research topic or paper title (e.g. "attention mechanism transformer").
+        min_citations: Minimum citation count to include a paper (default 0).
+
+    Returns:
+        Dict with:
+          - "query": the search query used
+          - "nodes": list of papers, each with title, year, authors, venue,
+            citationCount, type ("seed" = influential / "reference" = related),
+            importanceScore, and url
+          - "edges": list of citation relationships {source_title, target_title,
+            isInfluential} where source cites target
+          - "summary": human-readable text summary of the lineage
+    """
+    graph = build_citation_graph(query, min_citations=min_citations)
+
+    nodes = graph.get("nodes", [])
+    edges = graph.get("edges", [])
+
+    if not nodes:
+        return {
+            "query": query,
+            "nodes": [],
+            "edges": [],
+            "summary": graph.get("warning", "No results found."),
+        }
+
+    # Map paper_id → title for readable edge labels
+    id_to_title = {n["id"]: n["title"] for n in nodes}
+
+    readable_edges = [
+        {
+            "source_title": id_to_title.get(e["source"], e["source"]),
+            "target_title": id_to_title.get(e["target"], e["target"]),
+            "isInfluential": e.get("isInfluential", False),
+        }
+        for e in edges
+    ]
+
+    seeds = [n for n in nodes if n["type"] == "seed"]
+    refs = [n for n in nodes if n["type"] == "reference"]
+
+    summary_lines = [
+        f"Research lineage for '{query}': {len(nodes)} papers, {len(edges)} citation links.",
+        f"Top {len(seeds)} influential papers (seed nodes):",
+    ]
+    for s in seeds:
+        summary_lines.append(
+            f"  - [{s['year']}] {s['title']} — {s['citationCount']:,} citations"
+            + (f" ({s['venue']})" if s.get("venue") else "")
+        )
+    if refs:
+        summary_lines.append(f"{len(refs)} related papers connected via citations.")
+
+    return {
+        "query": query,
+        "nodes": nodes,
+        "edges": readable_edges,
+        "summary": "\n".join(summary_lines),
+    }
+
+
+@mcp.tool()
+def my_feed(
+    user_id: int = 1,
+    limit: int = 50,
+    unread_only: bool = False,
+) -> dict:
+    """Fetch your personalized paper alerts from the local database.
+
+    Returns papers already saved by the app (via My Feed tab or background scheduler).
+    The database is updated when you open the app and navigate to the My Feed tab.
+
+    Requires completing onboarding in the app at least once to set up your
+    interest profile (categories + keywords stored in the local SQLite DB).
+
+    Args:
+        user_id: Local user ID (default 1 for single-user setups).
+        limit: Max notifications to return (default 50, max 200).
+        unread_only: If True, return only unread notifications.
+
+    Returns:
+        Dict with:
+          - "total": total matching notifications in database
+          - "notifications": list of paper alerts, each with title, topic,
+            citation_count, source_url, is_read, and created_at
+    """
+    db = SessionLocal()
+    try:
+        query = db.query(Notification).filter(Notification.user_id == user_id)
+        if unread_only:
+            query = query.filter(Notification.is_read == False)  # noqa: E712
+        notifications = (
+            query.order_by(Notification.created_at.desc())
+            .limit(min(limit, 200))
+            .all()
+        )
+
+        return {
+            "total": len(notifications),
+            "notifications": [
+                {
+                    "id": n.id,
+                    "title": n.title,
+                    "topic": n.topic,
+                    "citation_count": n.citation_count or 0,
+                    "source_url": n.source_url,
+                    "is_read": n.is_read,
+                    "created_at": n.created_at.isoformat() if n.created_at else None,
+                }
+                for n in notifications
+            ],
+        }
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":

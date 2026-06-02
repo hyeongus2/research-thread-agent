@@ -365,17 +365,19 @@ function TrendingFeed({ onQuickSearch, onComplete }) {
         </div>
       )}
 
-      {papers && papers.map((p, i) => (
-        <TrendingCard
-          key={i}
-          p={p}
-          onQuickSearch={onQuickSearch}
-          onSummarize={() => fetchPaperSummary(p.title, p.summary)}
-          aiSummary={paperSummaries[p.title]}
-          summaryLoading={!!summaryLoading[p.title]}
-          summaryNoKey={!!paperNoKey[p.title]}
-        />
-      ))}
+      <div className="card-grid">
+        {papers && papers.map((p, i) => (
+          <TrendingCard
+            key={i}
+            p={p}
+            onQuickSearch={onQuickSearch}
+            onSummarize={() => fetchPaperSummary(p.title, p.summary)}
+            aiSummary={paperSummaries[p.title]}
+            summaryLoading={!!summaryLoading[p.title]}
+            summaryNoKey={!!paperNoKey[p.title]}
+          />
+        ))}
+      </div>
     </div>
   );
 }

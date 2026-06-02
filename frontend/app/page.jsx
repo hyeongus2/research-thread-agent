@@ -75,7 +75,19 @@ export default function Page() {
       setUserId(Number(stored));
       setScreen('feed');
     } else {
-      setScreen('welcome');
+      // localStorage cleared (e.g. Chrome "clear on exit") — check if DB user exists
+      fetch(`${API}/me?user_id=1`)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && data.user_id) {
+            localStorage.setItem('user_id', String(data.user_id));
+            setUserId(data.user_id);
+            setScreen('feed');
+          } else {
+            setScreen('welcome');
+          }
+        })
+        .catch(() => setScreen('welcome'));
     }
   }, []);
 

@@ -202,8 +202,12 @@ def get_network_history(db: Session) -> list[dict]:
 def get_lp_history(db: Session) -> list[dict]:
     records = (
         db.query(HistoricalThread)
-        .filter(~HistoricalThread.topic.startswith("citation::"))
-        .filter(~HistoricalThread.topic.startswith("network::"))
+        .filter(
+            ~HistoricalThread.topic.startswith("citation::"),
+            ~HistoricalThread.topic.startswith("trending:"),
+            ~HistoricalThread.topic.startswith("network::"),
+            ~HistoricalThread.topic.startswith("mycheck::"),
+        )
         .order_by(HistoricalThread.updated_at.desc())
         .all()
     )

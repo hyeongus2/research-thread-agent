@@ -236,6 +236,7 @@ export default function LearningPath({ userId, onBack, onComplete, embedded = fa
 
   const buildTopic = async (trimmed) => {
     if (!trimmed) return;
+    setTopic('');
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -403,8 +404,11 @@ export default function LearningPath({ userId, onBack, onComplete, embedded = fa
                   onKeyDown={e => e.key === 'Enter' && build()}
                   onFocus={() => setShowHistory(true)}
                   placeholder={tl.placeholder}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #D8D0BE', borderRadius: showHistory && lpHistory.length > 0 ? '4px 4px 0 0' : 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 32px 10px 12px', border: '1px solid #D8D0BE', borderRadius: showHistory && lpHistory.length > 0 ? '4px 4px 0 0' : 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
                 />
+                {topic && (
+                  <button onClick={() => setTopic('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9B9185', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>
+                )}
                 {historyDropdown}
               </div>
               <button
@@ -465,8 +469,11 @@ export default function LearningPath({ userId, onBack, onComplete, embedded = fa
                   onKeyDown={e => e.key === 'Enter' && build()}
                   onFocus={() => setShowHistory(true)}
                   placeholder={tl.placeholder}
-                  style={{ width: '100%', padding: '9px 12px', border: '1px solid #D8D0BE', borderRadius: showHistory && lpHistory.length > 0 ? '4px 4px 0 0' : 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '9px 32px 9px 12px', border: '1px solid #D8D0BE', borderRadius: showHistory && lpHistory.length > 0 ? '4px 4px 0 0' : 4, fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#1A1611', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
                 />
+                {topic && (
+                  <button onClick={() => setTopic('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9B9185', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>
+                )}
                 {historyDropdown}
               </div>
               <button

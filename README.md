@@ -127,10 +127,13 @@ chmod +x setup.sh && ./setup.sh
 Open the generated `.env` file and fill in your keys:
 
 ```
-ANTHROPIC_API_KEY=sk-ant-...      # optional — enables AI summary buttons
-GITHUB_TOKEN=ghp_...              # required
-HF_API_TOKEN=hf_...               # optional
-SEMANTIC_SCHOLAR_API_KEY=         # optional — raises SS rate limit
+ANTHROPIC_API_KEY=        # optional — enables AI Overview, AI Summary, and era analysis
+GITHUB_TOKEN=             # required — unauthenticated requests limited to 60/hour
+HF_API_TOKEN=             # optional — increases HF model search rate limits
+SEMANTIC_SCHOLAR_API_KEY= # optional — raises rate limit from 100 req/5 min to 1 req/sec
+RESEND_API_KEY=           # optional — only needed for email digest feature
+USER_EMAIL=               # optional — recipient address for email digest
+CLAUDE_MODEL=             # optional — defaults to claude-sonnet-4-6
 ```
 
 ### Run
@@ -171,26 +174,45 @@ research-thread-agent/
 ├── frontend/                          # Next.js 15 app (port 3000)
 │   └── app/
 │       ├── page.jsx                   # Root state machine (welcome → onboarding → feed)
-│       └── components/                # Feed, LearningPath, Onboarding, Settings
+│       ├── components/                # Feed, LearningPath, CitationGraph, Onboarding, Settings, …
+│       ├── context/                   # LanguageContext (EN / KO toggle)
+│       └── i18n/                      # en.js, ko.js translation files
 ├── api/                               # FastAPI backend (port 8000)
 │   ├── main.py                        # App entry point, CORS, lifespan
 │   ├── schemas.py                     # Pydantic request/response models
-│   └── routes/                        # auth, search, learning, subscriptions, notifications, venues
+│   └── routes/                        # auth, search, learning, feed, notifications, subscriptions, venues, citation_graph, config
+├── config/
+│   └── settings.py                    # Centralised env-var settings (Pydantic BaseSettings)
 ├── services/                          # Pure Python business logic
 │   ├── semantic_scholar_service.py    # Semantic Scholar paper search (citation-sorted); OpenAlex fallback
 │   ├── hf_service.py                  # HF Hub model search (download-sorted)
+│   ├── hf_daily_service.py            # HF Daily Papers for Trending Feed
 │   ├── github_service.py              # GitHub repo search (star-sorted)
 │   ├── claude_service.py              # On-demand AI summaries (overview + per-paper)
 │   ├── thread_service.py              # Quick Search orchestration
 │   ├── historical_thread_service.py   # Learning Path orchestration
+│   ├── citation_graph_service.py      # Research Lineage graph build (bulk search + batch refs)
+│   ├── openalex_venue_service.py      # OpenAlex venue search fallback
+│   ├── database_service.py            # SQLAlchemy CRUD helpers
 │   ├── notification_service.py        # My Feed: check subscriptions, create notification records
-│   └── scheduler_service.py           # APScheduler daily background check
+│   ├── scheduler_service.py           # APScheduler daily background check
+│   └── email_service.py               # Resend email digest (optional)
 ├── models/                            # SQLAlchemy ORM models
+│   ├── user.py
+│   ├── notification.py
+│   ├── subscription.py
+│   ├── thread.py
+│   ├── settings.py
 │   └── paper_code.py                  # PaperCodeLink — PWC archive code links (arxiv_id → repo_url)
+├── mcp_server/
+│   └── server.py                      # MCP server — 4 tools for Claude.ai chat
 ├── scripts/                           # Utility scripts
 │   ├── reset_db.py                    # Wipe and reinitialize the database
 │   └── import_pwc_links.py            # One-time import of Papers with Code archive into SQLite
 └── utils/                             # DB connection, logging, validators
+    ├── database.py
+    ├── logger.py
+    └── validators.py
 ```
 
 ---
@@ -250,12 +272,28 @@ On Windows, use the `.venv\Scripts\python.exe` path:
 | `learning_path` | Chronological era-based history of a topic | "Build a learning path for diffusion models" |
 | `trending_papers` | Top HF Daily Papers by upvotes | "What are the trending AI papers this week?" |
 | `venue_papers` | Papers from a major ML conference + year | "Show me NeurIPS 2024 papers on transformers" |
+| `research_lineage` | Citation-based graph of influential papers | "Show the research lineage for attention mechanism transformer" |
+| `my_feed` | Personalized paper alerts from your local DB | "Show my unread paper alerts" |
+
+> **Note on `my_feed`**: Returns papers already saved to your local database. The database is updated when you open the app and visit the My Feed tab (or when the daily background scheduler runs). Requires completing onboarding at least once.
 
 ---
 
 ## Roadmap
 
-### v1.0.1 (current)
+### v1.0.3 (current)
+- [x] **My Feed daily refresh guard** — SSE check now skips re-fetching if already run today; state stored in DB (`mycheck::` key in `historical_threads`) so it survives server restarts; cleared automatically when interests are saved in Settings
+- [x] **30-day notification auto-cleanup** — notifications older than 30 days are deleted at the start of each daily SSE refresh
+- [x] **Trending feed DB persistence** — trending results cached in `historical_threads` table (same-day invalidation); no longer re-fetches on server restart
+- [x] **Trending feed 2-column grid** — matches My Feed layout; 2 columns at ≥768px, 1 column on mobile
+- [x] **Onboarding persistence fix** — if `localStorage` is cleared (e.g. Chrome incognito or "clear on exit" setting), app recovers `user_id` from DB automatically; onboarding only shown if DB has no user
+- [x] **Language setting persistence** — selected language (EN/KO) now saved to DB user preferences via `PATCH /api/me/lang`; survives `localStorage` clear and Chrome incognito sessions
+
+### v1.0.2
+- [x] **MCP: `research_lineage` tool** — exposes citation graph as a text-friendly structure; `edges` use paper titles instead of raw IDs; includes a `summary` field listing the top influential papers with year, citation count, and venue
+- [x] **MCP: `my_feed` tool** — read-only access to personalized paper alerts stored in the local database; returns notifications sorted by recency with title, topic, citation count, and source URL; supports `unread_only` filter
+
+### v1.0.1
 - [x] **Activity notifications** — bell dropdown now shows a "Recent Activity" section for feature completions (Quick Search, Learning Path, Research Lineage, Trending, My Feed, Venues); clicking a notification navigates directly to that tab; unread red dot per item disappears on click; bell badge clears when all notifications are read
 - [x] **Notification delete** — × button on every individual notification item (both Activity and Paper Alerts); "Delete all" button per section header to bulk-clear each section independently; Paper Alert deletes hit `DELETE /api/notifications/{id}`
 - [x] **Back button fix** — "Back to feed" in Learning Path results now returns to the Learning Path idle screen (not Quick Search); same fix applied to Research Lineage

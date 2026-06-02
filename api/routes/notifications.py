@@ -1,7 +1,7 @@
 import json
 import queue
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -133,11 +133,9 @@ def update_notification_settings(
 
 def _run_check_sync():
     from services.notification_service import check_and_notify
-    from api.routes.feed import _myfeed_cache
     db = SessionLocal()
     try:
         check_and_notify(db)
-        _myfeed_cache.clear()
     finally:
         db.close()
 
@@ -149,22 +147,56 @@ async def trigger_check(background_tasks: BackgroundTasks):
     return {"ok": True, "message": "Notification check started"}
 
 
+_MYCHECK_PREFIX = "mycheck::"
+_MYFEED_EXPIRY_DAYS = 30
+
+
 @router.get("/notifications/check/stream")
 def check_stream(user_id: int):
     """SSE: run notification check for a single user, streaming progress events."""
+    from models.thread import HistoricalThread
+
+    # Same-day guard: skip if already checked today (DB-backed, survives restarts)
+    check_key = f"{_MYCHECK_PREFIX}{user_id}"
+    today = datetime.utcnow().date()
+    db_check = SessionLocal()
+    try:
+        record = db_check.query(HistoricalThread).filter(HistoricalThread.topic == check_key).first()
+        if record and record.updated_at.date() == today:
+            def _already_done():
+                yield f"data: {json.dumps({'stage': 'done', 'total_new': 0})}\n\n"
+            return StreamingResponse(_already_done(), media_type="text/event-stream",
+                                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    finally:
+        db_check.close()
+
     event_q: queue.Queue = queue.Queue()
 
     def run() -> None:
         from services.notification_service import check_and_notify_for_user
-        from api.routes.feed import _myfeed_cache
-        _myfeed_cache.pop(user_id, None)  # invalidate before check so loadPapers sees fresh DB
         db = SessionLocal()
         try:
+            # Delete notifications older than 30 days
+            cutoff = datetime.utcnow() - timedelta(days=_MYFEED_EXPIRY_DAYS)
+            db.query(Notification).filter(
+                Notification.user_id == user_id,
+                Notification.created_at < cutoff,
+            ).delete()
+            db.commit()
+
             def progress_cb(event):
                 event_q.put(event)
 
             check_and_notify_for_user(db, user_id, progress_cb)
-            _myfeed_cache.pop(user_id, None)
+
+            # Save today's check date
+            record = db.query(HistoricalThread).filter(HistoricalThread.topic == check_key).first()
+            if record:
+                record.updated_at = datetime.utcnow()
+            else:
+                record = HistoricalThread(topic=check_key, data="{}")
+                db.add(record)
+            db.commit()
         except Exception as exc:
             event_q.put({"stage": "error", "msg": str(exc)})
         finally:
