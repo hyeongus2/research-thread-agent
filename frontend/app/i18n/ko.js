@@ -180,6 +180,8 @@ const ko = {
       collaboratorEarly: (n) => `공저자가 first/early 저자 ${n}회`,
       viewOnSS: 'Semantic Scholar에서 보기 →',
       recentNetworks: '최근 네트워크',
+      authorLabel: '저자:',
+      backToIdle: '검색으로 돌아가기',
     },
   },
   learningPath: {

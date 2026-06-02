@@ -9,6 +9,9 @@ const API = typeof window !== 'undefined' ? `${window.location.protocol}//${wind
 // Display caps (frontend subset of backend nodes/edges)
 const GRAPH_MAX_COLLABORATORS = 30;
 
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: CURRENT_YEAR - 1949 }, (_, i) => CURRENT_YEAR - i);
+
 // SVG canvas
 const SVG_W = 640;
 const SVG_H = 520;
@@ -76,6 +79,7 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
   const rn = ts.researcherNetwork;
 
   const [name, setName] = useState('');
+  const [searchedName, setSearchedName] = useState(''); // displayed as chip after search
   const [minShared, setMinShared] = useState(2);
   const [maxCollab, setMaxCollab] = useState(20);
   const [yearStart, setYearStart] = useState('');
@@ -128,7 +132,8 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
   const runBuild = async (params) => {
     const root = (params.name || '').trim();
     if (!root) return;
-    setName(params.name);
+    setSearchedName(root);
+    setName('');
     setMinShared(params.minShared);
     setMaxCollab(params.maxCollab);
     setYearStart(params.yearStart);
@@ -250,11 +255,26 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
         </button>
       </div>
 
+      {/* Searched name chip */}
+      {buildState !== 'idle' && searchedName && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#9B9185' }}>{rn.authorLabel}</span>
+          <span style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#1A1611', background: '#F0EAD9', borderRadius: 12, padding: '3px 10px', fontWeight: 500 }}>
+            {searchedName}
+          </span>
+          <button
+            onClick={() => { setBuildState('idle'); setResult(null); setSearchedName(''); }}
+            style={{ background: 'none', border: 'none', padding: '2px 4px', color: '#9B9185', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}>
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Filters */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12 }}>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {rn.minSharedPapers}
-          <input type="number" min={1} value={minShared} onChange={e => setMinShared(e.target.value)}
+          <input type="number" min={1} max={50} value={minShared} onChange={e => setMinShared(e.target.value)}
             style={{ width: 70, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12 }} />
         </label>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -264,13 +284,19 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
         </label>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {rn.yearStart}
-          <input type="number" placeholder="—" value={yearStart} onChange={e => setYearStart(e.target.value)}
-            style={{ width: 80, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12 }} />
+          <select value={yearStart} onChange={e => setYearStart(e.target.value)}
+            style={{ width: 90, padding: '5px 6px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12, background: '#FFFFFF' }}>
+            <option value="">—</option>
+            {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
         </label>
         <label style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {rn.yearEnd}
-          <input type="number" placeholder="—" value={yearEnd} onChange={e => setYearEnd(e.target.value)}
-            style={{ width: 80, padding: '5px 8px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12 }} />
+          <select value={yearEnd} onChange={e => setYearEnd(e.target.value)}
+            style={{ width: 90, padding: '5px 6px', border: '1px solid #D8D0BE', borderRadius: 4, fontFamily: "'Geist', sans-serif", fontSize: 12, background: '#FFFFFF' }}>
+            <option value="">—</option>
+            {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
         </label>
       </div>
 
@@ -304,10 +330,10 @@ export default function ResearcherNetwork({ embedded, onBack, onComplete }) {
 
       {buildState === 'done' && allEdges.length > 0 && (
         <>
-          {embedded && onBack && (
-            <button onClick={onBack}
+          {embedded && (
+            <button onClick={() => { setBuildState('idle'); setResult(null); setSearchedName(''); }}
               style={{ background: 'none', border: 'none', padding: '0 0 8px', fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#6B6358', cursor: 'pointer' }}>
-              ← {ts.backToFeed}
+              ← {rn.backToIdle}
             </button>
           )}
           {result?.cached && (
