@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen, Library, GitBranch } from 'lucide-react';
+import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen, Library, GitBranch, Film } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import LearningPath from './LearningPath';
 import CitationGraph from './CitationGraph';
 import PaperCard, { TYPE_COLORS } from './PaperCard';
+import ReelsView from './ReelsView';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
 
@@ -1015,6 +1016,7 @@ function VenuesView({ onComplete }) {
 function BottomNav({ view, onView, t }) {
   const tf = t.feed;
   const tabs = [
+    { key: 'reels',    label: tf.navReels || 'Reels', IconEl: Film },
     { key: 'trending', label: tf.navTrending, IconEl: Newspaper },
     { key: 'myFeed',   label: tf.navMyFeed,   IconEl: Home },
     { key: 'search',   label: tf.navSearch,   IconEl: Search },
@@ -1572,7 +1574,15 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
 
       {/* Content area */}
       <div style={{ position: 'relative', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '0 16px 80px', background: '#FAF7F2' }}>
+        {/* Reels tab — full-height, kept mounted (display toggle) so state &
+            scroll position survive switching tabs, like the other views. */}
+        <div style={{ display: view === 'reels' ? 'flex' : 'none', flex: 1, minHeight: 0, flexDirection: 'column' }}>
+          <ReelsView
+            onComplete={() => addLocalNotif(lang === 'ko' ? '릴스 피드 로드됨' : 'Reels feed loaded', 'reels', null)}
+          />
+        </div>
+
+        <div ref={scrollRef} style={{ display: view === 'reels' ? 'none' : 'block', flex: 1, overflowY: 'auto', padding: '0 16px 80px', background: '#FAF7F2' }}>
 
           {/* Trending tab */}
           <div style={{ display: view === 'trending' ? 'block' : 'none' }}>
@@ -1824,11 +1834,13 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
         </div>
       </div>
 
-      {/* Scroll buttons */}
+      {/* Scroll buttons — not shown in reels (it has its own snap scroll) */}
+      {view !== 'reels' && (
       <div style={{ position: 'absolute', bottom: 68, right: 16, display: 'flex', flexDirection: 'column', gap: 6, zIndex: 10 }}>
         <button onClick={scrollToTop} title={ts.scrollTop} style={scrollBtnStyle}><ChevronUp size={14} /></button>
         <button onClick={scrollToBottom} title={ts.scrollBottom} style={scrollBtnStyle}><ChevronDown size={14} /></button>
       </div>
+      )}
 
       {/* Bottom navigation */}
       <BottomNav view={view} onView={(v) => { setView(v); if (scrollRef.current) scrollRef.current.scrollTop = 0; }} t={t} />

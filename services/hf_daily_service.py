@@ -37,6 +37,15 @@ def fetch_daily_papers(target_date: _date | None = None) -> list[dict]:
         arxiv_id = paper.get("id", "")
         url = f"https://arxiv.org/abs/{arxiv_id}" if arxiv_id else entry.get("url", "#")
         authors = [a.get("name", "") for a in (paper.get("authors") or [])]
+        # HF Daily Papers attaches a hero image (often a PDF-first-page screenshot
+        # or an author-uploaded cover). Field location varies, so probe common spots.
+        thumbnail = (
+            entry.get("thumbnail")
+            or paper.get("thumbnail")
+            or (entry.get("mediaUrls") or [None])[0]
+            or (paper.get("mediaUrls") or [None])[0]
+            or ""
+        )
         papers.append({
             "title": paper.get("title", ""),
             "summary": paper.get("summary", ""),
@@ -45,6 +54,7 @@ def fetch_daily_papers(target_date: _date | None = None) -> list[dict]:
             "url": url,
             "published_at": paper.get("publishedAt", ""),
             "authors": authors,
+            "thumbnail": thumbnail,
         })
 
     papers.sort(key=lambda p: p["upvotes"], reverse=True)

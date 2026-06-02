@@ -42,6 +42,7 @@ const ko = {
     trendingLabel: '트렌딩 주제',
     subscribeLabel: '관심사 피드',
     comingSoon: '맞춤형 관심사 피드는 곧 추가됩니다. 지금은 검색으로 탐색해보세요.',
+    navReels: '릴스',
     navTrending: '트렌딩',
     navMyFeed: '내 피드',
     navSearch: '검색',

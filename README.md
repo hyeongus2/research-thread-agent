@@ -2,8 +2,9 @@
 
 A local-first, open-source research curation tool for AI/ML researchers and developers.
 
-Automatically collects papers, models, and repositories from **Semantic Scholar**, **Hugging Face Hub**, and **GitHub**, then presents them in six views:
+Automatically collects papers, models, and repositories from **Semantic Scholar**, **Hugging Face Hub**, and **GitHub**, then presents them in seven views:
 
+- **Reels** — Full-screen, swipe-up feed of recent trending papers (figure + title + abstract), inspired by short-video apps
 - **Quick Search** — Papers, models, and repos for a keyword, sorted by quality signal (citations / downloads / stars)
 - **Learning Path** — Historical development of a topic, organized chronologically by era
 - **Research Lineage** — Citation-based graph showing relationships between papers
@@ -30,6 +31,16 @@ Both interfaces run on the same backend. The desktop app bundles FastAPI + Next.
 ---
 
 ## Features
+
+### Reels
+A full-screen, vertically swipeable feed of recent trending papers — one paper per screen, scroll up for the next:
+- Papers sourced from Hugging Face Daily Papers (past 30 days), sorted by upvotes; shares the same DB-backed cache as Trending Feed
+- Each card shows the paper's preview image (Hugging Face Daily Papers thumbnail); the rare paper without one falls back to a text-centric card (large title + full abstract)
+- **✦ AI** button per card — on-demand one-paragraph summary (requires Anthropic API key)
+- Like / save buttons (session-local) and a direct link to the arXiv page
+- CSS scroll-snap drives the swipe behavior — smooth on mobile, no extra dependencies
+- Kept mounted across tab switches, so returning to Reels preserves your position
+- Best experienced on a phone; pairs well with the PWA install
 
 ### Quick Search
 Search across three sources simultaneously with a single keyword:
@@ -138,6 +149,26 @@ run.bat
 - Backend API docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 > The app runs entirely on your local machine. There is no cost for keeping it running.
+
+### Production mode (faster first paint, for demos)
+
+Development mode (`run.bat` / `run.sh`) recompiles pages on first visit. For a snappier experience — e.g. when presenting — build once and serve the production bundle, then warm the caches:
+
+```bash
+# 1. Build the frontend (run once)
+cd frontend && npm run build && cd ..
+
+# 2. Start backend + frontend (production)
+#    Terminal 1:
+uvicorn api.main:app --port 8000
+#    Terminal 2:
+cd frontend && npm start
+
+# 3. Warm trending + figure caches so first visitors get instant content
+python scripts/warm_cache.py
+```
+
+`scripts/warm_cache.py` pre-fetches the daily / weekly / monthly Trending feeds, populating the local DB cache (Reels shares the monthly feed).
 
 ---
 
