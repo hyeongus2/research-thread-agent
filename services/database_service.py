@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -161,6 +162,64 @@ def get_citation_history(db: Session) -> list[dict]:
         {"topic": r.topic, "query": r.topic.removeprefix("citation::"), "updated_at": str(r.updated_at)}
         for r in records
     ]
+
+
+# Cache key format: network::min:{min}:max:{max}:years:{ys}-{ye}:papers:{papers}:name:{name}
+# Name is placed last so it never collides with the fixed parameter tokens.
+_NETWORK_KEY_RE = re.compile(
+    r"^network::min:(?P<min>\d+):max:(?P<max>\d+)"
+    r":years:(?P<ys>\d*)-(?P<ye>\d*):papers:(?P<papers>\d+):name:(?P<name>.*)$"
+)
+
+
+def get_network_history(db: Session) -> list[dict]:
+    records = (
+        db.query(HistoricalThread)
+        .filter(HistoricalThread.topic.startswith("network::"))
+        .order_by(HistoricalThread.updated_at.desc())
+        .all()
+    )
+    items = []
+    for r in records:
+        m = _NETWORK_KEY_RE.match(r.topic)
+        if not m:
+            continue
+        ys = m.group("ys")
+        ye = m.group("ye")
+
+        # Prefer the SS-resolved author name stored in data (preserves proper casing).
+        display_name = m.group("name")
+        if r.data:
+            try:
+                stored = json.loads(r.data)
+                root = stored.get("root") or {}
+                display_name = root.get("name") or stored.get("root_author_name") or display_name
+            except Exception:
+                pass
+
+        items.append(
+            {
+                "topic": r.topic,
+                "name": display_name,
+                "min_shared_papers": int(m.group("min")),
+                "max_collaborators": int(m.group("max")),
+                "year_start": None if not ys else int(ys),
+                "year_end": None if not ye else int(ye),
+                "max_papers": int(m.group("papers")),
+                "updated_at": str(r.updated_at),
+            }
+        )
+
+    # Deduplicate by author name (case-insensitive), keeping the most recently updated entry.
+    # Records are already ordered by updated_at desc, so first occurrence wins.
+    seen: set[str] = set()
+    deduped = []
+    for item in items:
+        key = (item["name"] or "").strip().lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(item)
+    return deduped
 
 
 def get_lp_history(db: Session) -> list[dict]:

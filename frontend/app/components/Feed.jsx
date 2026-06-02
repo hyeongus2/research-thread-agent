@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen, Library, GitBranch } from 'lucide-react';
+import { Settings, Bell, ArrowUpRight, Search, X, ChevronUp, ChevronDown, Home, Newspaper, BookOpen, Library, GitBranch, Network } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import LearningPath from './LearningPath';
 import CitationGraph from './CitationGraph';
+import ResearcherNetwork from './ResearcherNetwork';
 import PaperCard, { TYPE_COLORS } from './PaperCard';
 
 const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
@@ -264,6 +265,7 @@ function TrendingFeed({ onQuickSearch, onComplete }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [fallbackDays, setFallbackDays] = useState(0);
+  const [isCached, setIsCached] = useState(false);
   const [paperSummaries, setPaperSummaries] = useState({});
   const [summaryLoading, setSummaryLoading] = useState({});
   const [paperNoKey, setPaperNoKey] = useState({});
@@ -300,6 +302,7 @@ function TrendingFeed({ onQuickSearch, onComplete }) {
         const data = await res.json();
         setPapers(data.papers || []);
         setFallbackDays(data.fallback_days || 0);
+        setIsCached(data.cached || false);
         if (!wasInitial && onComplete) onComplete();
       } catch {
         setError(true);
@@ -316,7 +319,7 @@ function TrendingFeed({ onQuickSearch, onComplete }) {
       <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 4 }}>
         {tf.trendingHeader}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isCached ? 4 : 16 }}>
         <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 12, color: '#9B9185' }}>
           {tf.trendingSubtitle} · {today}
         </div>
@@ -339,6 +342,12 @@ function TrendingFeed({ onQuickSearch, onComplete }) {
           ))}
         </div>
       </div>
+
+      {isCached && !loading && (
+        <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '0 0 12px', textAlign: 'right' }}>
+          ⚡ cached result
+        </p>
+      )}
 
       {loading && (
         <div style={{ padding: '40px 0', textAlign: 'center', fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', fontStyle: 'italic' }}>
@@ -395,6 +404,7 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone,
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [checkProgress, setCheckProgress] = useState([]); // [{label, status, newCount}]
+  const [isCached, setIsCached] = useState(false);
   const checkStartedRef = useRef(false);
   const esRef = useRef(null);
   const [paperSummaries, setPaperSummaries] = useState({});
@@ -487,6 +497,7 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone,
         } else if (ev.stage === 'done' || ev.stage === 'error') {
           es.close(); esRef.current = null;
           setChecking(false);
+          if (ev.cached) setIsCached(true);
           loadPapers();
           if (onCheckDone) onCheckDone();
           if (ev.stage === 'done' && onComplete) onComplete();
@@ -545,6 +556,11 @@ function MyFeedView({ userId, refreshKey = 0, papersRefreshKey = 0, onCheckDone,
 
   return (
     <div style={{ padding: '16px 16px 80px' }}>
+      {isCached && (
+        <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '0 0 8px', textAlign: 'right' }}>
+          ⚡ cached result
+        </p>
+      )}
       <div className="card-grid">
         {papers.map(p => (
           <PaperCard
@@ -858,6 +874,7 @@ function VenuesView({ onComplete }) {
   const [selectedYear, setSelectedYear] = useState(null);
   const [venueState, setVenueState] = useState('idle'); // idle | loading | done | error
   const [papers, setPapers] = useState([]);
+  const [venueCached, setVenueCached] = useState(false);
   const [venues, setVenues] = useState([]);
   const [years, setYears] = useState([]);
   const [paperSummaries, setPaperSummaries] = useState({});
@@ -881,6 +898,7 @@ function VenuesView({ onComplete }) {
       const r = await fetch(`${API}/venues/papers?venue=${encodeURIComponent(venue)}&year=${year}&limit=${limit}`);
       const d = await r.json();
       setPapers(d.papers || []);
+      setVenueCached(d.cached || false);
       setVenueState('done');
       if (onComplete) onComplete(venue, year);
     } catch {
@@ -960,9 +978,14 @@ function VenuesView({ onComplete }) {
       >
         {tf.venuesBack}
       </button>
-      <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 500, color: '#1A1611', marginBottom: 16 }}>
+      <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 500, color: '#1A1611', marginBottom: venueCached ? 4 : 16 }}>
         {tf.venuesPapersHeader(selectedVenue, selectedYear)}
       </div>
+      {venueCached && venueState === 'done' && (
+        <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '0 0 12px', textAlign: 'right' }}>
+          ⚡ cached result
+        </p>
+      )}
       {venueState === 'loading' && (
         <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 13, color: '#6B6358', padding: '32px 0', textAlign: 'center' }}>
           {tf.venuesLoading}
@@ -1046,6 +1069,7 @@ function SearchModeToggle({ mode, onMode, t }) {
         { key: 'quick', label: ts.modeQuick, Icon: Search },
         { key: 'learning', label: ts.modeLearning, Icon: BookOpen },
         { key: 'lineage', label: ts.modeLineage, Icon: GitBranch },
+        { key: 'network', label: ts.modeNetwork, Icon: Network },
       ].map(({ key, label, Icon }) => {
         const active = mode === key;
         return (
@@ -1097,8 +1121,11 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
   const [authorCandidates, setAuthorCandidates] = useState([]);
   const [authorResults, setAuthorResults] = useState(null); // {author, papers} | null
   const [authorLoading, setAuthorLoading] = useState(false);
+  const [isAuthorCached, setIsAuthorCached] = useState(false);
   const authorCandidatesCacheRef = useRef({}); // keyed by query keyword
   const authorPapersCacheRef = useRef({});     // keyed by author_id
+  const searchResultsCacheRef = useRef({});    // keyed by "combined|period|nMonths|customFrom|customTo"
+  const [isTopicCached, setIsTopicCached] = useState(false);
 
   const handleCancelSearch = () => {
     if (searchAbortRef.current) { searchAbortRef.current.abort(); searchAbortRef.current = null; }
@@ -1209,15 +1236,10 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
 
     setSearchMode('quick');
     setView('search');
-    setSearchState('loading');
-    setElapsed(0);
-    setSourceStatus({});
-    setSourceErrors({});
     setQueryType('topic');
     setAuthorStep('candidates');
     setAuthorCandidates([]);
     setAuthorResults(null);
-    setPapersSourceLabel('Semantic Scholar');
     setActiveTab('paper');
     setPage(1);
     setOverviewText(null);
@@ -1227,11 +1249,27 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
     setPaperSummaries({});
     setSummaryLoading({});
     setPaperNoKey({});
+    setIsTopicCached(false);
+
+    const { start, end } = getPeriodDates(period, nMonths, customFrom, customTo);
+    const cacheKey = `${combined}|${period}|${nMonths}|${customFrom}|${customTo}`;
+    if (searchResultsCacheRef.current[cacheKey]) {
+      setSearchResults(searchResultsCacheRef.current[cacheKey]);
+      setSearchState('done');
+      setSourceStatus({});
+      setSourceErrors({});
+      setIsTopicCached(true);
+      setPapersSourceLabel('Semantic Scholar');
+      return;
+    }
+    setSearchState('loading');
+    setElapsed(0);
+    setSourceStatus({});
+    setSourceErrors({});
     if (elapsedRef.current) clearInterval(elapsedRef.current);
     const startedAt = Date.now();
     elapsedRef.current = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
 
-    const { start, end } = getPeriodDates(period, nMonths, customFrom, customTo);
     const searchLimits = getSearchLimits();
     if (searchAbortRef.current) searchAbortRef.current.abort();
     const controller = new AbortController();
@@ -1262,6 +1300,7 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
           try { event = JSON.parse(line.slice(6)); } catch { continue; }
           if (event.stage === 'done') {
             clearTimeout(timeout); clearInterval(elapsedRef.current);
+            searchResultsCacheRef.current[cacheKey] = event.result;
             setSearchResults(event.result); setSearchState('done');
             setLocalNotifs(prev => [{
               id: Date.now(), tab: 'search', mode: 'quick', isRead: false,
@@ -1331,8 +1370,10 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
     const cacheKey = keyword.toLowerCase();
     if (authorCandidatesCacheRef.current[cacheKey]) {
       setAuthorCandidates(authorCandidatesCacheRef.current[cacheKey]);
+      setIsAuthorCached(true);
       return;
     }
+    setIsAuthorCached(false);
     setAuthorLoading(true);
     try {
       const res = await fetch(`${API}/search/author-candidates?name=${encodeURIComponent(keyword)}`);
@@ -1354,8 +1395,10 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
     const cacheKey = author.id;
     if (authorPapersCacheRef.current[cacheKey]) {
       setAuthorResults(authorPapersCacheRef.current[cacheKey]);
+      setIsAuthorCached(true);
       return;
     }
+    setIsAuthorCached(false);
     setAuthorLoading(true);
     try {
       const limit = getSearchLimits().papers;
@@ -1619,6 +1662,14 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
               />
             </div>
 
+            <div style={{ display: searchMode === 'network' ? 'block' : 'none', paddingTop: 8 }}>
+              <ResearcherNetwork
+                embedded
+                onBack={() => setSearchMode('quick')}
+                onComplete={(q) => addLocalNotif(lang === 'ko' ? `연구자 네트워크: "${q}" 완료` : `Researcher Network: "${q}" ready`, 'search', 'network')}
+              />
+            </div>
+
             <div style={{ display: searchMode === 'quick' ? 'block' : 'none' }}>
               <>
                 <>
@@ -1729,13 +1780,18 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
 
                             {authorResults && (
                               <>
-                                <div style={{ margin: '0 0 12px', padding: '10px 14px', background: '#FFFFFF', borderLeft: '3px solid #C84B31', borderRadius: '0 4px 4px 0' }}>
+                                <div style={{ margin: '0 0 4px', padding: '10px 14px', background: '#FFFFFF', borderLeft: '3px solid #C84B31', borderRadius: '0 4px 4px 0' }}>
                                   <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 4 }}>AUTHOR</div>
                                   <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 14, fontWeight: 600, color: '#1A1611' }}>{authorResults.author?.name}</div>
                                   <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 11, color: '#6B6358', marginTop: 2 }}>
                                     {ts.authorPaperCount(tabItems.length)}
                                   </div>
                                 </div>
+                                {isAuthorCached && (
+                                  <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '0 0 8px', textAlign: 'right' }}>
+                                    ⚡ cached result
+                                  </p>
+                                )}
 
                                 <TabBar activeTab="paper" counts={tabCounts} onTab={() => {}} perPage={perPage} onPerPage={handlePerPage} ts={ts} authorOnly />
 
@@ -1762,6 +1818,11 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
                       {/* Topic mode content */}
                       {!isAuthorMode && (
                         <>
+                          {isTopicCached && (
+                            <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '0 0 8px', textAlign: 'right' }}>
+                              ⚡ cached result
+                            </p>
+                          )}
                           {/* AI Overview */}
                           <div style={{ margin: '4px 0 16px', padding: '12px 16px', background: '#FFFFFF', borderLeft: '3px solid #C84B31', borderRadius: '0 4px 4px 0' }}>
                             <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 8 }}>OVERVIEW</div>

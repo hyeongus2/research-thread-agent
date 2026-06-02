@@ -2,11 +2,12 @@
 
 A local-first, open-source research curation tool for AI/ML researchers and developers.
 
-Automatically collects papers, models, and repositories from **Semantic Scholar**, **Hugging Face Hub**, and **GitHub**, then presents them in six views:
+Automatically collects papers, models, and repositories from **Semantic Scholar**, **Hugging Face Hub**, and **GitHub**, then presents them in seven views:
 
 - **Quick Search** — Papers, models, and repos for a keyword, sorted by quality signal (citations / downloads / stars)
 - **Learning Path** — Historical development of a topic, organized chronologically by era
 - **Research Lineage** — Citation-based graph showing relationships between papers
+- **Researcher Network** — Coauthorship network around a chosen PI/author
 - **Trending Feed** — Community-upvoted papers from Hugging Face (daily / weekly / monthly)
 - **My Feed** — Personalized paper alerts based on your subscribed categories and keywords
 - **Venues** — Browse papers from major ML/AI conferences by year
@@ -63,6 +64,19 @@ Enter a research topic and explore citation-based connections between papers:
 **Differs from Learning Path**: Learning Path groups papers into chronological eras with AI-generated summaries. Research Lineage shows citation-based relationships between individual papers.
 
 > **Limitation**: Citation relationships are metadata-based approximations. A paper citing another may use it as background, comparison, method, dataset, or critique. Citation edges do not guarantee direct intellectual inheritance.
+
+---
+
+### Researcher Network
+Enter a PI or author name to build a dynamic **coauthorship network** around that researcher, from **Semantic Scholar** author/paper metadata:
+- Node = researcher; the root author sits at the center, collaborators around it
+- Edge = coauthorship; **edge thickness reflects the number of shared papers**
+- Filter by minimum shared papers, max collaborators, and an optional year range
+- Click a collaborator to see shared years, top shared papers, and the author-position pattern
+- **Relationship hints** (e.g. *possible mentor-trainee pattern*) are **heuristic only** — surfaced when several metadata signals coincide, never as verified facts
+- No web crawling or lab-page scraping; results are cached for 30 days
+
+> **Important**: This is a coauthorship network, **not** verified academic genealogy. **Coauthorship does not imply an advisor-student relationship.**
 
 ---
 

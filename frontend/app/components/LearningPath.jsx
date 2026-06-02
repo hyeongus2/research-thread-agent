@@ -170,6 +170,7 @@ export default function LearningPath({ userId, onBack, onComplete, embedded = fa
   const [topic, setTopic] = useState('');
   const [state, setState] = useState('idle'); // 'idle' | 'loading' | 'done' | 'error'
   const [result, setResult] = useState(null);
+  const [isCached, setIsCached] = useState(false);
   const [activeEra, setActiveEra] = useState(0);
   const [activeContentTab, setActiveContentTab] = useState('papers'); // 'papers' | 'models' | 'repos'
   const [progress, setProgress] = useState(INIT_PROGRESS);
@@ -242,6 +243,7 @@ export default function LearningPath({ userId, onBack, onComplete, embedded = fa
     abortRef.current = controller;
     setState('loading');
     setProgress(INIT_PROGRESS);
+    setIsCached(false);
 
     try {
       const lpLimits = readLpLimits();
@@ -274,7 +276,9 @@ export default function LearningPath({ userId, onBack, onComplete, embedded = fa
           let event;
           try { event = JSON.parse(line.slice(6)); } catch { continue; }
 
-          if (event.type === 'done') {
+          if (event.type === 'cache_hit') {
+            setIsCached(true);
+          } else if (event.type === 'done') {
             setResult(event.result);
             setActiveEra(0);
             setActiveContentTab('papers');
@@ -501,6 +505,11 @@ export default function LearningPath({ userId, onBack, onComplete, embedded = fa
               {result.topic}
             </div>
           </div>
+          {isCached && (
+            <p style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#9B9185', margin: '2px 16px 8px', textAlign: 'right' }}>
+              ⚡ cached result
+            </p>
+          )}
 
           {/* Topic overview */}
           {result.description && (
