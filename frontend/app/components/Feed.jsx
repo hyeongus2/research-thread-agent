@@ -1833,6 +1833,16 @@ export default function Feed({ onSettings, userId, myFeedRefreshKey = 0 }) {
                               ⚡ cached result
                             </p>
                           )}
+                          {/* Topic label */}
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 2 }}>
+                              {ts.topicLabel}
+                            </div>
+                            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontStyle: 'italic', color: '#1A1611' }}>
+                              {searchResults?.keyword}
+                            </div>
+                          </div>
+
                           {/* AI Overview */}
                           <div style={{ margin: '4px 0 16px', padding: '12px 16px', background: '#FFFFFF', borderLeft: '3px solid #C84B31', borderRadius: '0 4px 4px 0' }}>
                             <div style={{ fontFamily: "'Geist', sans-serif", fontSize: 10, color: '#6B6358', letterSpacing: '0.15em', marginBottom: 8 }}>OVERVIEW</div>

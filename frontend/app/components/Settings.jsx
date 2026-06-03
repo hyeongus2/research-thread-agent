@@ -253,7 +253,7 @@ export default function Settings({ onClose, userId, onInterestsSaved }) {
       background: '#FAF7F2',
       display: 'flex',
       flexDirection: 'column',
-      zIndex: 10,
+      zIndex: 100,
     }}>
       <div style={{
         padding: '52px 24px 16px',

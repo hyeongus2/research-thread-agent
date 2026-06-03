@@ -146,6 +146,7 @@ const en = {
     perPage: 'per page',
     scrollTop: 'Top',
     scrollBottom: 'Bottom',
+    topicLabel: 'TOPIC',
     queryTypeTopic: 'Topic',
     queryTypeAuthor: 'Author',
     authorResultsFor: (name) => `Papers by ${name}`,

@@ -146,6 +146,7 @@ const ko = {
     perPage: '개씩',
     scrollTop: '맨 위로',
     scrollBottom: '맨 아래로',
+    topicLabel: '주제',
     queryTypeTopic: '토픽',
     queryTypeAuthor: '저자',
     authorResultsFor: (name) => `${name}의 논문`,
