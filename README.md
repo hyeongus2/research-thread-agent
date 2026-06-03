@@ -38,7 +38,7 @@ A full-screen, vertically swipeable feed of recent trending papers — one paper
 - Each card shows the paper's preview image (HF thumbnail); papers without one fall back to a text-centric card
 - **✦ AI** button toggles between the abstract and an on-demand AI summary (requires Anthropic API key)
 - Like / save buttons (session-local UI), and a direct link to the arXiv page
-- Smooth proximity scroll-snap; next cards' images are preloaded for instant display
+- Scroll-snap with progress pill; next cards' images are preloaded for instant display
 - Kept mounted across tab switches, so returning to Reels preserves your position
 
 ### Quick Search
@@ -217,7 +217,8 @@ research-thread-agent/
 │   └── server.py                      # MCP server — 4 tools for Claude.ai chat
 ├── scripts/                           # Utility scripts
 │   ├── reset_db.py                    # Wipe and reinitialize the database
-│   └── import_pwc_links.py            # One-time import of Papers with Code archive into SQLite
+│   ├── import_pwc_links.py            # One-time import of Papers with Code archive into SQLite
+│   └── warm_cache.py                  # Pre-warm trending cache (daily/weekly/monthly) before opening the app
 └── utils/                             # DB connection, logging, validators
     ├── database.py
     ├── logger.py
@@ -290,7 +291,12 @@ On Windows, use the `.venv\Scripts\python.exe` path:
 
 ## Roadmap
 
-### v1.1.0 (current)
+### v1.2.0 (current)
+- [x] **Reels** — full-screen, vertically swipeable feed of HF Daily Papers (past 30 days, sorted by upvotes); thumbnail-dominant card layout when HF preview image is available, text-centric fallback otherwise; ✦ AI Summary button per card (on-demand); like / save buttons (session-local); scroll-snap with progress pill; next cards' thumbnails preloaded for instant display; tab stays mounted so scroll position is preserved across tab switches
+- [x] **Quick Search: topic label** — TOPIC / 주제 header with Fraunces italic keyword shown at the top of results, matching Learning Path and Research Lineage layout
+- [x] **Fix: Settings z-index** — Settings overlay now renders above all in-content UI elements (raised from z-index 10 → 100)
+
+### v1.1.0
 - [x] **⚡ cached result indicator across all 7 features** — right-aligned label shown whenever a result is served from cache (DB-backed or in-memory); consistent position and style across Quick Search, Learning Path, Research Lineage, Researcher Network, Trending Feed, My Feed, and Venues
 - [x] **Quick Search topic mode in-memory cache** — same keyword + period combination renders instantly on re-search without re-fetching; cache lives for the duration of the browser session
 - [x] **Researcher Network: year filter → dropdowns** — year start/end inputs replaced with `<select>` elements (1950–current year, descending); clearing selection shows `—` naturally
