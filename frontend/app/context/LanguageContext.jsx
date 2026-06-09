@@ -9,8 +9,9 @@ const translations = { en, ko };
 const LanguageContext = createContext({ lang: 'en', setLang: () => {}, t: en });
 
 function getApiBase() {
-  if (typeof window === 'undefined') return 'http://localhost:8000/api';
-  return `${window.location.protocol}//${window.location.hostname}:8000/api`;
+  const port = process.env.NEXT_PUBLIC_API_PORT || '8000';
+  if (typeof window === 'undefined') return `http://localhost:${port}/api`;
+  return `${window.location.protocol}//${window.location.hostname}:${port}/api`;
 }
 
 export function LanguageProvider({ children }) {

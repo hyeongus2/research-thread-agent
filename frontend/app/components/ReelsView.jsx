@@ -4,9 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 import { ExternalLink, Sparkles, Heart, Bookmark } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
-const API = typeof window !== 'undefined'
-  ? `${window.location.protocol}//${window.location.hostname}:8000/api`
-  : 'http://localhost:8000/api';
+const API_PORT = process.env.NEXT_PUBLIC_API_PORT || '8000';
+const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:${API_PORT}/api` : `http://localhost:${API_PORT}/api`;
 
 function fmtAuthors(authors) {
   if (!authors || !authors.length) return '';
