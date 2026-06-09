@@ -9,7 +9,8 @@ import ResearcherNetwork from './ResearcherNetwork';
 import PaperCard, { TYPE_COLORS } from './PaperCard';
 import ReelsView from './ReelsView';
 
-const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8000/api` : 'http://localhost:8000/api';
+const API_PORT = process.env.NEXT_PUBLIC_API_PORT || '8000';
+const API = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:${API_PORT}/api` : `http://localhost:${API_PORT}/api`;
 
 const DEFAULT_LIMITS = { papers: 100, models: 25, repos: 25 };
 

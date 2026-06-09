@@ -8,8 +8,8 @@ else
     exit 1
 fi
 
-echo "Starting FastAPI backend on http://localhost:8000 ..."
-uvicorn api.main:app --reload --host 0.0.0.0 --port 8000 &
+echo "Starting FastAPI backend on http://localhost:8437 ..."
+uvicorn api.main:app --reload --host 0.0.0.0 --port 8437 &
 FASTAPI_PID=$!
 
 echo "Starting Next.js frontend on http://localhost:3000 ..."
@@ -18,7 +18,7 @@ NEXT_PID=$!
 
 echo ""
 echo "App running at http://localhost:3000"
-echo "API docs at  http://localhost:8000/docs"
+echo "API docs at  http://localhost:8437/docs"
 echo "Press Ctrl+C to stop both servers."
 
 trap "kill $FASTAPI_PID $NEXT_PID 2>/dev/null; exit" INT TERM
