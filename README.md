@@ -18,7 +18,7 @@
 
 ## 팀과 담당
 
-오픈소스 × AI 해커톤의 4인 팀 프로젝트입니다. 심현성은 공동 maintainer로 빠른 검색, 학습 경로, 피드와 MCP 서버를 Claude Code의 도움으로 구현·실행·수정하고, 팀원 PR 일부의 검토·병합과 제품 통합에 참여했습니다. 2026년 6월 4일 동상(5th place)을 수상했습니다.
+오픈소스 × AI 해커톤의 4인 팀 프로젝트입니다. 심현성은 공동 maintainer로 빠른 검색, 학습 경로, 피드와 MCP 서버를 Claude Code의 도움으로 구현·실행·수정하고, 팀원 PR 일부의 검토·병합과 제품 통합에 참여했습니다. 2026년 6월 4일 5위(Bronze Prize)을 수상했습니다.
 
 이 개인 저장소가 원본이며 [koi2026의 팀 저장소](https://github.com/koi2026/research-thread-agent)는 fork입니다. 팀의 전체 기능을 개인 단독 구현으로 설명하지 않습니다.
 
@@ -61,7 +61,7 @@ npm run build
 
 - [전체 시연 영상 — 2026-05-22, 약 5분 2초](https://drive.google.com/file/d/1TFFgb1VDcJbT204dVoVkLG_PdA8YUoxc/view): 당시 개발 버전의 압축 공유 사본이며 원본 영상은 별도로 보존했습니다. 현재 버전의 새 실행 검증 영상은 아닙니다.
 - [팀 발표 원본 — 2026-06-04, PPTX](https://github.com/hyeongus2/hyeongus2/blob/main/docs/talks/RTA-Team-Presentation-2026-06-04.pptx)
-- [동상 증빙 원본](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-award.pdf)
+- [5위(Bronze Prize) 증빙 원본](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-award.pdf)
 - [오픈소스 기여 수료 증빙 원본](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-completion.pdf)
 
 ## 라이선스
