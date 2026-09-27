@@ -1,4 +1,5 @@
 #!/bin/bash
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
 if [ -f ".venv/bin/activate" ]; then
     source .venv/bin/activate
 elif [ -f ".venv/Scripts/activate" ]; then

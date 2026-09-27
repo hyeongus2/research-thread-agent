@@ -39,12 +39,12 @@ def get_env_status():
 @router.post("/config/env", dependencies=[Depends(require_localhost)])
 def update_env(body: EnvUpdateRequest):
     """Write one or more .env values. Only recognised keys are accepted."""
-    if not _ENV_PATH.exists():
-        _ENV_PATH.touch()
-
     unknown = set(body.updates) - set(_ALL_KEYS)
     if unknown:
         raise HTTPException(status_code=400, detail=f"Unknown keys: {unknown}")
+
+    if not _ENV_PATH.exists():
+        _ENV_PATH.touch()
 
     for key, value in body.updates.items():
         if value == "":
@@ -65,7 +65,7 @@ def get_models():
     }
 
 
-@router.post("/config/model")
+@router.post("/config/model", dependencies=[Depends(require_localhost)])
 def update_model(body: ModelUpdateRequest):
     """Persist the selected Claude model to .env and apply it immediately."""
     valid_ids = [m["id"] for m in AVAILABLE_CLAUDE_MODELS]
