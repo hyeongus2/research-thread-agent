@@ -59,6 +59,8 @@ npm run build
 
 ## 자료
 
+- [전체 시연 영상 — 2026-05-22, 약 5분 2초](https://drive.google.com/file/d/1TFFgb1VDcJbT204dVoVkLG_PdA8YUoxc/view): 당시 개발 버전의 압축 공유 사본이며 원본 영상은 별도로 보존했습니다. 현재 버전의 새 실행 검증 영상은 아닙니다.
+- [팀 발표 원본 — 2026-06-04, PPTX](https://github.com/hyeongus2/hyeongus2/blob/main/docs/talks/RTA-Team-Presentation-2026-06-04.pptx)
 - [동상 증빙 원본](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-award.pdf)
 - [오픈소스 기여 수료 증빙 원본](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-completion.pdf)
 
