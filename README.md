@@ -16,11 +16,11 @@
 
 인용·공동저자 관계는 메타데이터 기반이며 직접적인 연구 계보나 지도 관계를 증명하지 않습니다. 웹 인터페이스는 구현되어 있고 Electron 설치형 패키징은 향후 과제입니다.
 
-## 팀과 담당
+## 개발 배경
 
-오픈소스 × AI 해커톤의 4인 팀 프로젝트입니다. 심현성은 공동 maintainer로 빠른 검색, 학습 경로, 피드와 MCP 서버를 Claude Code의 도움으로 구현·실행·수정하고, 팀원 PR 일부의 검토·병합과 제품 통합에 참여했습니다. 2026년 6월 4일 5위(Bronze Prize)을 수상했습니다.
+오픈소스 × AI 해커톤에서 4인 팀으로 개발했으며, 2026년 6월 4일 5위(Bronze Prize)를 수상했습니다. 공동 maintainer로서 빠른 검색, 학습 경로, 피드와 MCP 서버를 구현하고 팀원 PR 검토·병합과 제품 통합을 담당했습니다.
 
-이 개인 저장소가 원본이며 [koi2026의 팀 저장소](https://github.com/koi2026/research-thread-agent)는 fork입니다. 팀의 전체 기능을 개인 단독 구현으로 설명하지 않습니다.
+[koi2026의 팀 저장소](https://github.com/koi2026/research-thread-agent)는 이 저장소를 fork해 함께 개발했습니다.
 
 ## 설치와 실행
 
@@ -37,7 +37,7 @@ Windows에서는 `setup.bat` 후 `run.bat`, macOS/Linux에서는 `bash setup.sh`
 - API 문서: <http://localhost:8000/docs>
 - 데이터: 저장소의 `data/research_thread.db` (자동 생성, Git 제외)
 
-`.env` 또는 앱 설정에 필요한 키를 입력합니다. `ANTHROPIC_API_KEY`는 AI 요약, `GITHUB_TOKEN`은 인증된 GitHub 검색, `HF_API_TOKEN`·`SEMANTIC_SCHOLAR_API_KEY`는 해당 서비스 인증, `RESEND_API_KEY`·`USER_EMAIL`은 이메일 알림에 사용합니다. Claude 호출에는 API 사용료가 발생할 수 있으며 각 서비스의 한도와 모델 사용 가능 여부는 계정에 따라 다릅니다. 실제 키·사용자 DB는 저장소에 올리지 않습니다.
+`.env` 또는 앱 설정에 필요한 키를 입력합니다. `ANTHROPIC_API_KEY`는 AI 요약, `GITHUB_TOKEN`은 인증된 GitHub 검색, `HF_API_TOKEN`·`SEMANTIC_SCHOLAR_API_KEY`는 해당 서비스 인증, `RESEND_API_KEY`·`USER_EMAIL`은 이메일 알림에 사용합니다. Claude 호출에는 API 사용료가 발생할 수 있으며 각 서비스의 한도와 모델 사용 가능 여부는 계정에 따라 다릅니다. API 키는 `.env`, 사용자 데이터는 로컬 SQLite에 저장합니다.
 
 기본 실행 스크립트는 LAN 접속을 위해 백엔드를 모든 인터페이스에 바인딩합니다. 개인 PC에서만 사용할 경우 직접 `uvicorn api.main:app --host 127.0.0.1 --port 8000`으로 실행할 수 있습니다. 환경·모델 변경과 DB 초기화는 localhost 요청으로 제한됩니다. 인터넷 공개 배포용 인증 체계는 제공하지 않습니다.
 
@@ -47,7 +47,7 @@ Windows에서는 `setup.bat` 후 `run.bat`, macOS/Linux에서는 `bash setup.sh`
 
 MCP 클라이언트에서 저장소 가상환경의 Python을 command, `mcp_server/server.py`의 절대 경로를 args로 지정합니다. 제공 도구는 `quick_search`, `learning_path`, `trending_papers`, `venue_papers`, `research_lineage`, `my_feed`입니다. `my_feed`는 웹앱 온보딩·관심 분야 설정 후 저장된 개인 피드를 읽습니다.
 
-## 검증과 현재 상태
+## 테스트
 
 ```bash
 python -m unittest discover -s tests -v
@@ -55,14 +55,14 @@ cd frontend
 npm run build
 ```
 
-회귀검증은 모델 설정의 localhost 제한, 잘못된 설정의 파일 생성 방지, 실행 위치와 무관한 DB 경로를 확인합니다. 외부 검색 API와 Claude 전체 흐름은 유효한 키로 별도 확인해야 합니다. 현재 API 키 만료로 최신 전체 시연을 다시 녹화하지 않았으며, 2026년 5월 22일 영상은 당시 개발 버전입니다.
+단위 테스트는 모델 설정의 localhost 제한, 잘못된 설정 처리, 실행 위치와 무관한 DB 경로를 검사합니다. 외부 검색·요약 기능의 통합 테스트에는 유효한 API 키가 필요합니다.
 
 ## 자료
 
-- [전체 시연 영상 — 2026-05-22, 약 5분 2초](https://drive.google.com/file/d/1TFFgb1VDcJbT204dVoVkLG_PdA8YUoxc/view): 당시 개발 버전의 압축 공유 사본이며 원본 영상은 별도로 보존했습니다. 현재 버전의 새 실행 검증 영상은 아닙니다.
-- [팀 발표 원본 — 2026-06-04, PPTX](https://github.com/hyeongus2/hyeongus2/blob/main/docs/talks/RTA-Team-Presentation-2026-06-04.pptx)
-- [5위(Bronze Prize) 증빙 원본](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-award.pdf)
-- [오픈소스 기여 수료 증빙 원본](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-completion.pdf)
+- [전체 시연 영상 — 2026-05-22, 약 5분 2초](https://drive.google.com/file/d/1TFFgb1VDcJbT204dVoVkLG_PdA8YUoxc/view): 2026년 5월 개발 버전의 검색·탐색 흐름
+- [팀 발표 — 2026-06-04, PPTX](https://github.com/hyeongus2/hyeongus2/blob/main/docs/talks/RTA-Team-Presentation-2026-06-04.pptx)
+- [5위(Bronze Prize) 상장](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-award.pdf)
+- [오픈소스 기여 수료증](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-completion.pdf)
 
 ## 라이선스
 
