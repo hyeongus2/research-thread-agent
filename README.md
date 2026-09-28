@@ -60,7 +60,7 @@ npm run build
 ## 자료
 
 - [전체 시연 영상 — 2026-05-22, 약 5분 2초](https://drive.google.com/file/d/1TFFgb1VDcJbT204dVoVkLG_PdA8YUoxc/view): 2026년 5월 개발 버전의 검색·탐색 흐름
-- [팀 발표 — 2026-06-04, PPTX](https://github.com/hyeongus2/hyeongus2/blob/main/docs/talks/RTA-Team-Presentation-2026-06-04.pptx)
+- [팀 발표 — 2026-06-04, PDF 14쪽](https://drive.google.com/file/d/1rnlRtRcDcxSq5b78C56JX_pKCyjwn8p3/view) · [PPTX 다운로드](https://raw.githubusercontent.com/hyeongus2/hyeongus2/main/docs/talks/RTA-Team-Presentation-2026-06-04.pptx)
 - [5위(Bronze Prize) 상장](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-award.pdf)
 - [오픈소스 기여 수료증](https://github.com/hyeongus2/hyeongus2/blob/main/docs/certificates/KAIST-OpenSource-AI-completion.pdf)
 
